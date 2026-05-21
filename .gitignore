@@ -1,0 +1,30 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# typescript build info
+*.tsbuildinfo
+
+# env — keep .env in repo for now since both apps share a publishable key,
+# but never commit secret-bearing variants
+.env.local
+.env.*.local

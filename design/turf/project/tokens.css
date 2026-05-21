@@ -1,0 +1,75 @@
+/* TurfPro tokens — fairway green + bronze accent */
+:root {
+  /* Green — fairway / golf-course / new-growth */
+  --green-900: hsl(148 75% 12%);
+  --green-800: hsl(148 65% 20%);
+  --green-700: hsl(145 55% 28%);
+  --green-600: hsl(142 50% 38%);
+  --green-500: hsl(138 45% 48%);
+  --green-100: hsl(138 40% 92%);
+  --green-50:  hsl(138 35% 96%);
+
+  /* Bronze accent */
+  --bronze-700: hsl(26 60% 28%);
+  --bronze-600: hsl(28 65% 38%);
+  --bronze-500: hsl(30 70% 48%);
+  --bronze-400: hsl(32 75% 58%);
+  --bronze-100: hsl(32 60% 92%);
+
+  /* Neutrals — warm */
+  --ink-900: hsl(150 10% 10%);
+  --ink-800: hsl(150 8% 18%);
+  --ink-700: hsl(150 6% 28%);
+  --ink-500: hsl(150 5% 46%);
+  --ink-400: hsl(150 5% 60%);
+  --ink-300: hsl(150 6% 78%);
+  --ink-200: hsl(150 8% 88%);
+  --ink-100: hsl(150 12% 94%);
+  --paper:   hsl(40 25% 98%);
+  --card:    #ffffff;
+
+  /* Semantic */
+  --primary: var(--green-800);
+  --primary-foreground: var(--bronze-400);
+  --accent: var(--bronze-500);
+  --accent-foreground: var(--green-900);
+
+  /* Status */
+  --rain: hsl(212 60% 50%);
+  --rain-bg: hsl(212 60% 95%);
+  --drought: hsl(36 80% 50%);
+  --drought-bg: hsl(36 85% 95%);
+  --ok: hsl(142 55% 42%);
+
+  --gradient-hero-deep: linear-gradient(160deg,
+    hsl(148 75% 10%) 0%,
+    hsl(145 60% 22%) 60%,
+    hsl(142 50% 30%) 100%);
+
+  --shadow-bronze: 0 8px 24px -8px hsl(30 70% 45% / 0.55);
+  --shadow-card: 0 1px 2px hsl(150 10% 10% / 0.04), 0 1px 3px hsl(150 10% 10% / 0.06);
+  --shadow-card-lg: 0 4px 12px hsl(150 10% 10% / 0.06), 0 1px 3px hsl(150 10% 10% / 0.05);
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-2xl: 28px;
+}
+
+/* Type stack — Archivo (display) + Inter (UI) */
+.tp-display { font-family: "Archivo", "SF Pro Display", system-ui, sans-serif; font-feature-settings: "ss01"; letter-spacing: -0.02em; }
+.tp-ui       { font-family: "Inter", "SF Pro Text", system-ui, sans-serif; font-feature-settings: "cv11", "ss01"; }
+.tp-mono     { font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tp-num      { font-variant-numeric: tabular-nums; }
+
+/* Reset inside screens */
+.tp-screen, .tp-screen * { box-sizing: border-box; }
+.tp-screen {
+  width: 100%; height: 100%;
+  font-family: "Inter", "SF Pro Text", system-ui, sans-serif;
+  color: var(--ink-900);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
