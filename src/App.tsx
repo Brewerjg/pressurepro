@@ -16,6 +16,14 @@ import PlanDetail from "./pages/PlanDetail";
 import ApplicationCalc from "./pages/ApplicationCalc";
 import ChemicalLog from "./pages/ChemicalLog";
 import Settings from "./pages/Settings";
+import Pricing from "./pages/Pricing";
+import CheckoutReturn from "./pages/CheckoutReturn";
+import Accept from "./pages/Accept";
+import QuotePrint from "./pages/QuotePrint";
+import Review from "./pages/Review";
+import PlanPortal, { PlanPortalDone } from "./pages/PlanPortal";
+import ShortLink from "./pages/ShortLink";
+import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +46,16 @@ const App = () => (
       <AuthProvider>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          {/* Public — customer-facing flows, no auth required */}
+          <Route path="/accept/:id" element={<Accept />} />
+          <Route path="/accept/:id/print" element={<QuotePrint />} />
+          <Route path="/plans/portal/:token" element={<PlanPortal />} />
+          <Route path="/plans/portal/:token/done" element={<PlanPortalDone />} />
+          <Route path="/review/:id" element={<Review />} />
+          <Route path="/s/:code" element={<ShortLink />} />
+          <Route path="/g/:propertyId" element={<Gallery />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/checkout/return" element={<Protected><CheckoutReturn /></Protected>} />
           <Route path="/" element={<Protected><Home /></Protected>} />
           <Route path="/customers" element={<Protected><Customers /></Protected>} />
           <Route path="/customers/:id" element={<Protected><CustomerDetail /></Protected>} />
