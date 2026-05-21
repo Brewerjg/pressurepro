@@ -17,15 +17,17 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { mutatePlanSubscription, type PlanAction } from "@/lib/plan-stripe";
 
 // PlanDetail. Mirrors PressurePro's PlanDetail but reads lawn-care extras
 // (day_of_week, frequency, season_pause, plan_kind) added in
 // supabase/migrations/0001_turfpro_lawn_care.sql.
 //
-// NOTE on actions: Pause / Resume / Cancel just flip the row's status here.
-// Stripe-side subscription pause / cancel is intentionally deferred — that
-// coordination will live in an edge function once billing wiring lands, so
-// this UI does NOT call Stripe. See TURFPRO_SPEC.md for the broader plan.
+// Pause / Resume / Cancel: optimistically flips the row's status for snappy
+// UI, then fires `mutate-plan-subscription` so the real Stripe Subscription
+// is paused / canceled to match. If Stripe errors out the local row stays
+// flipped (the webhook will eventually correct it) but the UI surfaces the
+// error so the operator knows.
 
 type LawnPlan = Database["public"]["Tables"]["maintenance_plans"]["Row"] & {
   day_of_week: number | null;
@@ -87,6 +89,7 @@ export default function PlanDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   const {
     data: plan,
@@ -172,8 +175,23 @@ export default function PlanDetail() {
 
   const setStatus = (next: PlanStatus) => {
     if (next === "canceled" && !window.confirm("Cancel this plan? Crews will stop visiting.")) return;
-    // Stripe pause/cancel is intentionally NOT called here — see file header.
+    setStripeError(null);
+    // Optimistic local update — snappy UI. We update DB *and* call Stripe
+    // in parallel; if Stripe fails, the row will get corrected by the
+    // payments-webhook on the next subscription.updated event.
     updatePlan.mutate({ status: next });
+    const action: PlanAction | null =
+      next === "paused" ? "pause" :
+      next === "active" ? "resume" :
+      next === "canceled" ? "cancel" : null;
+    if (!action || !id) return;
+    mutatePlanSubscription(id, action).catch((e) => {
+      setStripeError(
+        e instanceof Error
+          ? `Couldn't sync with Stripe: ${e.message}`
+          : "Couldn't sync with Stripe.",
+      );
+    });
   };
 
   const remove = () => {
@@ -273,6 +291,12 @@ export default function PlanDetail() {
             <Edit3 className="h-3.5 w-3.5" /> {editing ? "Close" : "Edit"}
           </button>
         </div>
+
+        {stripeError && (
+          <div className="rounded-xl bg-[hsl(var(--destructive-bg))] text-destructive text-[12.5px] font-semibold p-3">
+            {stripeError}
+          </div>
+        )}
 
         {/* Charge history */}
         <ChargeHistoryCard chargeHistory={plan.charge_history} />

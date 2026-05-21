@@ -5,38 +5,68 @@ import {
   Play,
   Sun,
   CloudRain,
+  Cloud,
+  CloudSnow,
+  Wind,
+  Snowflake,
   Camera,
   Calculator,
   StickyNote,
   DollarSign,
 } from "lucide-react";
 
-// Ported from design/turf/project/screen-home.jsx.
-// MRR-first hero is intentional — recurring is the lawn-care default per spec.
-// Numbers are placeholders until the data layer lands.
+import { useForecast, useUserZip, type ForecastDay, type DerivedTone } from "@/lib/weather";
 
-const forecastDays = [
-  { d: "Mon", n: 19, w: "sun", tone: "ok" },
-  { d: "Tue", n: 20, w: "sun", tone: "ok" },
-  { d: "Wed", n: 21, w: "sun", tone: "today" },
-  { d: "Thu", n: 22, w: "rain", tone: "rain" },
-  { d: "Fri", n: 23, w: "sun", tone: "drought" },
-  { d: "Sat", n: 24, w: "sun", tone: "ok" },
-  { d: "Sun", n: 25, w: "sun", tone: "ok" },
-] as const;
+// Ported from design/turf/project/screen-home.jsx. MRR/hero card numbers stay
+// hardcoded until the billing data layer lands; the forecast strip is now live
+// (driven by useForecast against the OpenWeather edge fn). Drought heuristic
+// is documented in src/lib/weather.ts (TODO note in deriveTone).
 
+// Visual treatment tokens — keyed by the new derived_tone palette. "today"
+// is a positional accent the forecast logic doesn't produce, so it's applied
+// to whichever day matches today regardless of tone.
+type ForecastTone = DerivedTone | "today";
 const forecastTone: Record<
-  (typeof forecastDays)[number]["tone"],
+  ForecastTone,
   { container: string; label: string; icon: string; value: string }
 > = {
   ok:      { container: "bg-transparent",       label: "text-ink-700/70",        icon: "text-ink-400",          value: "text-ink-700" },
   today:   { container: "bg-green-800",         label: "text-bronze-400/90",     icon: "text-bronze-400",       value: "text-white" },
   rain:    { container: "bg-[hsl(var(--rain-bg))]",    label: "text-[hsl(var(--rain))]/80",    icon: "text-[hsl(var(--rain))]",    value: "text-[hsl(var(--rain))]" },
   drought: { container: "bg-[hsl(var(--drought-bg))]", label: "text-[hsl(var(--drought))]/80", icon: "text-[hsl(var(--drought))]", value: "text-[hsl(var(--drought))]" },
+  // Wind + frost re-use the rain tinting because they're equally "stop" signals
+  // and we don't want to add new CSS vars in this wave.
+  wind:    { container: "bg-[hsl(var(--rain-bg))]",    label: "text-[hsl(var(--rain))]/80",    icon: "text-[hsl(var(--rain))]",    value: "text-[hsl(var(--rain))]" },
+  frost:   { container: "bg-[hsl(var(--rain-bg))]",    label: "text-[hsl(var(--rain))]/80",    icon: "text-[hsl(var(--rain))]",    value: "text-[hsl(var(--rain))]" },
 };
 
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function dayLabel(dateStr: string): string {
+  // YYYY-MM-DD — parse as local date (the suffix matters; "2024-01-01" parses
+  // as UTC, so we split + construct to avoid TZ off-by-one on the strip).
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return DOW_LABELS[new Date(y, m - 1, d).getDay()];
+}
+
+function isToday(dateStr: string): boolean {
+  const t = new Date();
+  const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  return today === dateStr;
+}
+
+function iconFor(d: ForecastDay) {
+  if (d.derived_tone === "frost") return Snowflake;
+  if (d.derived_tone === "wind") return Wind;
+  if (d.condition === "rain") return CloudRain;
+  if (d.condition === "snow") return CloudSnow;
+  if (d.condition === "cloud") return Cloud;
+  return Sun;
+}
+
 const quickActions = [
-  { icon: Camera,       label: "Photo pair",    sub: "Before / after",    accent: "text-green-600",  to: null },
+  { icon: Camera,       label: "Photo pair",    sub: "Before / after",    accent: "text-green-600",  to: "/photos/new" },
   { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²", accent: "text-bronze-600", to: "/calc" },
   { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record", accent: "text-green-700",  to: "/chem-log" },
   { icon: DollarSign,   label: "One-off quote", sub: "Spring cleanup +",  accent: "text-ink-700",    to: null },
@@ -44,6 +74,14 @@ const quickActions = [
 
 export default function Home() {
   const progressSegments = Array.from({ length: 11 });
+  const zipQ = useUserZip();
+  const forecast = useForecast(zipQ.data);
+
+  // Decision summaries for the chip row beneath the strip. We derive these
+  // from the *forecast*, not from hardcoded text, so they always agree with
+  // the strip's colored cells.
+  const rainDays = (forecast.data ?? []).filter((d) => d.derived_tone === "rain");
+  const droughtDays = (forecast.data ?? []).filter((d) => d.derived_tone === "drought");
 
   return (
     <div className="pt-3">
@@ -150,37 +188,83 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Weekly forecast */}
+      {/* Weekly forecast — live from OpenWeather via the `forecast` edge fn */}
       <section className="mx-4 mb-3 mt-3.5">
         <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px] px-1 pb-2">
           This week
         </h2>
-        <div className="tp-card px-2 py-3 flex">
-          {forecastDays.map((day, i) => {
-            const tone = forecastTone[day.tone];
-            const Icon = day.w === "rain" ? CloudRain : Sun;
-            return (
-              <div
-                key={i}
-                className={`flex-1 flex flex-col items-center gap-1 py-1.5 rounded-xl ${tone.container}`}
-              >
-                <div className={`text-[10px] font-semibold tracking-[0.3px] ${tone.label}`}>
-                  {day.d.toUpperCase()}
+
+        {!forecast.hasZip && !zipQ.isLoading && (
+          // Soft prompt — the rest of Home is fully usable without weather, so
+          // we don't gate anything else behind ZIP.
+          <div className="tp-card px-3.5 py-3 text-[12.5px] text-ink-600">
+            Set your business ZIP in{" "}
+            <Link to="/settings" className="font-semibold text-green-800 underline-offset-2 hover:underline">
+              Settings
+            </Link>{" "}
+            to see live weather and skip-day suggestions.
+          </div>
+        )}
+
+        {forecast.hasZip && (
+          <>
+            <div className="tp-card px-2 py-3 flex">
+              {forecast.isLoading && (forecast.data?.length ?? 0) === 0 ? (
+                // Skeleton row — matches the live row's geometry so the layout
+                // doesn't jump when data arrives.
+                Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1 py-1.5">
+                    <div className="h-2.5 w-7 rounded bg-ink-100" />
+                    <div className="h-4 w-4 rounded-full bg-ink-100" />
+                    <div className="h-3 w-6 rounded bg-ink-100" />
+                  </div>
+                ))
+              ) : forecast.error ? (
+                <div className="flex-1 py-2 text-center text-[12px] text-ink-500">
+                  Weather unavailable.
                 </div>
-                <Icon className={`h-4 w-4 ${tone.icon}`} strokeWidth={1.7} />
-                <div className={`tp-num text-[13px] font-bold ${tone.value}`}>{day.n}°</div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex gap-2 mt-2.5 px-1 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full bg-[hsl(var(--rain-bg))] text-[11.5px] font-semibold text-[hsl(var(--rain))]">
-            <CloudRain className="h-3 w-3" /> Skip Thursday · 4 stops
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full bg-[hsl(var(--drought-bg))] text-[11.5px] font-semibold text-[hsl(36_80%_35%)]">
-            <Sun className="h-3 w-3" /> Stretch Fri to biweekly
-          </span>
-        </div>
+              ) : (
+                (forecast.data ?? []).slice(0, 7).map((day) => {
+                  const today = isToday(day.date);
+                  const toneKey: ForecastTone = today ? "today" : day.derived_tone;
+                  const tone = forecastTone[toneKey];
+                  const Icon = iconFor(day);
+                  return (
+                    <div
+                      key={day.date}
+                      className={`flex-1 flex flex-col items-center gap-1 py-1.5 rounded-xl ${tone.container}`}
+                    >
+                      <div className={`text-[10px] font-semibold tracking-[0.3px] ${tone.label}`}>
+                        {dayLabel(day.date).toUpperCase()}
+                      </div>
+                      <Icon className={`h-4 w-4 ${tone.icon}`} strokeWidth={1.7} />
+                      <div className={`tp-num text-[13px] font-bold ${tone.value}`}>
+                        {day.temp_high}°
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Decision chips — derived from the forecast, not hardcoded copy */}
+            <div className="flex gap-2 mt-2.5 px-1 flex-wrap">
+              {rainDays.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full bg-[hsl(var(--rain-bg))] text-[11.5px] font-semibold text-[hsl(var(--rain))]">
+                  <CloudRain className="h-3 w-3" />
+                  Skip {dayLabel(rainDays[0].date)}
+                  {rainDays.length > 1 ? ` +${rainDays.length - 1}` : ""}
+                </span>
+              )}
+              {droughtDays.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full bg-[hsl(var(--drought-bg))] text-[11.5px] font-semibold text-[hsl(36_80%_35%)]">
+                  <Sun className="h-3 w-3" />
+                  Stretch {dayLabel(droughtDays[0].date)} to biweekly
+                </span>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       {/* Quick actions */}

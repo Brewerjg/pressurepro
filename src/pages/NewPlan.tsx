@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { createPlanSubscription, type NewPlanInput } from "@/lib/plan-stripe";
 
 // NewPlan creates a maintenance_plan with the lawn-care extensions
 // (day_of_week, frequency, season_pause, plan_kind) defined in
@@ -21,8 +22,6 @@ import { cn } from "@/lib/utils";
 type Customer = Database["public"]["Tables"]["customers"]["Row"];
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type CatalogItem = Database["public"]["Tables"]["catalog_items"]["Row"];
-type MaintenancePlanInsert =
-  Database["public"]["Tables"]["maintenance_plans"]["Insert"];
 
 type Frequency = "weekly" | "biweekly" | "monthly" | "fert_program";
 type BillingInterval = 3 | 6 | 12;
@@ -148,6 +147,13 @@ export default function NewPlan() {
     );
 
   // ---- submit ----
+  // Defers the plan-row INSERT to the `create-plan-subscription` edge
+  // function so the row, the Stripe Customer / Subscription, and (if
+  // needed) a hosted Checkout session are all minted together. The fn
+  // returns either:
+  //   { kind: 'checkout', checkoutUrl } → we redirect (Stripe will collect
+  //     a card and bounce back to /checkout/return?kind=plan&plan_id=...)
+  //   { kind: 'existing', planId }      → card on file; jump to the plan
   const createPlan = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
@@ -158,11 +164,7 @@ export default function NewPlan() {
       if (!amountNum || amountNum <= 0) throw new Error("Enter a valid amount");
       if (!startDate) throw new Error("Pick a start date");
 
-      // Base insert is typed against the generated schema; the lawn-care
-      // additions go in a separate object and we merge + cast at the
-      // boundary because day_of_week / frequency / season_pause / plan_kind
-      // aren't in the generated types yet.
-      const baseInsert: MaintenancePlanInsert = {
+      const input: NewPlanInput = {
         user_id: user.id,
         customer_id: selectedCustomer.id,
         property_id: selectedProperty.id,
@@ -173,29 +175,25 @@ export default function NewPlan() {
         amount: amountNum,
         interval_months: intervalMonths,
         start_date: startDate,
-        // Stripe / billing-side coordination is deferred — first scheduled
-        // charge is just the start date until a billing webhook owns it.
         next_charge_date: startDate,
         status: "active",
-      };
-      const lawnFields = {
         day_of_week: dayOfWeek,
         frequency,
         season_pause: seasonPause,
         plan_kind: planKind,
       };
 
-      const { data, error } = await supabase
-        .from("maintenance_plans")
-        .insert({ ...baseInsert, ...lawnFields } as MaintenancePlanInsert)
-        .select("id")
-        .single();
-      if (error) throw error;
-      return data.id as string;
+      return await createPlanSubscription(input);
     },
-    onSuccess: (planId) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["plans"] });
-      navigate(`/plans/${planId}`);
+      if (result.kind === "checkout") {
+        // Hand off to Stripe — the homeowner has no card yet. CheckoutReturn
+        // picks the user back up at /checkout/return?kind=plan&plan_id=...
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
+      navigate(`/plans/${result.planId}`);
     },
     onError: (err) => {
       setFormError(err instanceof Error ? err.message : "Couldn't save plan");

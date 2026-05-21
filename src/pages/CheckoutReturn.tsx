@@ -5,11 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment, tierFromPriceId, getTier } from "@/lib/stripe";
 import { cn } from "@/lib/utils";
 
-// Return URL Stripe sends the user to after Checkout. We verify the session
-// server-side (via `verify-checkout-session`) so we can show a confirmed
-// success state even before the webhook has finished writing the
-// subscriptions row. After ~3s on success we forward to /settings?welcome=1
-// so the operator lands somewhere they can see their billing status.
+// Return URL Stripe sends the user to after Checkout. Handles BOTH:
+//   - SaaS subscription (default): verify the session, forward to Settings.
+//   - Maintenance plan (?kind=plan&plan_id=...): verify, then forward to
+//     the plan detail page. On failure leave a breadcrumb and bounce to
+//     /plans so the operator can retry or see status.
+//
+// We verify server-side (via `verify-checkout-session`) so we can show a
+// confirmed success state even before the webhook has finished writing.
 
 type VerifyState =
   | { kind: "verifying" }
@@ -19,15 +22,29 @@ type VerifyState =
 export default function CheckoutReturn() {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
+  const kind = params.get("kind"); // 'plan' for maintenance-plan flows
+  const planId = params.get("plan_id");
+  const canceled = params.get("canceled") === "1";
+  const isPlanFlow = kind === "plan";
   const navigate = useNavigate();
   const [state, setState] = useState<VerifyState>({ kind: "verifying" });
 
   useEffect(() => {
+    // Stripe's cancel_url path: the operator backed out of Checkout.
+    if (canceled) {
+      setState({
+        kind: "failed",
+        message: isPlanFlow
+          ? "You canceled the card setup. The plan was rolled back."
+          : "Checkout was canceled.",
+      });
+      return;
+    }
     if (!sessionId) {
       setState({ kind: "failed", message: "Missing session id in return URL." });
       return;
     }
-    let cancelled = false;
+    let cancelledFlag = false;
     (async () => {
       const { data, error } = await supabase.functions.invoke(
         "verify-checkout-session",
@@ -35,7 +52,7 @@ export default function CheckoutReturn() {
           body: { sessionId, environment: getStripeEnvironment() },
         },
       );
-      if (cancelled) return;
+      if (cancelledFlag) return;
       if (error) {
         setState({ kind: "failed", message: error.message });
         return;
@@ -68,17 +85,41 @@ export default function CheckoutReturn() {
       });
     })();
     return () => {
-      cancelled = true;
+      cancelledFlag = true;
     };
-  }, [sessionId]);
+  }, [sessionId, canceled, isPlanFlow]);
 
-  // On success, auto-forward to Settings after 3s. The query param `welcome=1`
-  // lets Settings show a one-time confirmation toast if/when it's wired up.
+  // Forward after the verify lands.
+  //  - Plan flow success → /plans/:id
+  //  - SaaS sub success → /settings?welcome=1
+  //  - Plan flow failure → leave a breadcrumb (sessionStorage) and go to
+  //    /plans so the operator can see the plan list and retry.
   useEffect(() => {
-    if (state.kind !== "success") return;
-    const t = setTimeout(() => navigate("/settings?welcome=1"), 3000);
-    return () => clearTimeout(t);
-  }, [state, navigate]);
+    if (state.kind === "success") {
+      const t = setTimeout(() => {
+        if (isPlanFlow && planId) {
+          navigate(`/plans/${planId}`);
+        } else {
+          navigate("/settings?welcome=1");
+        }
+      }, isPlanFlow ? 1500 : 3000);
+      return () => clearTimeout(t);
+    }
+    if (state.kind === "failed" && isPlanFlow) {
+      try {
+        sessionStorage.setItem(
+          "plan_checkout_error",
+          JSON.stringify({
+            planId,
+            message: state.message,
+            at: new Date().toISOString(),
+          }),
+        );
+      } catch {
+        // sessionStorage may be unavailable (private mode); non-fatal.
+      }
+    }
+  }, [state, navigate, isPlanFlow, planId]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6 py-10">
@@ -87,34 +128,73 @@ export default function CheckoutReturn() {
           <>
             <Loader2 className="h-10 w-10 animate-spin text-bronze-500 mx-auto mb-4" />
             <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
-              Confirming your subscription…
+              {isPlanFlow ? "Activating the plan…" : "Confirming your subscription…"}
             </h1>
             <p className="text-sm text-ink-500">Hang tight, just a moment.</p>
           </>
         )}
 
         {state.kind === "success" && (
-          <SuccessCard priceId={state.priceId} onContinue={() => navigate("/settings?welcome=1")} />
+          isPlanFlow ? (
+            <PlanSuccessCard
+              onContinue={() =>
+                planId ? navigate(`/plans/${planId}`) : navigate("/plans")
+              }
+            />
+          ) : (
+            <SuccessCard
+              priceId={state.priceId}
+              onContinue={() => navigate("/settings?welcome=1")}
+            />
+          )
         )}
 
         {state.kind === "failed" && (
           <>
             <XCircle className="h-12 w-12 text-destructive mx-auto mb-3" strokeWidth={2.2} />
             <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
-              Payment didn't go through
+              {isPlanFlow ? "Card setup didn't complete" : "Payment didn't go through"}
             </h1>
             <p className="text-sm text-ink-500 mb-5">{state.message}</p>
             <button
               type="button"
-              onClick={() => navigate("/pricing")}
+              onClick={() => navigate(isPlanFlow ? "/plans" : "/pricing")}
               className="w-full h-12 rounded-[14px] bg-bronze-500 text-white font-extrabold text-sm shadow-bronze hover:bg-bronze-600 transition-colors"
             >
-              Try again
+              {isPlanFlow ? "Back to plans" : "Try again"}
             </button>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+function PlanSuccessCard({ onContinue }: { onContinue: () => void }) {
+  return (
+    <>
+      <CheckCircle2
+        className="h-14 w-14 text-green-600 mx-auto mb-3"
+        strokeWidth={2.2}
+      />
+      <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
+        Card on file. Plan is active.
+      </h1>
+      <p className="text-sm text-ink-500 mb-5">
+        We'll bill the card on schedule. Taking you to the plan…
+      </p>
+      <button
+        type="button"
+        onClick={onContinue}
+        className={cn(
+          "w-full h-12 rounded-[14px] bg-bronze-500 text-white font-extrabold text-sm shadow-bronze hover:bg-bronze-600",
+          "transition-colors flex items-center justify-center gap-2",
+        )}
+      >
+        Open plan
+        <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+    </>
   );
 }
 

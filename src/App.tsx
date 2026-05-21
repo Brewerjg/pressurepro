@@ -15,6 +15,9 @@ import NewPlan from "./pages/NewPlan";
 import PlanDetail from "./pages/PlanDetail";
 import ApplicationCalc from "./pages/ApplicationCalc";
 import ChemicalLog from "./pages/ChemicalLog";
+import Photos from "./pages/Photos";
+import NewPhotoPair from "./pages/NewPhotoPair";
+import PhotoDetail from "./pages/PhotoDetail";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import CheckoutReturn from "./pages/CheckoutReturn";
@@ -67,6 +70,9 @@ const App = () => (
           <Route path="/plans/:id" element={<Protected><PlanDetail /></Protected>} />
           <Route path="/calc" element={<Protected><ApplicationCalc /></Protected>} />
           <Route path="/chem-log" element={<Protected><ChemicalLog /></Protected>} />
+          <Route path="/photos" element={<Protected><Photos /></Protected>} />
+          <Route path="/photos/new" element={<Protected><NewPhotoPair /></Protected>} />
+          <Route path="/photos/:id" element={<Protected><PhotoDetail /></Protected>} />
           <Route path="/settings" element={<Protected><Settings /></Protected>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

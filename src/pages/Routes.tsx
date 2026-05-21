@@ -10,7 +10,11 @@ import {
   Check,
   SkipForward,
   CloudRain,
+  Cloud,
+  CloudSnow,
   Sun,
+  Snowflake,
+  Wind,
   Plane,
   Lock,
   EyeOff,
@@ -21,6 +25,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { useForecast, useUserZip, type ForecastDay } from "@/lib/weather";
+import { geocodeAddress } from "@/lib/geocode";
+import { fetchDriveMatrix, type DriveStop } from "@/lib/drive-matrix";
 import type { Route, RouteStop, SkipReason, StopStatus } from "@/components/routes/types";
 
 // =====================================================================
@@ -103,6 +110,19 @@ export default function RoutesPage() {
   const selectedDate = weekDays[selectedIdx];
 
   const [skipForStopId, setSkipForStopId] = useState<string | null>(null);
+
+  // -----------------------------------------------------------------
+  // Live weather — drives the week-strip indicators. ZIP comes from the
+  // profile; if unset the forecast hook returns null (no error UI, the
+  // strip simply hides icons).
+  // -----------------------------------------------------------------
+  const zipQ = useUserZip();
+  const forecast = useForecast(zipQ.data);
+  const forecastByDate = useMemo(() => {
+    const m = new Map<string, ForecastDay>();
+    for (const d of forecast.data ?? []) m.set(d.date, d);
+    return m;
+  }, [forecast.data]);
 
   // -----------------------------------------------------------------
   // Fetch all routes (+ nested stops) in the visible week. One query
@@ -245,6 +265,95 @@ export default function RoutesPage() {
 
       const routeId: string = routeRow.id;
       if (plans && plans.length > 0) {
+        // -------------------------------------------------------------
+        // Resolve property coordinates. Plans reference properties by id;
+        // we need each property's lat/lng to build the Mapbox drive matrix.
+        // If lat/lng are missing we geocode the plan's address and persist
+        // the result back to `properties` so the next run skips this work.
+        //
+        // All weather/geocode/drive failures are non-fatal — they should
+        // never block the operator from starting their day.
+        // -------------------------------------------------------------
+        const propertyIds = plans
+          .map((p: any) => p.property_id)
+          .filter((id: string | null): id is string => !!id);
+        const propsById = new Map<string, { lat: number | null; lng: number | null; address: string | null }>();
+        if (propertyIds.length > 0) {
+          const { data: props } = await (supabase as any)
+            .from("properties")
+            .select("id, lat, lng, address")
+            .in("id", propertyIds);
+          for (const p of (props ?? []) as Array<{ id: string; lat: number | null; lng: number | null; address: string | null }>) {
+            propsById.set(p.id, { lat: p.lat, lng: p.lng, address: p.address });
+          }
+        }
+
+        // Geocode any property still missing coords. We use the property
+        // address first, falling back to the plan's snapshot address.
+        for (const p of plans) {
+          if (!p.property_id) continue;
+          const existing = propsById.get(p.property_id);
+          if (existing?.lat != null && existing?.lng != null) continue;
+          const addr = existing?.address ?? p.address;
+          if (!addr) continue;
+          try {
+            const geo = await geocodeAddress(addr);
+            if (geo) {
+              propsById.set(p.property_id, { lat: geo.lat, lng: geo.lng, address: addr });
+              // Persist back so the next route assembly is a cache hit. Fire
+              // and forget — never block route start on a write failure.
+              await (supabase as any)
+                .from("properties")
+                .update({ lat: geo.lat, lng: geo.lng })
+                .eq("id", p.property_id);
+            }
+          } catch (e) {
+            // Soft-fail: drive times for legs touching this stop will be null.
+            console.warn("[Routes] geocode failed for", p.property_id, e);
+          }
+        }
+
+        // Drive matrix — one Mapbox call covers the whole ordered sequence.
+        // We only call it when at least 2 stops have coords; otherwise legs
+        // stay null and the UI shows "–" for drive time.
+        const orderedCoords: Array<{ idx: number; lat: number; lng: number } | null> = plans.map(
+          (p: any, i: number) => {
+            const prop = p.property_id ? propsById.get(p.property_id) : null;
+            if (prop?.lat != null && prop?.lng != null) {
+              return { idx: i, lat: Number(prop.lat), lng: Number(prop.lng) };
+            }
+            return null;
+          },
+        );
+        // legMinutes/Miles are aligned to the *plans* array index: entry i is
+        // the drive FROM plans[i-1] TO plans[i]. Entry 0 is always null
+        // because there's no "previous" stop on the first visit.
+        const legMinutes = new Array<number | null>(plans.length).fill(null);
+        const legMiles = new Array<number | null>(plans.length).fill(null);
+
+        const coordStops: DriveStop[] = orderedCoords
+          .filter((c): c is { idx: number; lat: number; lng: number } => c !== null)
+          .map(({ lat, lng }) => ({ lat, lng }));
+        const coordIndices = orderedCoords
+          .map((c, i) => (c ? i : -1))
+          .filter((i) => i >= 0);
+
+        if (coordStops.length >= 2) {
+          try {
+            const matrixLegs = await fetchDriveMatrix(coordStops);
+            // matrixLegs[k] is the drive from coordStops[k] to coordStops[k+1].
+            // Map back into plans-space using coordIndices.
+            for (let k = 0; k < matrixLegs.length; k++) {
+              const toPlanIdx = coordIndices[k + 1];
+              if (toPlanIdx == null) continue;
+              legMinutes[toPlanIdx] = matrixLegs[k].minutes;
+              legMiles[toPlanIdx] = matrixLegs[k].miles;
+            }
+          } catch (e) {
+            console.warn("[Routes] drive-matrix failed", e);
+          }
+        }
+
         const stopRows = plans.map((p: any, i: number) => ({
           user_id: user.id,
           route_id: routeId,
@@ -258,6 +367,8 @@ export default function RoutesPage() {
           fee_cents: p.amount != null ? Math.round(Number(p.amount) * 100) : null,
           sort_order: i + 1,
           status: "pending",
+          drive_minutes_from_prev: legMinutes[i],
+          drive_miles_from_prev: legMiles[i],
         }));
         const { error: stopsErr } = await (supabase as any)
           .from("route_stops")
@@ -319,6 +430,8 @@ export default function RoutesPage() {
             const on = i === selectedIdx;
             const past = !on && d < new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const count = dayCounts[i];
+            const fc = forecastByDate.get(ymd(d));
+            const WeatherIcon = fc ? weekStripIcon(fc) : null;
             return (
               <button
                 key={i}
@@ -346,6 +459,17 @@ export default function RoutesPage() {
                 >
                   {d.getDate()}
                 </div>
+                {/* Tiny weather indicator — only when a forecast for this day
+                    is in scope. Keeps the strip lightweight on Sundays/etc. */}
+                {WeatherIcon && (
+                  <WeatherIcon
+                    className={cn(
+                      "h-3 w-3",
+                      on ? "text-bronze-200" : weekStripIconColor(fc!),
+                    )}
+                    strokeWidth={1.8}
+                  />
+                )}
                 <div
                   className={cn(
                     "text-[9px] font-semibold",
@@ -709,6 +833,25 @@ function StatusDot({ status, number }: { status: StopStatus; number: number }) {
 
 function skipReasonLabel(r: SkipReason): string {
   return SKIP_REASONS.find((x) => x.value === r)?.label ?? r;
+}
+
+// Tiny icon + color helpers for the week-strip weather indicator. Kept module-
+// level so the JSX above stays readable.
+function weekStripIcon(fc: ForecastDay) {
+  if (fc.derived_tone === "frost") return Snowflake;
+  if (fc.derived_tone === "wind") return Wind;
+  if (fc.condition === "rain") return CloudRain;
+  if (fc.condition === "snow") return CloudSnow;
+  if (fc.condition === "cloud") return Cloud;
+  return Sun;
+}
+function weekStripIconColor(fc: ForecastDay): string {
+  if (fc.derived_tone === "rain" || fc.condition === "rain") return "text-[hsl(var(--rain))]";
+  if (fc.derived_tone === "drought") return "text-[hsl(var(--drought))]";
+  if (fc.derived_tone === "wind" || fc.derived_tone === "frost") return "text-[hsl(var(--rain))]";
+  if (fc.condition === "cloud") return "text-ink-400";
+  if (fc.condition === "snow") return "text-[hsl(var(--rain))]";
+  return "text-bronze-500";
 }
 
 // =====================================================================

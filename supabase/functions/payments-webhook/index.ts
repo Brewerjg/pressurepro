@@ -1,20 +1,21 @@
 // payments-webhook
 //
 // Stripe → TurfPro webhook handler. Validates the signature, deduplicates
-// against `processed_stripe_events` (idempotency), and processes the six
-// canonical SaaS-subscription events:
+// against `processed_stripe_events` (idempotency), and routes to one of
+// two destinations based on the subscription's metadata.kind:
 //
+//   * App-level SaaS subscriptions (the default) → upsert into
+//     `public.subscriptions` keyed on stripe_subscription_id.
+//   * Maintenance-plan subscriptions (metadata.kind === 'maintenance_plan')
+//     → delegate to the `sync-plan-status` edge function which mutates the
+//     `maintenance_plans` row instead.
+//
+// Handled event types:
 //   - checkout.session.completed
-//   - customer.subscription.created
-//   - customer.subscription.updated
-//   - customer.subscription.deleted
+//   - customer.subscription.created / updated / deleted
+//   - customer.subscription.paused / resumed
 //   - invoice.payment_succeeded
 //   - invoice.payment_failed
-//
-// All subscription writes upsert into `public.subscriptions` keyed on
-// stripe_subscription_id. Maintenance-plan (custom plan) syncing is NOT
-// handled here yet — that's a follow-up; the existing Plans.tsx / PlanDetail
-// flow has TODO comments noting it.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
@@ -81,6 +82,176 @@ Deno.serve(async (req) => {
     }
 
     console.log("Processing event", event.type, "env:", env);
+
+    // ----------------------------------------------------------------
+    // Plan-subscription router
+    //   Subscriptions created by create-plan-subscription carry
+    //   metadata.kind='maintenance_plan' and a plan_id. We forward those
+    //   events to sync-plan-status via an HTTP invoke. App-level SaaS
+    //   subs (no kind, or kind!='maintenance_plan') fall through to the
+    //   existing handlers below.
+    // ----------------------------------------------------------------
+    const dispatchPlanSync = async (payload: Record<string, unknown>) => {
+      const url = `${Deno.env.get("SUPABASE_URL")!}/functions/v1/sync-plan-status`;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          console.error("sync-plan-status returned", res.status, await res.text());
+        }
+      } catch (e) {
+        console.error("sync-plan-status invoke failed", e);
+      }
+    };
+
+    // Returns true when the event was consumed by the plan flow and the
+    // caller should NOT also run the SaaS-subscription handlers.
+    const routeIfPlan = async (): Promise<boolean> => {
+      // checkout.session.completed: read metadata off the session itself.
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const kind = session.metadata?.kind;
+        const planId = session.metadata?.plan_id;
+        if (kind !== "maintenance_plan" || !planId) return false;
+
+        // Mark the plan row active and stash the subscription + customer.
+        // We mirror userId onto the subscription's metadata for future
+        // events (Stripe sub-level metadata is sticky and survives portal
+        // edits, where session-level metadata wouldn't).
+        if (session.subscription) {
+          const subId = session.subscription as string;
+          let stripeSub: Stripe.Subscription | null = null;
+          try {
+            stripeSub = await stripe.subscriptions.retrieve(subId, {
+              expand: ["default_payment_method", "latest_invoice.payment_intent"],
+            });
+            // Ensure kind/plan_id are pinned to the subscription (Stripe
+            // copies them via subscription_data.metadata on create — this
+            // is a defensive re-write in case of older sessions).
+            if (
+              stripeSub.metadata?.kind !== "maintenance_plan" ||
+              stripeSub.metadata?.plan_id !== planId
+            ) {
+              await stripe.subscriptions.update(subId, {
+                metadata: {
+                  ...stripeSub.metadata,
+                  kind: "maintenance_plan",
+                  plan_id: planId,
+                  user_id: session.metadata?.user_id ?? "",
+                },
+              });
+            }
+          } catch (e) {
+            console.error("retrieve sub after checkout failed", e);
+          }
+
+          // Extract last4 from the default_payment_method if present so
+          // the plan card-on-file display is accurate immediately.
+          let cardLast4: string | null = null;
+          const pm = stripeSub?.default_payment_method;
+          if (pm && typeof pm !== "string") {
+            cardLast4 = pm.card?.last4 ?? null;
+          }
+
+          const updates: Record<string, unknown> = {
+            stripe_subscription_id: subId,
+            stripe_customer_id:
+              (session.customer as string | null) ??
+              (stripeSub?.customer as string | null) ??
+              null,
+            stripe_price_id:
+              stripeSub?.items.data[0]?.price.id ?? null,
+            status: "active",
+            updated_at: new Date().toISOString(),
+          };
+          if (cardLast4) updates.card_last4 = cardLast4;
+
+          await supabase
+            .from("maintenance_plans")
+            .update(updates as never)
+            .eq("id", planId);
+        }
+        return true;
+      }
+
+      // subscription.* events: inspect the subscription metadata.
+      if (
+        event.type === "customer.subscription.created" ||
+        event.type === "customer.subscription.updated" ||
+        event.type === "customer.subscription.deleted" ||
+        event.type === "customer.subscription.paused" ||
+        event.type === "customer.subscription.resumed"
+      ) {
+        const sub = event.data.object as Stripe.Subscription;
+        if (sub.metadata?.kind !== "maintenance_plan") return false;
+        await dispatchPlanSync({
+          event_type: event.type,
+          plan_id: sub.metadata?.plan_id ?? null,
+          subscription: sub,
+        });
+        return true;
+      }
+
+      // invoice.* events: load the subscription to read metadata. We have
+      // to retrieve because Stripe doesn't denormalize sub-metadata onto
+      // the invoice object.
+      if (
+        event.type === "invoice.payment_succeeded" ||
+        event.type === "invoice.payment_failed"
+      ) {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = (invoice as any).subscription as string | null;
+        if (!subId) return false;
+        let sub: Stripe.Subscription | null = null;
+        try {
+          sub = await stripe.subscriptions.retrieve(subId);
+        } catch (e) {
+          console.error("invoice → sub retrieve failed", e);
+          return false;
+        }
+        if (sub.metadata?.kind !== "maintenance_plan") return false;
+
+        // Extract last4 from the invoice's charge if available.
+        let cardLast4: string | null = null;
+        try {
+          const chargeId = (invoice as any).charge as string | null;
+          if (chargeId) {
+            const charge = await stripe.charges.retrieve(chargeId);
+            cardLast4 = charge.payment_method_details?.card?.last4 ?? null;
+          }
+        } catch (e) {
+          console.warn("charge last4 lookup failed", e);
+        }
+
+        await dispatchPlanSync({
+          event_type: event.type,
+          plan_id: sub.metadata?.plan_id ?? null,
+          subscription: sub,
+          invoice: {
+            id: invoice.id,
+            amount_paid: invoice.amount_paid,
+            subscription: subId,
+            card_last4: cardLast4,
+          },
+        });
+        return true;
+      }
+
+      return false;
+    };
+
+    const consumedByPlanFlow = await routeIfPlan();
+    if (consumedByPlanFlow) {
+      return new Response(JSON.stringify({ received: true, route: "plan" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // ----------------------------------------------------------------
     // Helpers
