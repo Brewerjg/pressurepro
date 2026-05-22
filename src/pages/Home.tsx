@@ -12,10 +12,13 @@ import {
   Camera,
   Calculator,
   StickyNote,
-  DollarSign,
+  BarChart3,
 } from "lucide-react";
 
 import { useForecast, useUserZip, type ForecastDay, type DerivedTone } from "@/lib/weather";
+import PreEmergentAlert from "@/components/gdd/PreEmergentAlert";
+import WinterHomeCard from "@/components/season/WinterHomeCard";
+import { useSeason } from "@/lib/season";
 
 // Ported from design/turf/project/screen-home.jsx. MRR/hero card numbers stay
 // hardcoded until the billing data layer lands; the forecast strip is now live
@@ -69,13 +72,14 @@ const quickActions = [
   { icon: Camera,       label: "Photo pair",    sub: "Before / after",    accent: "text-green-600",  to: "/photos/new" },
   { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²", accent: "text-bronze-600", to: "/calc" },
   { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record", accent: "text-green-700",  to: "/chem-log" },
-  { icon: DollarSign,   label: "One-off quote", sub: "Spring cleanup +",  accent: "text-ink-700",    to: null },
+  { icon: BarChart3,    label: "Reports",       sub: "MRR · churn · $/hr", accent: "text-ink-700",    to: "/reports" },
 ];
 
 export default function Home() {
   const progressSegments = Array.from({ length: 11 });
   const zipQ = useUserZip();
   const forecast = useForecast(zipQ.data);
+  const { isWinter } = useSeason();
 
   // Decision summaries for the chip row beneath the strip. We derive these
   // from the *forecast*, not from hardcoded text, so they always agree with
@@ -136,7 +140,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Today's route */}
+      {/* Pre-emergent GDD watch — renders nothing unless the crabgrass
+          window is open/closing/imminent for the operator's ZIP. */}
+      <PreEmergentAlert />
+
+      {/* Today's route — replaced by WinterHomeCard in winter mode. The
+          mow-cadence "Today's route" data is hardcoded today, but pausing
+          it in winter still matters because the visual story changes:
+          operators don't want a "Start route" CTA when nothing's growing. */}
+      {isWinter ? (
+        <WinterHomeCard />
+      ) : (
       <section className="mx-4 mb-3">
         <div className="flex items-center justify-between px-1 pb-2">
           <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">Today's route</h2>
@@ -187,6 +201,7 @@ export default function Home() {
           </Link>
         </div>
       </section>
+      )}
 
       {/* Weekly forecast — live from OpenWeather via the `forecast` edge fn */}
       <section className="mx-4 mb-3 mt-3.5">

@@ -29,6 +29,8 @@ import { useForecast, useUserZip, type ForecastDay } from "@/lib/weather";
 import { geocodeAddress } from "@/lib/geocode";
 import { fetchDriveMatrix, type DriveStop } from "@/lib/drive-matrix";
 import type { Route, RouteStop, SkipReason, StopStatus } from "@/components/routes/types";
+import WinterRoutesBanner from "@/components/season/WinterRoutesBanner";
+import { useSeason } from "@/lib/season";
 
 // =====================================================================
 // Date utilities — local-time week math. We deliberately avoid date-fns
@@ -97,6 +99,7 @@ export default function RoutesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  const { isWinter } = useSeason();
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
   const weekDays = useMemo(
@@ -422,6 +425,18 @@ export default function RoutesPage() {
           </button>
         </div>
       </header>
+
+      {/* Winter mode banner — routes pivot from weekly cadence to storm-
+          driven. The "+ New storm route" button scrolls to the page
+          header where the existing "+" affordance lives. */}
+      {isWinter && (
+        <WinterRoutesBanner
+          onNewRoute={() => {
+            // Scroll into view; the actual creation flow is the header "+".
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      )}
 
       {/* Week strip */}
       <div className="px-4 pb-3.5">

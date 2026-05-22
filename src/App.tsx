@@ -1,39 +1,59 @@
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/AppShell";
+
+// Eagerly-loaded routes: anything an authenticated user lands on within the
+// first few seconds (Home, the tab-bar destinations, Auth). Splitting these
+// adds spinner flicker without saving real bytes.
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import Customers from "./pages/Customers";
-import CustomerDetail from "./pages/CustomerDetail";
-import PropertyDetail from "./pages/PropertyDetail";
 import RoutesPage from "./pages/Routes";
-import RouteMode from "./pages/RouteMode";
 import Plans from "./pages/Plans";
-import NewPlan from "./pages/NewPlan";
-import PlanDetail from "./pages/PlanDetail";
-import ApplicationCalc from "./pages/ApplicationCalc";
-import ChemicalLog from "./pages/ChemicalLog";
-import Photos from "./pages/Photos";
-import NewPhotoPair from "./pages/NewPhotoPair";
-import PhotoDetail from "./pages/PhotoDetail";
 import Settings from "./pages/Settings";
-import Pricing from "./pages/Pricing";
-import CheckoutReturn from "./pages/CheckoutReturn";
-import Accept from "./pages/Accept";
-import QuotePrint from "./pages/QuotePrint";
-import Review from "./pages/Review";
-import PlanPortal, { PlanPortalDone } from "./pages/PlanPortal";
-import ShortLink from "./pages/ShortLink";
-import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
+import RequireSubscription from "./components/billing/RequireSubscription";
+import RequireOnboarded from "./components/onboarding/RequireOnboarded";
+
+// Lazy-loaded routes: heavy deps (recharts on Reports, Stripe Elements on
+// Pricing/CheckoutReturn) or rare destinations (PhotoDetail, public flows).
+// Each gets pulled in on first navigation; ~400 KB of recharts alone moves out
+// of the main bundle. Order roughly by "how often the operator hits this".
+const Reports = lazy(() => import("./pages/Reports"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const CheckoutReturn = lazy(() => import("./pages/CheckoutReturn"));
+const RouteMode = lazy(() => import("./pages/RouteMode"));
+const ApplicationCalc = lazy(() => import("./pages/ApplicationCalc"));
+const ChemicalLog = lazy(() => import("./pages/ChemicalLog"));
+const Photos = lazy(() => import("./pages/Photos"));
+const NewPhotoPair = lazy(() => import("./pages/NewPhotoPair"));
+const PhotoDetail = lazy(() => import("./pages/PhotoDetail"));
+const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
+const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const NewPlan = lazy(() => import("./pages/NewPlan"));
+const PlanDetail = lazy(() => import("./pages/PlanDetail"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Accept = lazy(() => import("./pages/Accept"));
+const QuotePrint = lazy(() => import("./pages/QuotePrint"));
+const Review = lazy(() => import("./pages/Review"));
+const PlanPortal = lazy(() => import("./pages/PlanPortal"));
+const PlanPortalDone = lazy(() =>
+  import("./pages/PlanPortal").then((m) => ({ default: m.PlanPortalDone })),
+);
+const ShortLink = lazy(() => import("./pages/ShortLink"));
+const Gallery = lazy(() => import("./pages/Gallery"));
 
 const queryClient = new QueryClient();
 
 const Protected = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
-    <AppShell>{children}</AppShell>
+    <RequireOnboarded>
+      <AppShell>{children}</AppShell>
+    </RequireOnboarded>
   </ProtectedRoute>
 );
 
@@ -43,12 +63,36 @@ const ProtectedFullBleed = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>{children}</ProtectedRoute>
 );
 
+// Gated routes — subscription required after the trial window. The
+// RequireSubscription component is stub-passthrough until the Paywall agent
+// fills in the real check; wrapping all gated routes here means swapping the
+// component implementation activates the gate everywhere at once.
+const Paid = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <RequireOnboarded>
+      <RequireSubscription>
+        <AppShell>{children}</AppShell>
+      </RequireSubscription>
+    </RequireOnboarded>
+  </ProtectedRoute>
+);
+
+// Centered spinner used while a lazy route's chunk is downloading. Keeps the
+// background color so the screen doesn't flash white between routes.
+const RouteSuspense = () => (
+  <div className="min-h-screen grid place-items-center bg-background">
+    <Loader2 className="h-6 w-6 animate-spin text-ink-400" strokeWidth={2} />
+  </div>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
+        <Suspense fallback={<RouteSuspense />}>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           {/* Public — customer-facing flows, no auth required */}
           <Route path="/accept/:id" element={<Accept />} />
           <Route path="/accept/:id/print" element={<QuotePrint />} />
@@ -63,11 +107,12 @@ const App = () => (
           <Route path="/customers" element={<Protected><Customers /></Protected>} />
           <Route path="/customers/:id" element={<Protected><CustomerDetail /></Protected>} />
           <Route path="/properties/:id" element={<Protected><PropertyDetail /></Protected>} />
-          <Route path="/routes" element={<Protected><RoutesPage /></Protected>} />
+          <Route path="/routes" element={<Paid><RoutesPage /></Paid>} />
           <Route path="/routes/run/:routeId" element={<ProtectedFullBleed><RouteMode /></ProtectedFullBleed>} />
-          <Route path="/plans" element={<Protected><Plans /></Protected>} />
-          <Route path="/plans/new" element={<Protected><NewPlan /></Protected>} />
-          <Route path="/plans/:id" element={<Protected><PlanDetail /></Protected>} />
+          <Route path="/plans" element={<Paid><Plans /></Paid>} />
+          <Route path="/plans/new" element={<Paid><NewPlan /></Paid>} />
+          <Route path="/plans/:id" element={<Paid><PlanDetail /></Paid>} />
+          <Route path="/reports" element={<Paid><Reports /></Paid>} />
           <Route path="/calc" element={<Protected><ApplicationCalc /></Protected>} />
           <Route path="/chem-log" element={<Protected><ChemicalLog /></Protected>} />
           <Route path="/photos" element={<Protected><Photos /></Protected>} />
@@ -76,6 +121,7 @@ const App = () => (
           <Route path="/settings" element={<Protected><Settings /></Protected>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   </QueryClientProvider>

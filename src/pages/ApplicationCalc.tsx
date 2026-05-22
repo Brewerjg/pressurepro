@@ -44,6 +44,32 @@ const MODE_TO_TYPE: Record<CalcMode, ApplicationType> = {
   lime: "lime",
 };
 
+// Reverse map for the `?type=` deep-link param (used by the GDD pre-emergent
+// alert on Home: "Open calculator" -> /calc?type=herbicide). Only the types
+// the calculator has a sensible default mode for are listed here; anything
+// else falls through to the regular granular default.
+const TYPE_TO_MODE: Partial<Record<ApplicationType, CalcMode>> = {
+  fertilizer: "granular",
+  herbicide: "liquid",
+  pesticide: "liquid",
+  fungicide: "liquid",
+  lime: "lime",
+};
+
+// Seed the calculator mode + the save-form application_type from a `type`
+// query param if present. Both states are seeded from the same source so the
+// segmented mode toggle matches the application_type chip in the save form.
+function seedFromQuery(typeParam: string | null): {
+  mode: CalcMode;
+  appType: ApplicationType | null;
+} {
+  if (!typeParam) return { mode: "granular", appType: null };
+  const t = typeParam.toLowerCase() as ApplicationType;
+  const mode = TYPE_TO_MODE[t];
+  if (!mode) return { mode: "granular", appType: null };
+  return { mode, appType: t };
+}
+
 interface PropertyLite {
   id: string;
   address: string;
@@ -73,6 +99,12 @@ function spreaderSetting(lbsPer1k: number): string {
 export default function ApplicationCalc() {
   const [searchParams] = useSearchParams();
   const propertyId = searchParams.get("property_id");
+  // `?type=herbicide` (and friends) is the deep-link from the Home GDD
+  // pre-emergent alert. We compute the seed once via the lazy initializer so
+  // navigating /calc?type=herbicide -> /calc cleanly via back doesn't reset
+  // the mode toggle on every render.
+  const typeParam = searchParams.get("type");
+  const initial = seedFromQuery(typeParam);
 
   // Load the linked property (if any) for sqft + pet-safe flag prefill.
   const propertyQuery = useQuery({
@@ -92,7 +124,21 @@ export default function ApplicationCalc() {
   const property = propertyQuery.data;
   const propertyTurfSqft = property?.turf_sqft ?? property?.sqft ?? null;
 
-  const [mode, setMode] = useState<CalcMode>("granular");
+  // Mode seeds from the query param on mount only (lazy initializer). After
+  // mount the user can flip modes freely without the URL forcing a value.
+  const [mode, setModeRaw] = useState<CalcMode>(() => initial.mode);
+  // application_type used to seed the save form. Starts from the query param
+  // if provided (e.g. ?type=herbicide), otherwise from MODE_TO_TYPE[mode]. We
+  // track it separately so the initial mount honors the URL even though
+  // liquid maps to "herbicide" by default — and on subsequent mode flips we
+  // re-derive it so the toggle stays in sync with the application_type chip.
+  const [appType, setAppType] = useState<ApplicationType>(
+    () => initial.appType ?? MODE_TO_TYPE[initial.mode],
+  );
+  const setMode = (m: CalcMode) => {
+    setModeRaw(m);
+    setAppType(MODE_TO_TYPE[m]);
+  };
 
   // ---- Granular state -----------------------------------------------------
   const [gSqft, setGSqft] = useState<string>("");
@@ -382,7 +428,7 @@ export default function ApplicationCalc() {
         <SaveApplicationForm
           propertyId={propertyId}
           prefill={prefill}
-          defaultType={MODE_TO_TYPE[mode]}
+          defaultType={appType}
           defaultProductName={defaultProductName}
           onSaved={() => {
             // Stay on the page; the log will pick it up via query invalidation

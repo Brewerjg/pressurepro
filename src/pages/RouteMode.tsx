@@ -20,11 +20,14 @@ import {
   EyeOff,
   HelpCircle,
   DollarSign,
+  Mail,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { sendCompleted, sendOnTheWay } from "@/lib/customer-email";
+import { sendCompletedSms, sendOnTheWaySms } from "@/lib/customer-sms";
 import type {
   Route,
   RouteStop,
@@ -105,6 +108,74 @@ export default function RouteMode() {
   });
 
   const route = routeQuery.data ?? null;
+
+  // -----------------------------------------------------------------
+  // Customer messaging preferences. user_settings holds the email
+  // booleans (0005_email_log.sql) and the SMS booleans (0008_sms.sql).
+  // We fetch once on mount.
+  //
+  // Defaults differ per channel: email defaults TRUE (opt-out) — the
+  // column default in 0005 — and SMS defaults FALSE (opt-in) — the
+  // column default in 0008. The fallbacks here mirror that.
+  // -----------------------------------------------------------------
+  const messagingPrefs = useQuery({
+    queryKey: ["user-settings-messaging-routemode", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("user_settings")
+        .select(
+          [
+            "send_on_the_way_email",
+            "send_completed_email",
+            "send_review_request_email",
+            "send_on_the_way_sms",
+            "send_completed_sms",
+            "send_review_request_sms",
+          ].join(", "),
+        )
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as {
+        send_on_the_way_email?: boolean | null;
+        send_completed_email?: boolean | null;
+        send_review_request_email?: boolean | null;
+        send_on_the_way_sms?: boolean | null;
+        send_completed_sms?: boolean | null;
+        send_review_request_sms?: boolean | null;
+      } | null;
+    },
+  });
+
+  // Email default-true fallbacks — NULL on an older row is treated as ON.
+  const emailToggles = useMemo(
+    () => ({
+      onTheWay: messagingPrefs.data?.send_on_the_way_email !== false,
+      completed: messagingPrefs.data?.send_completed_email !== false,
+      reviewRequest: messagingPrefs.data?.send_review_request_email !== false,
+    }),
+    [messagingPrefs.data],
+  );
+
+  // SMS default-FALSE fallbacks — NULL or missing means "not opted in yet".
+  // We require an explicit `=== true` so older rows without the columns
+  // don't accidentally start texting customers.
+  const smsToggles = useMemo(
+    () => ({
+      onTheWay: messagingPrefs.data?.send_on_the_way_sms === true,
+      completed: messagingPrefs.data?.send_completed_sms === true,
+      reviewRequest: messagingPrefs.data?.send_review_request_sms === true,
+    }),
+    [messagingPrefs.data],
+  );
+
+  // Inline status banner for the "Send on the way" button on the active
+  // stop card. { kind: 'success' | 'error', message } — auto-clears after
+  // a few seconds so it doesn't linger between stops.
+  const [onTheWayStatus, setOnTheWayStatus] = useState<
+    null | { kind: "success" | "error" | "sending"; message: string }
+  >(null);
 
   // -----------------------------------------------------------------
   // If we land on a 'planned' route, flip it to 'in_progress' once.
@@ -191,9 +262,29 @@ export default function RouteMode() {
         .update({ status: "done", completed_at: new Date().toISOString() })
         .eq("id", stopId);
       if (error) throw error;
+      return stopId;
     },
-    onSuccess: async () => {
+    onSuccess: async (stopId) => {
       setSkipOpen(false);
+      // Fire completed-channel side-effects AFTER the DB write succeeds.
+      // Intentionally non-blocking on BOTH channels — we don't await
+      // either so the operator can move to the next stop while Resend
+      // and/or Twilio are still in-flight. Errors are logged but never
+      // surfaced; they keep moving. If both email AND SMS toggles are
+      // on, BOTH fire (duplex by design).
+      const snapshot = stops.find((s) => s.id === stopId);
+      if (snapshot) {
+        if (emailToggles.completed) {
+          void sendCompleted(snapshot).then((res) => {
+            if (!res.ok) console.warn("sendCompleted failed:", res.error);
+          });
+        }
+        if (smsToggles.completed) {
+          void sendCompletedSms(snapshot).then((res) => {
+            if (!res.ok) console.warn("sendCompletedSms failed:", res.error);
+          });
+        }
+      }
       await qc.invalidateQueries({ queryKey: ["route-mode", routeId] });
       scrollToTop();
     },
@@ -415,7 +506,10 @@ export default function RouteMode() {
           <div className="flex-1" />
 
           {/* ----- Action buttons ----- */}
-          {/* Navigate */}
+          {/* Navigate + On-the-way email — paired side-by-side so the
+              "tell the customer we're inbound" tap is one thumb away
+              from the maps handoff. Email is gated behind the operator's
+              user_settings.send_on_the_way_email toggle. */}
           <div className="flex gap-2.5 mb-3.5 mt-6">
             <button
               type="button"
@@ -426,7 +520,76 @@ export default function RouteMode() {
               <Navigation className="h-[18px] w-[18px]" strokeWidth={2} />
               Navigate
             </button>
+            {(emailToggles.onTheWay || smsToggles.onTheWay) && (
+              <button
+                type="button"
+                onClick={async () => {
+                  // Fire both channels in parallel when both are on.
+                  // Copy stays "On the way" — operator doesn't have to
+                  // think about which channel, they just hit the button.
+                  setOnTheWayStatus({ kind: "sending", message: "Sending…" });
+                  const results = await Promise.all([
+                    emailToggles.onTheWay
+                      ? sendOnTheWay(activeStop)
+                      : Promise.resolve({ ok: true } as const),
+                    smsToggles.onTheWay
+                      ? sendOnTheWaySms(activeStop)
+                      : Promise.resolve({ ok: true } as const),
+                  ]);
+                  const [emailRes, smsRes] = results;
+                  const failures = results.filter((r) => !r.ok);
+                  if (failures.length === 0) {
+                    // Success message reflects what actually fired.
+                    const channels: string[] = [];
+                    if (emailToggles.onTheWay) channels.push("email");
+                    if (smsToggles.onTheWay) channels.push("SMS");
+                    setOnTheWayStatus({
+                      kind: "success",
+                      message: `On-the-way ${channels.join(" + ")} sent`,
+                    });
+                  } else {
+                    // Surface whichever error we hit — prefer the more
+                    // actionable one (SMS deferred-for-quiet-hours, then
+                    // any explicit error message).
+                    const firstErr =
+                      ("error" in smsRes && smsRes.error) ||
+                      ("error" in emailRes && emailRes.error) ||
+                      "Couldn't send";
+                    setOnTheWayStatus({
+                      kind: "error",
+                      message: firstErr,
+                    });
+                  }
+                  window.setTimeout(() => setOnTheWayStatus(null), 3500);
+                }}
+                disabled={onTheWayStatus?.kind === "sending"}
+                className="flex-1 py-4 px-3.5 rounded-2xl bg-white/10 border border-white/15 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-white/15 transition-colors disabled:opacity-50"
+              >
+                {onTheWayStatus?.kind === "sending" ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                ) : (
+                  <Mail className="h-[18px] w-[18px]" strokeWidth={2} />
+                )}
+                On the way
+              </button>
+            )}
           </div>
+
+          {/* Inline feedback for the on-the-way email button. Auto-clears
+              after a few seconds (set in the onClick handler above). */}
+          {onTheWayStatus && onTheWayStatus.kind !== "sending" && (
+            <div
+              className={cn(
+                "mb-3 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold inline-flex items-center gap-2 self-start",
+                onTheWayStatus.kind === "success"
+                  ? "bg-green-600/20 text-green-300 border border-green-600/30"
+                  : "bg-red-500/20 text-red-200 border border-red-500/30",
+              )}
+            >
+              <Mail className="h-3.5 w-3.5" strokeWidth={2} />
+              {onTheWayStatus.message}
+            </div>
+          )}
 
           {/* Mark done — the biggest tappable surface besides the address */}
           <button

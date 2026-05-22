@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, LogOut, Settings as SettingsIcon, Users, Wrench } from "lucide-react";
+import { CreditCard, LogOut, Mail, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import BusinessProfile from "@/components/settings/BusinessProfile";
 import CatalogEditor from "@/components/settings/CatalogEditor";
 import CrewEditor from "@/components/settings/CrewEditor";
+import MessagingPreferences from "@/components/settings/MessagingPreferences";
+import SeasonToggle from "@/components/season/SeasonToggle";
 
 // Settings — full mobile-first surface. Composed of three editor components
 // (Profile / Catalog / Crews) plus a read-only Billing card and an Account
@@ -59,6 +61,12 @@ export default function Settings() {
         <BusinessProfile />
       </Section>
 
+      {/* Season — winter mode pauses recurring mow plans and pivots the
+          Home + Routes screens to a storm-driven snow workflow. */}
+      <Section icon={<Snowflake className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Season">
+        <SeasonToggle />
+      </Section>
+
       {/* Service catalog */}
       <Section icon={<Wrench className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Service catalog">
         <CatalogEditor />
@@ -67,6 +75,11 @@ export default function Settings() {
       {/* Crews */}
       <Section icon={<Users className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Crews">
         <CrewEditor />
+      </Section>
+
+      {/* Customer messaging */}
+      <Section icon={<Mail className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Customer messaging">
+        <MessagingPreferences />
       </Section>
 
       {/* Billing */}
