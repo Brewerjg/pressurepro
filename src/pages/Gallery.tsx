@@ -45,12 +45,14 @@ const Gallery = () => {
           .select("address, user_id")
           .eq("id", propertyId)
           .maybeSingle(),
-        supabase
+        // route_stop_id / notes / public_gallery added in 0010_photo_pairs_lawn.sql
+        (supabase as any)
           .from("photo_pairs")
           .select(
             "id, before_path, after_path, thumb_before_path, thumb_after_path, created_at",
           )
           .eq("property_id", propertyId)
+          .eq("public_gallery", true)
           .order("created_at", { ascending: false }),
       ]);
       if (prop) {
@@ -135,7 +137,7 @@ const Gallery = () => {
       <main className="max-w-md mx-auto px-4 pt-4 space-y-3 sm:max-w-2xl sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
         {pairs.length === 0 && (
           <div className="tp-card p-8 text-center text-sm text-muted-foreground sm:col-span-2">
-            No photos yet — check back after your next visit.
+            No photos shared yet — check back after your next visit.
           </div>
         )}
         {pairs.map((p) => (

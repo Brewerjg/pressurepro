@@ -7,10 +7,8 @@
 //   4. Save → compress + EXIF-strip both, generate thumbnails, upload to the
 //      `job-photos` bucket, insert a row in `photo_pairs`.
 //
-// The `photo_pairs` schema is shared with PressurePro (see types.ts). We don't
-// have a `route_stop_id` column or `notes` column — `?route_stop_id=` is
-// dropped on the floor for now (see comment below). Notes live in local state
-// only; if the schema gains a `notes` column later, drop it into the insert.
+// The `photo_pairs` schema is shared with PressurePro (see types.ts).
+// Route-stop linkage lets stops display attached pairs.
 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -40,9 +38,8 @@ export default function NewPhotoPair() {
   const { user } = useAuth();
 
   const initialPropertyId = params.get("property_id") || "";
-  // route_stop_id arrives in some flows; the shared photo_pairs schema doesn't
-  // have a route_stop_id column today, so we keep it in component state for
-  // now. TODO: persist into a metadata JSON column or extend the schema.
+  // route_stop_id arrives when the operator captures from RouteMode and lets
+  // the stop link back to its attached pairs.
   const routeStopId = params.get("route_stop_id") || null;
 
   const [propertyId, setPropertyId] = useState<string>(initialPropertyId);
@@ -171,14 +168,8 @@ export default function NewPhotoPair() {
 
       const prop = properties?.find((p) => p.id === propertyId);
 
-      // Notes column doesn't exist on photo_pairs in the shared schema yet;
-      // we drop it on the floor for now and surface a TODO. The local-state
-      // value still flows into the success toast / detail view in-session if
-      // we want to wire it later.
-      void notes;
-      void routeStopId;
-
-      const { data, error } = await supabase
+      // route_stop_id / notes / public_gallery added in 0010_photo_pairs_lawn.sql
+      const { data, error } = await (supabase as any)
         .from("photo_pairs")
         .insert({
           id: pairId,
@@ -190,6 +181,8 @@ export default function NewPhotoPair() {
           after_path,
           thumb_before_path,
           thumb_after_path,
+          route_stop_id: routeStopId,
+          notes: notes.trim() || null,
         })
         .select("id")
         .single();

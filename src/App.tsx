@@ -46,6 +46,10 @@ const PlanPortalDone = lazy(() =>
 );
 const ShortLink = lazy(() => import("./pages/ShortLink"));
 const Gallery = lazy(() => import("./pages/Gallery"));
+const Quotes = lazy(() => import("./pages/Quotes"));
+const NewQuote = lazy(() => import("./pages/NewQuote"));
+const QuoteDetail = lazy(() => import("./pages/QuoteDetail"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
 
 const queryClient = new QueryClient();
 
@@ -113,6 +117,10 @@ const App = () => (
           <Route path="/plans/new" element={<Paid><NewPlan /></Paid>} />
           <Route path="/plans/:id" element={<Paid><PlanDetail /></Paid>} />
           <Route path="/reports" element={<Paid><Reports /></Paid>} />
+          <Route path="/quotes" element={<Protected><Quotes /></Protected>} />
+          <Route path="/quotes/new" element={<Protected><NewQuote /></Protected>} />
+          <Route path="/quotes/:id" element={<Protected><QuoteDetail /></Protected>} />
+          <Route path="/campaigns" element={<Protected><Campaigns /></Protected>} />
           <Route path="/calc" element={<Protected><ApplicationCalc /></Protected>} />
           <Route path="/chem-log" element={<Protected><ChemicalLog /></Protected>} />
           <Route path="/photos" element={<Protected><Photos /></Protected>} />

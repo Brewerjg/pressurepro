@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,10 +35,19 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
+        // On native, redirect through our custom URL scheme so the
+        // confirm-email link reopens the app instead of landing on
+        // `capacitor://localhost` (which is meaningless outside the
+        // WebView). See src/lib/auth-deep-link.ts for the listener
+        // that handles the incoming `turfpro://auth-callback` URL.
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: Capacitor.isNativePlatform()
+              ? "turfpro://auth-callback"
+              : window.location.origin,
+          },
         });
         if (error) throw error;
         setInfo("Check your email to confirm your account.");

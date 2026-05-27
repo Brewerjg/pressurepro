@@ -1,6 +1,7 @@
 // Photo-pair detail: full-resolution before/after, property + customer link,
-// notes, delete action. The "Share to gallery" toggle is stubbed — the shared
-// photo_pairs schema doesn't have a public_gallery / is_public flag today.
+// notes, delete action. The "Share to gallery" toggle flips
+// photo_pairs.public_gallery so the row appears in the public /g/:propertyId
+// gallery.
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -28,6 +29,7 @@ interface PhotoPairDetail {
   thumb_after_path: string | null;
   created_at: string;
   customer_name: string | null;
+  public_gallery: boolean;
 }
 
 export default function PhotoDetail() {
@@ -36,16 +38,16 @@ export default function PhotoDetail() {
   const queryClient = useQueryClient();
   const [beforeUrl, setBeforeUrl] = useState<string | null>(null);
   const [afterUrl, setAfterUrl] = useState<string | null>(null);
-  const [shareToGallery, setShareToGallery] = useState(false); // local-only stub
 
   const { data, isLoading } = useQuery({
     queryKey: ["photo-pair", id],
     queryFn: async (): Promise<PhotoPairDetail | null> => {
       if (!id) return null;
-      const { data, error } = await supabase
+      // route_stop_id / notes / public_gallery added in 0010_photo_pairs_lawn.sql
+      const { data, error } = await (supabase as any)
         .from("photo_pairs")
         .select(
-          "id, property_id, customer_id, address, before_path, after_path, thumb_before_path, thumb_after_path, created_at, customers(name)",
+          "id, property_id, customer_id, address, before_path, after_path, thumb_before_path, thumb_after_path, created_at, public_gallery, customers(name)",
         )
         .eq("id", id)
         .maybeSingle();
@@ -64,9 +66,28 @@ export default function PhotoDetail() {
         thumb_after_path: data.thumb_after_path,
         created_at: data.created_at,
         customer_name: customerName,
+        public_gallery: data.public_gallery === true,
       };
     },
     enabled: !!id,
+  });
+
+  const shareToGallery = data?.public_gallery === true;
+
+  const togglePublicGallery = useMutation({
+    mutationFn: async (next: boolean) => {
+      if (!data) return;
+      // route_stop_id / notes / public_gallery added in 0010_photo_pairs_lawn.sql
+      const { error } = await (supabase as any)
+        .from("photo_pairs")
+        .update({ public_gallery: next })
+        .eq("id", data.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["photo-pair", id] });
+      queryClient.invalidateQueries({ queryKey: ["photo-pairs"] });
+    },
   });
 
   // Sign full-resolution URLs for the detail view. Falls back to the thumbnail
@@ -213,11 +234,8 @@ export default function PhotoDetail() {
           )}
         </div>
 
-        {/* Share to gallery — stubbed. The shared photo_pairs schema doesn't
-            have a public_gallery / is_public flag today. The public Gallery
-            page (/g/:propertyId) shows everything for a property unconditionally;
-            this toggle is a UI placeholder until the schema gains an opt-in
-            column (or a per-pair flag). Wire it up when that lands. */}
+        {/* Share to gallery — flips photo_pairs.public_gallery on this row.
+            The /g/:propertyId surface filters to public_gallery=true. */}
         <div className="tp-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -227,7 +245,9 @@ export default function PhotoDetail() {
               <div className="min-w-0">
                 <div className="text-sm font-bold text-ink-900">Share to gallery</div>
                 <div className="text-[11px] text-ink-500">
-                  Customer-facing — TODO: schema needs a public flag
+                  {shareToGallery
+                    ? "Visible on the public property gallery"
+                    : "Private — only you can see this pair"}
                 </div>
               </div>
             </div>
@@ -235,10 +255,9 @@ export default function PhotoDetail() {
               type="button"
               role="switch"
               aria-checked={shareToGallery}
-              onClick={() => setShareToGallery((v) => !v)}
-              disabled
-              title="Schema doesn't have a public_gallery flag yet"
-              className={`relative h-6 w-10 rounded-full transition-colors opacity-50 cursor-not-allowed ${
+              onClick={() => togglePublicGallery.mutate(!shareToGallery)}
+              disabled={togglePublicGallery.isPending}
+              className={`relative h-6 w-10 rounded-full transition-colors disabled:opacity-60 ${
                 shareToGallery ? "bg-green-700" : "bg-ink-200"
               }`}
             >
@@ -252,7 +271,9 @@ export default function PhotoDetail() {
           {data.property_id && (
             <Link
               to={`/g/${data.property_id}`}
-              className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-green-800"
+              className={`mt-3 inline-flex items-center gap-1 text-[11px] font-bold ${
+                shareToGallery ? "text-green-800" : "text-ink-400"
+              }`}
             >
               View property gallery
               <ExternalLink className="h-3 w-3" strokeWidth={2.4} />

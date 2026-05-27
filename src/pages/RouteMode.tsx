@@ -21,6 +21,7 @@ import {
   HelpCircle,
   DollarSign,
   Mail,
+  Camera,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { sendCompleted, sendOnTheWay } from "@/lib/customer-email";
 import { sendCompletedSms, sendOnTheWaySms } from "@/lib/customer-sms";
+import { openExternalUrl } from "@/lib/native-maps";
 import type {
   Route,
   RouteStop,
@@ -575,6 +577,18 @@ export default function RouteMode() {
             )}
           </div>
 
+          {/* Capture before/after for this stop — route_stop_id links the
+              pair back to the stop for later reports. */}
+          {activeStop.property_id && (
+            <Link
+              to={`/photos/new?property_id=${activeStop.property_id}&route_stop_id=${activeStop.id}`}
+              className="mb-3 inline-flex items-center gap-1.5 self-start px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/85 text-[12.5px] font-semibold hover:bg-white/10 transition-colors"
+            >
+              <Camera className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
+              + Capture photo
+            </Link>
+          )}
+
           {/* Inline feedback for the on-the-way email button. Auto-clears
               after a few seconds (set in the onClick handler above). */}
           {onTheWayStatus && onTheWayStatus.kind !== "sending" && (
@@ -956,11 +970,16 @@ function FullBleedShell({
 // Default to Google Maps directions URL — spec lets us pick one. iOS Safari
 // will still open the Apple-Maps URL handler if installed; using Google's
 // universal URL keeps Android + web in the same path.
+//
+// On native we route through `openExternalUrl`, which calls
+// `@capacitor/app`'s `App.openUrl({ url })` so the OS hands the URL to
+// the user's actual Maps app instead of opening it inside a Capacitor
+// in-app browser. See src/lib/native-maps.ts.
 function openInMaps(address: string | null) {
   if (!address) return;
   const encoded = encodeURIComponent(address);
   const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+  void openExternalUrl(url);
 }
 
 function formatDuration(minutes: number): string {

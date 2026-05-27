@@ -478,11 +478,20 @@ export default function CustomerDetail() {
               ({data!.quotes.length})
             </span>
           </h2>
-          {quotesOpen ? (
-            <ChevronUp className="h-4 w-4 text-ink-500" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-ink-500" />
-          )}
+          <div className="inline-flex items-center gap-3">
+            <Link
+              to={`/quotes/new?customer=${customer.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs font-bold text-bronze-600 inline-flex items-center gap-1"
+            >
+              <Plus className="h-3 w-3" strokeWidth={2.4} /> New quote
+            </Link>
+            {quotesOpen ? (
+              <ChevronUp className="h-4 w-4 text-ink-500" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-ink-500" />
+            )}
+          </div>
         </button>
         {quotesOpen &&
           (data!.quotes.length === 0 ? (

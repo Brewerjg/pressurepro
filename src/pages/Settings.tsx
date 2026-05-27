@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, LogOut, Mail, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { ChevronRight, CreditCard, LogOut, Mail, Megaphone, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -80,6 +81,29 @@ export default function Settings() {
       {/* Customer messaging */}
       <Section icon={<Mail className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Customer messaging">
         <MessagingPreferences />
+      </Section>
+
+      {/* Campaigns — seasonal email/SMS blasts (aeration, leaf cleanup,
+          spring restart). Lives on its own page since the wizard is
+          longer than the toggle-and-save Settings idiom. */}
+      <Section icon={<Megaphone className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Campaigns">
+        <Link
+          to="/campaigns"
+          className="tp-card p-4 flex items-center gap-3 hover:bg-ink-100/30 transition-colors"
+        >
+          <span className="h-9 w-9 rounded-lg bg-bronze-100 text-bronze-700 grid place-items-center shrink-0">
+            <Megaphone className="h-4 w-4" strokeWidth={2.2} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13.5px] font-semibold text-ink-900">
+              Seasonal campaigns
+            </div>
+            <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+              Blast aeration, leaf cleanup, spring restart, and snow signup pitches to your filtered customer list.
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2.2} />
+        </Link>
       </Section>
 
       {/* Billing */}
