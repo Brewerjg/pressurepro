@@ -11,21 +11,40 @@ export function DemoBanner() {
   useEffect(() => {
     if (!user) return;
 
-    // Check if user is a demo account
-    supabase
-      .from("profiles")
-      .select("is_demo")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
-        // Only show demo banner if explicitly marked as demo (true)
-        // If field doesn't exist or is false/null, don't show banner
-        if (!error && data?.is_demo === true) {
-          setIsDemo(true);
-        } else {
-          setIsDemo(false);
-        }
-      });
+    // Check if user is a demo account - try both id and user_id columns
+    const checkDemo = async () => {
+      // Try with id column first
+      let { data, error } = await supabase
+        .from("profiles")
+        .select("is_demo")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // If not found, try with user_id column
+      if (!data && !error) {
+        const result = await supabase
+          .from("profiles")
+          .select("is_demo")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
+      }
+
+      // Debug logging
+      console.log("Demo check for user:", user.email);
+      console.log("Profile data:", data);
+      console.log("Is demo?", data?.is_demo);
+
+      // Only show demo banner if explicitly marked as demo (true)
+      if (!error && data?.is_demo === true) {
+        setIsDemo(true);
+      } else {
+        setIsDemo(false);
+      }
+    };
+
+    checkDemo();
   }, [user]);
 
   if (!isDemo || dismissed) return null;

@@ -115,7 +115,11 @@ export default function Onboarding() {
     if (!user) throw new Error("Not signed in");
 
     // Ensure is_demo is always false for regular users
-    const profileData = { ...patch, is_demo: false };
+    // Remove any is_demo from patch and explicitly set to false
+    const { is_demo: _, ...cleanPatch } = patch;
+    const profileData = { ...cleanPatch, is_demo: false };
+
+    console.log("Saving profile with data:", profileData);
 
     // Try to update with id column (PressurePro style)
     const { data: updated1, error: updateErr1 } = await supabase
