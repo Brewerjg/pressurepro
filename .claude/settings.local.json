@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node check-db-structure.mjs)"
+      "Bash(echo \"To fix the database, run this SQL in your Supabase dashboard:\nhttps://supabase.com/dashboard/project/dkksryutecjbyuscpxdb/sql\n\nThen paste this query:\")"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [

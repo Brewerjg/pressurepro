@@ -11,35 +11,49 @@ export function DemoBanner() {
   useEffect(() => {
     if (!user) return;
 
-    // Check if user is a demo account - try both id and user_id columns
+    // Check if user is a demo account
     const checkDemo = async () => {
-      // Try with id column first
-      let { data, error } = await supabase
-        .from("profiles")
-        .select("is_demo")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      // If not found, try with user_id column
-      if (!data && !error) {
-        const result = await supabase
+      try {
+        // Try with id column first (TurfPro style)
+        let { data, error } = await supabase
           .from("profiles")
           .select("is_demo")
-          .eq("user_id", user.id)
+          .eq("id", user.id)
           .maybeSingle();
-        data = result.data;
-        error = result.error;
-      }
 
-      // Debug logging
-      console.log("Demo check for user:", user.email);
-      console.log("Profile data:", data);
-      console.log("Is demo?", data?.is_demo);
+        // If no data found, try with user_id column (PressurePro style)
+        if (!data && !error) {
+          const result = await supabase
+            .from("profiles")
+            .select("is_demo")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          data = result.data;
+          error = result.error;
+        }
 
-      // Only show demo banner if explicitly marked as demo (true)
-      if (!error && data?.is_demo === true) {
-        setIsDemo(true);
-      } else {
+        console.log("Demo check for user:", user.email);
+        console.log("Profile query result:", { data, error });
+
+        // CRITICAL: Only show demo banner if:
+        // 1. Query succeeded (no error)
+        // 2. Profile exists (data is not null)
+        // 3. is_demo is explicitly true
+        if (data && data.is_demo === true) {
+          console.log("✅ User IS a demo user");
+          setIsDemo(true);
+        } else {
+          // Default to NOT demo in all other cases:
+          // - Profile doesn't exist
+          // - is_demo is false
+          // - is_demo is null/undefined
+          // - Query failed
+          console.log("✅ User is NOT a demo user");
+          setIsDemo(false);
+        }
+      } catch (err) {
+        // On any error, assume NOT demo
+        console.error("Demo check failed:", err);
         setIsDemo(false);
       }
     };

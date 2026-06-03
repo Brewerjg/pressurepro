@@ -13,8 +13,13 @@ import {
   Calculator,
   StickyNote,
   BarChart3,
+  TrendingUp,
+  Users,
+  MapPin,
 } from "lucide-react";
-
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useForecast, useUserZip, type ForecastDay, type DerivedTone } from "@/lib/weather";
 import PreEmergentAlert from "@/components/gdd/PreEmergentAlert";
 import WinterHomeCard from "@/components/season/WinterHomeCard";
@@ -44,6 +49,21 @@ const forecastTone: Record<
 };
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getGreeting(name: string | null | undefined): string {
+  const hour = new Date().getHours();
+  const timeOfDay =
+    hour < 12 ? "Good morning" :
+    hour < 17 ? "Good afternoon" :
+    "Good evening";
+
+  if (name) {
+    // Get first name only
+    const firstName = name.split(" ")[0];
+    return `${timeOfDay}, ${firstName}`;
+  }
+  return timeOfDay;
+}
 
 function dayLabel(dateStr: string): string {
   // YYYY-MM-DD — parse as local date (the suffix matters; "2024-01-01" parses
@@ -76,10 +96,60 @@ const quickActions = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const progressSegments = Array.from({ length: 11 });
   const zipQ = useUserZip();
   const forecast = useForecast(zipQ.data);
   const { isWinter } = useSeason();
+
+  // Fetch user profile to check if demo and get business name
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, business_name, is_demo")
+        .or(`id.eq.${user!.id},user_id.eq.${user!.id}`)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch customer count and calculate basic MRR
+  const { data: stats } = useQuery({
+    queryKey: ["home-stats", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      // Get customer count
+      const { count: customerCount, error: custError } = await supabase
+        .from("customers")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user!.id);
+
+      if (custError) throw custError;
+
+      // Get active plans count
+      const { count: planCount, error: planError } = await supabase
+        .from("maintenance_plans")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user!.id);
+
+      if (planError) throw planError;
+
+      return {
+        customerCount: customerCount || 0,
+        planCount: planCount || 0,
+        // These would need real calculation from billing data
+        mrr: 0,
+        churn: 0,
+        avgPerCustomer: 0,
+      };
+    },
+  });
+
+  const isDemo = profile?.is_demo === true;
 
   // Decision summaries for the chip row beneath the strip. We derive these
   // from the *forecast*, not from hardcoded text, so they always agree with
@@ -93,10 +163,10 @@ export default function Home() {
       <header className="px-[22px] pb-[18px] flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
-            Wednesday · May 20
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </div>
           <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5 whitespace-nowrap">
-            Good morning, Mike
+            {isDemo ? "Good morning, Mike" : getGreeting(profile?.name)}
           </h1>
         </div>
         <button
@@ -124,18 +194,20 @@ export default function Home() {
             <div className="text-[11px] font-semibold tracking-[1px] uppercase text-bronze-400">
               Monthly recurring
             </div>
-            <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#cfead8] bg-white/10 px-2 py-1 rounded-full">
-              <ArrowUp className="h-3 w-3" strokeWidth={2.2} /> +8.4% mo/mo
-            </div>
+            {isDemo && (
+              <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#cfead8] bg-white/10 px-2 py-1 rounded-full">
+                <ArrowUp className="h-3 w-3" strokeWidth={2.2} /> +8.4% mo/mo
+              </div>
+            )}
           </div>
           <div className="tp-display tp-num text-[48px] font-bold leading-none tracking-[-0.04em]">
-            $14,820
+            {isDemo ? "$14,820" : stats?.mrr > 0 ? `$${stats.mrr.toLocaleString()}` : "$0"}
             <span className="text-lg text-bronze-400 font-semibold ml-1">/mo</span>
           </div>
           <div className="flex gap-6 mt-4 pt-3.5 border-t border-white/10">
-            <Stat value="67"   label="Active plans" />
-            <Stat value="2.1%" label="Churn 30d" />
-            <Stat value="$221" label="Avg/customer" />
+            <Stat value={isDemo ? "67" : String(stats?.planCount || 0)} label="Active plans" />
+            <Stat value={isDemo ? "2.1%" : stats?.churn ? `${stats.churn}%` : "0%"} label="Churn 30d" />
+            <Stat value={isDemo ? "$221" : stats?.avgPerCustomer ? `$${stats.avgPerCustomer}` : "$0"} label="Avg/customer" />
           </div>
         </div>
       </section>
@@ -144,63 +216,80 @@ export default function Home() {
           window is open/closing/imminent for the operator's ZIP. */}
       <PreEmergentAlert />
 
-      {/* Today's route — replaced by WinterHomeCard in winter mode. The
-          mow-cadence "Today's route" data is hardcoded today, but pausing
-          it in winter still matters because the visual story changes:
-          operators don't want a "Start route" CTA when nothing's growing. */}
+      {/* Today's route or empty state */}
       {isWinter ? (
         <WinterHomeCard />
-      ) : (
-      <section className="mx-4 mb-3">
-        <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">Today's route</h2>
-          <span className="text-xs text-ink-500">Wednesday crew</span>
-        </div>
-        <div className="tp-card p-4">
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="flex gap-[18px]">
-              <SummaryStat value="11"             unit="" sub="stops" />
-              <div className="w-px bg-ink-200" />
-              <SummaryStat value="23"             unit=" mi" sub="drive total" />
-              <div className="w-px bg-ink-200" />
-              <SummaryStat value="6.5"            unit=" h" sub="est." />
-            </div>
+      ) : isDemo ? (
+        // Demo route for demo users
+        <section className="mx-4 mb-3">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">Today's route</h2>
+            <span className="text-xs text-ink-500">Wednesday crew</span>
           </div>
-
-          {/* Progress segments */}
-          <div className="flex gap-[3px] mb-3.5">
-            {progressSegments.map((_, i) => (
-              <div
-                key={i}
-                className={`flex-1 h-1.5 rounded-[3px] ${
-                  i < 3 ? "bg-green-600" : i === 3 ? "bg-bronze-500" : "bg-ink-100"
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Up next */}
-          <div className="flex items-center gap-3 px-3 py-2.5 bg-green-50 rounded-xl mb-3">
-            <div className="h-8 w-8 rounded-full bg-green-800 text-white grid place-items-center text-[13px] font-bold">
-              4
-            </div>
-            <div className="flex-1">
-              <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-green-700">
-                Up next
+          <div className="tp-card p-4">
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="flex gap-[18px]">
+                <SummaryStat value="11" unit="" sub="stops" />
+                <div className="w-px bg-ink-200" />
+                <SummaryStat value="23" unit=" mi" sub="drive total" />
+                <div className="w-px bg-ink-200" />
+                <SummaryStat value="6.5" unit=" h" sub="est." />
               </div>
-              <div className="text-sm font-semibold text-ink-900">411 Lantana Ave</div>
             </div>
-            <div className="text-[11px] font-semibold text-green-700">2 mi · 7 min</div>
+            <div className="flex gap-[3px] mb-3.5">
+              {progressSegments.map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 h-1.5 rounded-[3px] ${
+                    i < 3 ? "bg-green-600" : i === 3 ? "bg-bronze-500" : "bg-ink-100"
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-green-50 rounded-xl mb-3">
+              <div className="h-8 w-8 rounded-full bg-green-800 text-white grid place-items-center text-[13px] font-bold">
+                4
+              </div>
+              <div className="flex-1">
+                <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-green-700">
+                  Up next
+                </div>
+                <div className="text-sm font-semibold text-ink-900">411 Lantana Ave</div>
+              </div>
+              <div className="text-[11px] font-semibold text-green-700">2 mi · 7 min</div>
+            </div>
+            <Link
+              to="/routes"
+              className="w-full rounded-[14px] bg-bronze-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-bronze hover:bg-bronze-600 transition-colors"
+            >
+              <Play className="h-3.5 w-3.5" /> Start route
+            </Link>
           </div>
-
-          <Link
-            to="/routes"
-            className="w-full rounded-[14px] bg-bronze-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-bronze hover:bg-bronze-600 transition-colors"
-          >
-            <Play className="h-3.5 w-3.5" /> Start route
-          </Link>
-        </div>
-      </section>
+        </section>
+      ) : (
+        // Empty state for real users with no routes
+        <section className="mx-4 mb-3">
+          <div className="tp-card p-6 text-center">
+            <MapPin className="h-12 w-12 text-ink-300 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-ink-700 mb-1">No routes scheduled</h3>
+            <p className="text-xs text-ink-500 mb-4">
+              {stats?.customerCount === 0
+                ? "Add customers to start planning routes"
+                : "Create maintenance plans for your customers to see routes here"
+              }
+            </p>
+            <Link
+              to={stats?.customerCount === 0 ? "/customers" : "/plans"}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-800 text-white rounded-xl text-sm font-semibold hover:bg-green-900 transition-colors"
+            >
+              {stats?.customerCount === 0 ? (
+                <><Users className="h-4 w-4" /> Add First Customer</>
+              ) : (
+                <><TrendingUp className="h-4 w-4" /> Create Plan</>
+              )}
+            </Link>
+          </div>
+        </section>
       )}
 
       {/* Weekly forecast — live from OpenWeather via the `forecast` edge fn */}

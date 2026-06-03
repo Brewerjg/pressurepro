@@ -66,6 +66,7 @@ export default function Onboarding() {
   const [step, setStep] = useState<Step>(1);
 
   // Step 1 state
+  const [yourName, setYourName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [zip, setZip] = useState("");
@@ -114,91 +115,95 @@ export default function Onboarding() {
   ) => {
     if (!user) throw new Error("Not signed in");
 
-    // Ensure is_demo is always false for regular users
-    // Remove any is_demo from patch and explicitly set to false
-    const { is_demo: _, ...cleanPatch } = patch;
-    const profileData = { ...cleanPatch, is_demo: false };
+    // CRITICAL: Always ensure is_demo is false for regular onboarding
+    const profileData = {
+      ...patch,
+      is_demo: false  // Force false - never trust input for this field
+    };
 
-    console.log("Saving profile with data:", profileData);
+    console.log("Saving profile for user:", user.id);
+    console.log("Profile data:", profileData);
 
-    // Try to update with id column (PressurePro style)
-    const { data: updated1, error: updateErr1 } = await supabase
+    // Strategy: Try updating BOTH column types first (PressurePro uses user_id, TurfPro uses id)
+    // Only try insert if neither update finds a row
+
+    // Try update with id column first (TurfPro style)
+    const { data: updatedById, error: updateByIdErr } = await supabase
       .from("profiles")
       .update(profileData)
       .eq("id", user.id)
       .select()
       .maybeSingle();
 
-    if (updated1) {
-      console.log("Updated profile with id column");
-      return; // Success
+    if (updatedById) {
+      console.log("✅ Updated existing profile using id column");
+      return;
     }
 
-    // If no row was updated, try inserting a new profile with id
-    if (!updated1 && !updateErr1) {
-      const { data: inserted1, error: insertErr1 } = await supabase
-        .from("profiles")
-        .insert({ id: user.id, ...profileData })
-        .select()
-        .maybeSingle();
-
-      if (inserted1) {
-        console.log("Inserted new profile with id column");
-        return; // Success
-      }
-
-      // If insert failed due to duplicate, it exists but update didn't work
-      if (insertErr1?.code === '23505') {
-        console.error("Profile exists but couldn't update:", insertErr1);
-        throw new Error("Profile exists but couldn't update. Please check database permissions.");
-      }
-    }
-
-    // If id column doesn't work, try with user_id column (alternative structure)
-    const { data: updated2, error: updateErr2 } = await supabase
+    // Try update with user_id column (PressurePro style)
+    const { data: updatedByUserId, error: updateByUserIdErr } = await supabase
       .from("profiles")
       .update(profileData)
       .eq("user_id", user.id)
       .select()
       .maybeSingle();
 
-    if (updated2) {
-      console.log("Updated profile with user_id column");
-      return; // Success
+    if (updatedByUserId) {
+      console.log("✅ Updated existing profile using user_id column (PressurePro)");
+      return;
     }
 
-    // Try inserting with user_id
-    if (!updated2 && !updateErr2) {
-      const { data: inserted2, error: insertErr2 } = await supabase
+    // If both updates found no rows (PGRST116 = no rows returned), try insert
+    const noRowsById = !updateByIdErr || updateByIdErr.code === 'PGRST116';
+    const noRowsByUserId = !updateByUserIdErr || updateByUserIdErr.code === 'PGRST116';
+
+    if (noRowsById && noRowsByUserId) {
+      // No profile exists, create new one with both columns
+      const { data: inserted, error: insertErr } = await supabase
         .from("profiles")
-        .insert({ user_id: user.id, ...profileData })
+        .insert({
+          id: user.id,
+          user_id: user.id,  // Include both columns for compatibility
+          ...profileData
+        })
         .select()
         .maybeSingle();
 
-      if (inserted2) {
-        console.log("Inserted new profile with user_id column");
-        return; // Success
+      if (inserted) {
+        console.log("✅ Created new profile");
+        return;
       }
 
-      if (insertErr2) {
-        console.error("Final insert error:", insertErr2);
-        throw insertErr2;
+      // If insert failed with duplicate, there's an RLS issue
+      if (insertErr?.code === '23505') {
+        console.error("❌ Profile exists but cannot be updated - RLS policy issue");
+        console.error("Please run the SQL fix in your Supabase dashboard");
+        throw new Error("Profile exists but cannot be updated. Please run the database fix SQL in your Supabase dashboard.");
+      }
+
+      if (insertErr) {
+        console.error("Insert error:", insertErr);
+        throw insertErr;
       }
     }
 
-    // If we get here, something went wrong
-    console.error("Update errors:", { updateErr1, updateErr2 });
-    throw new Error("Could not save profile. Please check database structure.");
+    // One of the updates had a real error (not just "no rows")
+    const realError = updateByIdErr?.code !== 'PGRST116' ? updateByIdErr : updateByUserIdErr;
+    console.error("Profile update error:", realError);
+    throw new Error(`Profile update failed: ${realError?.message || 'Unknown error'}`);
   };
 
   const step1Mutation = useMutation({
     mutationFn: async () => {
-      const name = businessName.trim();
+      const userName = yourName.trim();
+      const bizName = businessName.trim();
       const z = zip.trim();
-      if (!name) throw new Error("Business name is required");
+      if (!userName) throw new Error("Your name is required");
+      if (!bizName) throw new Error("Business name is required");
       if (!z) throw new Error("ZIP is required to enable the forecast");
       await upsertProfile({
-        business_name: name,
+        name: userName,
+        business_name: bizName,
         phone: phone.trim() || null,
         zip: z,
       });
@@ -295,7 +300,11 @@ export default function Onboarding() {
           if (propErr) throw propErr;
         }
       }
-      await upsertProfile({ onboarded_at: new Date().toISOString() });
+      // CRITICAL: Ensure is_demo is false when onboarding completes
+      await upsertProfile({
+        onboarded_at: new Date().toISOString(),
+        is_demo: false
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
@@ -312,14 +321,24 @@ export default function Onboarding() {
   // Home (Set ZIP in Settings) covers them, and Settings is reachable.
   const skipMutation = useMutation({
     mutationFn: async () => {
-      await upsertProfile({ onboarded_at: new Date().toISOString() });
+      console.log("🔵 Skip button clicked - marking onboarding as complete");
+      // CRITICAL: Ensure is_demo is false when skipping onboarding
+      await upsertProfile({
+        onboarded_at: new Date().toISOString(),
+        is_demo: false
+      });
+      console.log("🔵 Profile updated with onboarded_at timestamp");
     },
     onSuccess: () => {
+      console.log("🔵 Skip successful - clearing cache and navigating to home");
       queryClient.invalidateQueries({ queryKey: ["profile-onboarded", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       navigate("/", { replace: true });
     },
-    onError: (err) => setError(err instanceof Error ? err.message : "Couldn't skip"),
+    onError: (err) => {
+      console.error("🔴 Skip failed:", err);
+      setError(err instanceof Error ? err.message : "Couldn't skip");
+    },
   });
 
   const goBack = () => {
@@ -350,6 +369,8 @@ export default function Onboarding() {
               icon={<Leaf className="h-5 w-5 text-green-700" strokeWidth={2} />}
               title="Your business"
               subtitle="Takes about 2 minutes. We'll show your local 7-day forecast next."
+              yourName={yourName}
+              setYourName={setYourName}
               businessName={businessName}
               setBusinessName={setBusinessName}
               phone={phone}
@@ -485,6 +506,8 @@ function Step1(props: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
+  yourName: string;
+  setYourName: (v: string) => void;
   businessName: string;
   setBusinessName: (v: string) => void;
   phone: string;
@@ -501,6 +524,16 @@ function Step1(props: {
   return (
     <form onSubmit={onSubmit} className="space-y-3.5">
       <StepHeader icon={props.icon} title={props.title} subtitle={props.subtitle} />
+
+      <FieldLabel htmlFor="ob-name">Your name</FieldLabel>
+      <input
+        id="ob-name"
+        required
+        value={props.yourName}
+        onChange={(e) => props.setYourName(e.target.value)}
+        placeholder="John Smith"
+        className={inputCls}
+      />
 
       <FieldLabel htmlFor="ob-business">Business name</FieldLabel>
       <input

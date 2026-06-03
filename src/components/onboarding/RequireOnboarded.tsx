@@ -22,14 +22,18 @@ export default function RequireOnboarded({ children }: { children: ReactNode }) 
     queryKey: ["profile-onboarded", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      // Try with 'id' first (PressurePro style), then 'user_id' (TurfPro style)
+      console.log("🔍 RequireOnboarded: Checking onboarding status for user:", user!.id);
+
+      // Try with 'id' first (TurfPro style)
       let { data, error } = await supabase
         .from("profiles")
         .select("onboarded_at")
         .eq("id", user!.id)
         .maybeSingle();
 
-      // If no data found, try with user_id column
+      console.log("🔍 Query by id column:", { data, error });
+
+      // If no data found, try with user_id column (PressurePro style)
       if (!data && !error) {
         const result = await supabase
           .from("profiles")
@@ -38,9 +42,12 @@ export default function RequireOnboarded({ children }: { children: ReactNode }) 
           .maybeSingle();
         data = result.data;
         error = result.error;
+        console.log("🔍 Query by user_id column:", { data, error });
       }
 
       if (error && error.code !== 'PGRST116') throw error;
+
+      console.log("🔍 Final onboarding check result:", data);
       // null (no row) is a meaningful state — return it as-is so the gate can
       // distinguish "no row" (redirect) from "row with null onboarded_at"
       // (also redirect) from "row with onboarded_at set" (pass through).
@@ -60,7 +67,14 @@ export default function RequireOnboarded({ children }: { children: ReactNode }) 
   // spinner — they can still navigate; the next page render will retry.
   if (user && !isError) {
     const onboarded = data?.onboarded_at != null;
+    console.log("🔍 RequireOnboarded decision:", {
+      hasProfile: !!data,
+      onboarded_at: data?.onboarded_at,
+      onboarded,
+      willRedirect: !onboarded
+    });
     if (!onboarded) {
+      console.log("🔴 User not onboarded, redirecting to /onboarding");
       return <Navigate to="/onboarding" replace />;
     }
   }

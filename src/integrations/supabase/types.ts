@@ -304,6 +304,9 @@ export type Database = {
           display_name: string | null
           google_place_id: string | null
           id: string
+          is_demo: boolean
+          name: string | null
+          onboarded_at: string | null
           phone: string | null
           stripe_account_id: string | null
           stripe_customer_id: string | null
@@ -317,6 +320,9 @@ export type Database = {
           display_name?: string | null
           google_place_id?: string | null
           id?: string
+          is_demo?: boolean
+          name?: string | null
+          onboarded_at?: string | null
           phone?: string | null
           stripe_account_id?: string | null
           stripe_customer_id?: string | null
@@ -330,6 +336,9 @@ export type Database = {
           display_name?: string | null
           google_place_id?: string | null
           id?: string
+          is_demo?: boolean
+          name?: string | null
+          onboarded_at?: string | null
           phone?: string | null
           stripe_account_id?: string | null
           stripe_customer_id?: string | null
