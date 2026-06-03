@@ -22,12 +22,25 @@ export default function RequireOnboarded({ children }: { children: ReactNode }) 
     queryKey: ["profile-onboarded", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Try with 'id' first (PressurePro style), then 'user_id' (TurfPro style)
+      let { data, error } = await supabase
         .from("profiles")
         .select("onboarded_at")
-        .eq("user_id", user!.id)
+        .eq("id", user!.id)
         .maybeSingle();
-      if (error) throw error;
+
+      // If no data found, try with user_id column
+      if (!data && !error) {
+        const result = await supabase
+          .from("profiles")
+          .select("onboarded_at")
+          .eq("user_id", user!.id)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error && error.code !== 'PGRST116') throw error;
       // null (no row) is a meaningful state — return it as-is so the gate can
       // distinguish "no row" (redirect) from "row with null onboarded_at"
       // (also redirect) from "row with onboarded_at set" (pass through).

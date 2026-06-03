@@ -15,6 +15,7 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [creatingDemo, setCreatingDemo] = useState(false);
 
   if (loading) {
     return (
@@ -24,6 +25,51 @@ export default function Auth() {
     );
   }
   if (user) return <Navigate to="/" replace />;
+
+  const createDemoAccount = async () => {
+    setCreatingDemo(true);
+    setError(null);
+    setInfo(null);
+    try {
+      // Generate random demo credentials
+      const demoId = Math.random().toString(36).substring(7);
+      const demoEmail = `demo-${demoId}@turfpro.demo`;
+      const demoPassword = `demo-${demoId}-password`;
+
+      // Create demo account
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: demoEmail,
+        password: demoPassword,
+        options: {
+          data: {
+            is_demo: true,
+          },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      if (signUpError) throw signUpError;
+
+      // Auto sign in the demo account
+      if (authData.user) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: demoEmail,
+          password: demoPassword
+        });
+        if (signInError) throw signInError;
+
+        // Mark as demo in profiles
+        await supabase
+          .from("profiles")
+          .update({ is_demo: true })
+          .eq("id", authData.user.id);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Couldn't create demo account");
+    } finally {
+      setCreatingDemo(false);
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -44,6 +90,9 @@ export default function Auth() {
           email,
           password,
           options: {
+            data: {
+              is_demo: false, // Explicitly mark as NOT demo for regular signups
+            },
             emailRedirectTo: Capacitor.isNativePlatform()
               ? "turfpro://auth-callback"
               : window.location.origin,
@@ -126,6 +175,17 @@ export default function Auth() {
             {mode === "sign-in" ? "No account? Sign up" : "Already have an account? Sign in"}
           </button>
         </form>
+
+        <div className="mt-4 pt-4 border-t border-ink-100">
+          <button
+            onClick={createDemoAccount}
+            disabled={creatingDemo}
+            className="w-full h-12 rounded-2xl bg-green-700 hover:bg-green-800 text-white font-bold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {creatingDemo && <Loader2 className="h-4 w-4 animate-spin" />}
+            Try Demo (No signup required)
+          </button>
+        </div>
 
         <p className="text-[11px] text-ink-400 text-center mt-4">
           One login works across TurfPro and PressurePro.

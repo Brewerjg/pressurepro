@@ -1,23 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:api.anthropic.com)",
-      "Bash(file \"C:\\\\Users\\\\Jason\\\\.claude\\\\projects\\\\c--Users-Jason-Desktop-turf\\\\fb74014b-35bd-4b17-8b1e-1fc57ebcda4b\\\\tool-results\\\\webfetch-1779383505602-qt7j1c.bin\" 2>&1 || ls -la \"C:\\\\Users\\\\Jason\\\\.claude\\\\projects\\\\c--Users-Jason-Desktop-turf\\\\fb74014b-35bd-4b17-8b1e-1fc57ebcda4b\\\\tool-results\\\\\")",
-      "Read(//c/Users/Jason/.claude/projects/c--Users-Jason-Desktop-turf/fb74014b-35bd-4b17-8b1e-1fc57ebcda4b/**)",
-      "Bash(ls -la \"c:/Users/Jason/Desktop/turf/\" 2>&1; echo \"---\"; ls -la \"c:/Users/Jason/Desktop/pressure-pro-quoter/\" 2>&1 | head -50)",
-      "Read(//c/Users/Jason/Desktop/pressure-pro-quoter/**)",
-      "Bash(tar -xzf design.tar.gz)",
-      "Skill(update-config)",
-      "Skill(update-config:*)",
-      "PowerShell($files = 'app.jsx','tokens.css','index.html','design-canvas.jsx','ios-frame.jsx','screen-calc.jsx','screen-customers.jsx','screen-home-alt.jsx','screen-home.jsx','screen-plans.jsx','screen-reports.jsx','screen-routemode.jsx','screen-routes.jsx','tp-ui.jsx','tweaks-panel.jsx'; foreach \\($f in $files\\) { $h1 = \\(Get-FileHash \"C:\\\\Users\\\\Jason\\\\Desktop\\\\turf\\\\$f\"\\).Hash; $h2 = \\(Get-FileHash \"C:\\\\Users\\\\Jason\\\\Desktop\\\\turf\\\\design\\\\turf\\\\project\\\\$f\"\\).Hash; if \\($h1 -eq $h2\\) { \"$f`: SAME\" } else { \"$f`: DIFF\" } })",
-      "PowerShell($root = 'C:\\\\Users\\\\Jason\\\\Desktop\\\\turf'; $files = 'app.jsx','tokens.css','index.html','design-canvas.jsx','ios-frame.jsx','screen-calc.jsx','screen-customers.jsx','screen-home-alt.jsx','screen-home.jsx','screen-plans.jsx','screen-reports.jsx','screen-routemode.jsx','screen-routes.jsx','tp-ui.jsx','tweaks-panel.jsx'; foreach \\($f in $files\\) { Remove-Item -Path \\(Join-Path $root $f\\) -Force }; Get-ChildItem $root | Select-Object -ExpandProperty Name)",
-      "PowerShell(npm install 2>&1)",
-      "PowerShell(npm run build 2>&1)",
-      "Bash(cp 'C:\\\\Users\\\\Jason\\\\Desktop\\\\pressure-pro-quoter\\\\src\\\\integrations\\\\supabase\\\\types.ts' 'C:\\\\Users\\\\Jason\\\\Desktop\\\\turf\\\\src\\\\integrations\\\\supabase\\\\types.ts' && echo \"types.ts copied\")"
+      "Bash(node check-db-structure.mjs)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [
       "C:\\Users\\Jason\\Desktop\\pressure-pro-quoter\\src\\integrations\\supabase"
-    ]
+    ],
+    "deny": [],
+    "ask": []
   }
 }

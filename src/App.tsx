@@ -11,6 +11,8 @@ import { AppShell } from "@/components/AppShell";
 // adds spinner flicker without saving real bytes.
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
+import Test from "./pages/Test";
+import SignOut from "./pages/SignOut";
 import Customers from "./pages/Customers";
 import RoutesPage from "./pages/Routes";
 import Plans from "./pages/Plans";
@@ -95,7 +97,9 @@ const App = () => (
       <AuthProvider>
         <Suspense fallback={<RouteSuspense />}>
         <Routes>
+          <Route path="/test" element={<Test />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/signout" element={<SignOut />} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           {/* Public — customer-facing flows, no auth required */}
           <Route path="/accept/:id" element={<Accept />} />

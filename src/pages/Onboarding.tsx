@@ -109,28 +109,82 @@ export default function Onboarding() {
       phone: string | null;
       zip: string | null;
       onboarded_at: string | null;
+      is_demo?: boolean;
     }>,
   ) => {
     if (!user) throw new Error("Not signed in");
-    // Try update first; if no row exists, insert.
-    const { data: existing, error: selErr } = await supabase
+
+    // Ensure is_demo is always false for regular users
+    const profileData = { ...patch, is_demo: false };
+
+    // Try to update with id column (PressurePro style)
+    const { data: updated1, error: updateErr1 } = await supabase
       .from("profiles")
-      .select("user_id")
-      .eq("user_id", user.id)
+      .update(profileData)
+      .eq("id", user.id)
+      .select()
       .maybeSingle();
-    if (selErr) throw selErr;
-    if (existing) {
-      const { error: updErr } = await supabase
-        .from("profiles")
-        .update(patch)
-        .eq("user_id", user.id);
-      if (updErr) throw updErr;
-    } else {
-      const { error: insErr } = await supabase
-        .from("profiles")
-        .insert({ user_id: user.id, ...patch });
-      if (insErr) throw insErr;
+
+    if (updated1) {
+      console.log("Updated profile with id column");
+      return; // Success
     }
+
+    // If no row was updated, try inserting a new profile with id
+    if (!updated1 && !updateErr1) {
+      const { data: inserted1, error: insertErr1 } = await supabase
+        .from("profiles")
+        .insert({ id: user.id, ...profileData })
+        .select()
+        .maybeSingle();
+
+      if (inserted1) {
+        console.log("Inserted new profile with id column");
+        return; // Success
+      }
+
+      // If insert failed due to duplicate, it exists but update didn't work
+      if (insertErr1?.code === '23505') {
+        console.error("Profile exists but couldn't update:", insertErr1);
+        throw new Error("Profile exists but couldn't update. Please check database permissions.");
+      }
+    }
+
+    // If id column doesn't work, try with user_id column (alternative structure)
+    const { data: updated2, error: updateErr2 } = await supabase
+      .from("profiles")
+      .update(profileData)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+
+    if (updated2) {
+      console.log("Updated profile with user_id column");
+      return; // Success
+    }
+
+    // Try inserting with user_id
+    if (!updated2 && !updateErr2) {
+      const { data: inserted2, error: insertErr2 } = await supabase
+        .from("profiles")
+        .insert({ user_id: user.id, ...profileData })
+        .select()
+        .maybeSingle();
+
+      if (inserted2) {
+        console.log("Inserted new profile with user_id column");
+        return; // Success
+      }
+
+      if (insertErr2) {
+        console.error("Final insert error:", insertErr2);
+        throw insertErr2;
+      }
+    }
+
+    // If we get here, something went wrong
+    console.error("Update errors:", { updateErr1, updateErr2 });
+    throw new Error("Could not save profile. Please check database structure.");
   };
 
   const step1Mutation = useMutation({
