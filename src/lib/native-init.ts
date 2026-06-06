@@ -19,6 +19,8 @@
 
 import { Capacitor } from "@capacitor/core";
 import { installAuthDeepLinkListener } from "./auth-deep-link";
+import { registerPushNotifications } from "./push";
+import { supabase } from "@/integrations/supabase/client";
 
 async function loadKeyboard(): Promise<any | null> {
   if (!Capacitor.isNativePlatform()) return null;
@@ -69,10 +71,60 @@ async function configureKeyboard(): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------
+// Push notifications — registered against `public.push_tokens` whenever
+// there's an authenticated user. We deliberately listen to
+// supabase.auth.onAuthStateChange in here (rather than hooking into
+// src/contexts/AuthContext.tsx) so native-init stays self-contained and
+// the AuthContext can stay UI-only.
+//
+// Auth state churn note: onAuthStateChange fires on EVERY state change
+// (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, SIGNED_OUT).
+// We only want to register when there's a real new user we haven't yet
+// registered for this session, otherwise we'd spam the upsert on every
+// token refresh. `registeredForUserId` is a module-level latch:
+//   - flip to userId on first observation
+//   - skip subsequent events with the same userId
+//   - reset to null on SIGNED_OUT so a later sign-in re-registers
+// `registerPushNotifications` itself is also internally idempotent
+// (push.ts module-level guard) but the early-return here keeps the noise
+// down in the common steady-state case.
+// ---------------------------------------------------------------------
+let registeredForUserId: string | null = null;
+
+async function installPushAuthListener(): Promise<void> {
+  // Handle the case where the user is ALREADY signed in by the time we
+  // get here (warm app start with a persisted session). onAuthStateChange
+  // will also emit an INITIAL_SESSION event that catches this, but doing
+  // a one-shot getSession() up front means we don't wait on that event.
+  try {
+    const { data } = await supabase.auth.getSession();
+    const initialUserId = data.session?.user?.id ?? null;
+    if (initialUserId && initialUserId !== registeredForUserId) {
+      registeredForUserId = initialUserId;
+      void registerPushNotifications(initialUserId);
+    }
+  } catch (err) {
+    console.warn("[native-init] initial getSession failed:", err);
+  }
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    const userId = session?.user?.id ?? null;
+    if (event === "SIGNED_OUT" || !userId) {
+      registeredForUserId = null;
+      return;
+    }
+    if (userId === registeredForUserId) return;
+    registeredForUserId = userId;
+    void registerPushNotifications(userId);
+  });
+}
+
 // Fire and forget. We deliberately do NOT block app startup on these
 // — if a plugin fails to load or a setting fails to apply, the rest
 // of the app should still mount.
 if (Capacitor.isNativePlatform()) {
   void configureKeyboard();
   void installAuthDeepLinkListener();
+  void installPushAuthListener();
 }

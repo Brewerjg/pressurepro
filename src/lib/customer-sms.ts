@@ -16,7 +16,17 @@ export type SmsKind =
   | "on_the_way"
   | "completed"
   | "review_request"
-  | "plan_confirmation";
+  | "plan_confirmation"
+  // quote_send = operator hit Send on a quote. Phone is hydrated server-
+  // side from the quote row when omitted.
+  | "quote_send"
+  // freeform = operator-typed reply from the Inbox UI. The body is
+  // verbatim (the edge function only appends the STOP footer if missing).
+  | "freeform"
+  // payment_retry = the plan's card-on-file declined; nudge the customer
+  // to update it from the portal. Phone is hydrated server-side from the
+  // plan's linked customer.
+  | "payment_retry";
 
 export interface CustomerSmsResult {
   ok: boolean;
@@ -29,7 +39,11 @@ export interface CustomerSmsResult {
 
 interface InvokeArgs {
   kind: SmsKind;
-  recipient: { phone: string; name?: string };
+  /**
+   * quote_send hydrates {phone, name} server-side from the quote row when
+   * omitted; every other kind requires it up-front.
+   */
+  recipient?: { phone: string; name?: string };
   customer_id?: string | null;
   route_stop_id?: string | null;
   context: Record<string, unknown>;
@@ -171,6 +185,24 @@ export async function sendReviewRequestSms(
 }
 
 /**
+ * Send the customer their quote as a short text — body is
+ * "Hi {first_name}, here's your quote from {business}: /accept/{id}".
+ * Phone + first-name are hydrated server-side from the quote row, so
+ * callers don't have to re-thread them.
+ *
+ * Returns the standard non-throwing `{ ok, error }` shape — Send is fire-
+ * and-forget on the quote pages; UI shouldn't roll back state on a 5xx.
+ */
+export async function sendQuoteSms(
+  quoteId: string,
+): Promise<CustomerSmsResult> {
+  return invokeSms({
+    kind: "quote_send",
+    context: { quote_id: quoteId },
+  });
+}
+
+/**
  * Sent after a maintenance plan is created. The edge function pulls
  * cadence + first-visit + portal token from the plan row using plan_id.
  */
@@ -184,5 +216,50 @@ export async function sendPlanConfirmationSms(
     recipient,
     customer_id: customerId ?? null,
     context: { plan_id: planId },
+  });
+}
+
+/**
+ * Send a "your card was declined, please update it" SMS tied to a plan.
+ *
+ * Symmetric to sendPaymentRetryLink in customer-email.ts — caller only
+ * threads plan_id; the edge function hydrates phone (from the linked
+ * customer row) and the portal URL from the plan row.
+ *
+ * Non-throwing — the operator's PlanDetail UI fires this in parallel with
+ * the email helper; we don't want one transport's failure to derail the
+ * other. Quiet-hours still applies and may come back as `deferred: true`.
+ */
+export async function sendPaymentRetryLinkSms(
+  planId: string,
+): Promise<CustomerSmsResult> {
+  return invokeSms({
+    kind: "payment_retry",
+    context: { plan_id: planId },
+  });
+}
+
+/**
+ * Operator-typed reply from the Inbox UI. Unlike the four transactional
+ * kinds, `freeform` carries a body string the operator just wrote; the
+ * edge function only normalizes (appends the STOP footer if missing) and
+ * dispatches.
+ *
+ * Quiet-hours still applies — if it's currently outside the operator's
+ * configured window, the result will have `deferred: true` and the row
+ * will sit queued for the pg_cron drainer. The Inbox UI inspects the
+ * `deferred` flag to surface a "Send anyway?" confirmation.
+ */
+export async function sendFreeformSms(args: {
+  phone: string;
+  body: string;
+  name?: string;
+  customer_id?: string | null;
+}): Promise<CustomerSmsResult> {
+  return invokeSms({
+    kind: "freeform",
+    recipient: { phone: args.phone, name: args.name },
+    customer_id: args.customer_id ?? null,
+    context: { body: args.body },
   });
 }

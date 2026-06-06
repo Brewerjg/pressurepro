@@ -42,8 +42,11 @@ import {
   isValidPhone,
   normalizePhone,
   renderCompletedSms,
+  renderFreeformSms,
   renderOnTheWaySms,
+  renderPaymentRetrySms,
   renderPlanConfirmationSms,
+  renderQuoteSendSms,
   renderReviewRequestSms,
   type RenderedSms,
   type SmsBusinessInfo,
@@ -61,12 +64,20 @@ interface Recipient {
 
 interface BasePayload {
   kind: SmsKind;
-  recipient: Recipient;
+  /**
+   * quote_send hydrates {phone, name} server-side from the quote row when
+   * omitted; every other kind requires it up-front.
+   */
+  recipient?: Recipient;
   customer_id?: string | null;
   route_stop_id?: string | null;
 }
 
-interface OnTheWayPayload extends BasePayload {
+interface RequiredRecipientBasePayload extends BasePayload {
+  recipient: Recipient;
+}
+
+interface OnTheWayPayload extends RequiredRecipientBasePayload {
   kind: "on_the_way";
   context: {
     address: string;
@@ -74,7 +85,7 @@ interface OnTheWayPayload extends BasePayload {
   };
 }
 
-interface CompletedPayload extends BasePayload {
+interface CompletedPayload extends RequiredRecipientBasePayload {
   kind: "completed";
   context: {
     address: string;
@@ -82,7 +93,7 @@ interface CompletedPayload extends BasePayload {
   };
 }
 
-interface ReviewRequestPayload extends BasePayload {
+interface ReviewRequestPayload extends RequiredRecipientBasePayload {
   kind: "review_request";
   context: {
     quote_id?: string | null;
@@ -90,8 +101,33 @@ interface ReviewRequestPayload extends BasePayload {
   };
 }
 
-interface PlanConfirmationPayload extends BasePayload {
+interface PlanConfirmationPayload extends RequiredRecipientBasePayload {
   kind: "plan_confirmation";
+  context: {
+    plan_id: string;
+  };
+}
+
+interface QuoteSendPayload extends BasePayload {
+  kind: "quote_send";
+  context: {
+    quote_id: string;
+  };
+}
+
+// freeform = operator-typed reply from the Inbox UI. Body is whatever
+// they typed; we only append the STOP footer if missing.
+interface FreeformPayload extends RequiredRecipientBasePayload {
+  kind: "freeform";
+  context: {
+    body: string;
+  };
+}
+
+// payment_retry hydrates {phone, name, portal_token} from the plan row +
+// the linked customer (for phone). Caller threads plan_id only.
+interface PaymentRetryPayload extends BasePayload {
+  kind: "payment_retry";
   context: {
     plan_id: string;
   };
@@ -101,7 +137,10 @@ type IncomingPayload =
   | OnTheWayPayload
   | CompletedPayload
   | ReviewRequestPayload
-  | PlanConfirmationPayload;
+  | PlanConfirmationPayload
+  | QuoteSendPayload
+  | FreeformPayload
+  | PaymentRetryPayload;
 
 // ---------------------------------------------------------------------
 // Handler
@@ -134,12 +173,23 @@ Deno.serve(async (req) => {
 
     const payload = (await req.json()) as IncomingPayload;
     if (!payload?.kind) return json({ error: "Missing kind" }, 400);
-    if (!payload?.recipient?.phone || !isValidPhone(payload.recipient.phone)) {
-      return json({ error: "Invalid recipient phone" }, 400);
-    }
-    const toPhone = normalizePhone(payload.recipient.phone);
-    if (!toPhone) {
-      return json({ error: "Could not normalize phone to E.164" }, 400);
+
+    // quote_send + payment_retry are allowed to omit the recipient — we
+    // hydrate phone + first name from the quote / plan row below. Every
+    // other kind requires a valid recipient.phone up front because there's
+    // no DB row to resolve it from.
+    let toPhone: string | null = null;
+    if (payload.kind !== "quote_send" && payload.kind !== "payment_retry") {
+      if (
+        !payload?.recipient?.phone ||
+        !isValidPhone(payload.recipient.phone)
+      ) {
+        return json({ error: "Invalid recipient phone" }, 400);
+      }
+      toPhone = normalizePhone(payload.recipient.phone);
+      if (!toPhone) {
+        return json({ error: "Could not normalize phone to E.164" }, 400);
+      }
     }
 
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -181,8 +231,11 @@ Deno.serve(async (req) => {
       Deno.env.get("PUBLIC_APP_ORIGIN") ||
       "https://example.com";
 
-    const recipientFirstName =
-      payload.recipient.name?.trim().split(/\s+/)[0] || undefined;
+    // Mutable for quote_send — the case branch hydrates these from the
+    // quotes row when the caller didn't supply them.
+    let recipientFirstName =
+      payload.recipient?.name?.trim().split(/\s+/)[0] || undefined;
+    let customerIdForLog = payload.customer_id ?? null;
 
     // -----------------------------------------------------------------
     // Build the rendered SMS for the requested kind. Each branch can
@@ -233,6 +286,122 @@ Deno.serve(async (req) => {
         });
         break;
       }
+      case "freeform": {
+        // Operator-typed reply from the Inbox. We don't render templates,
+        // just normalize / footer-append. Segment count is logged but we
+        // don't bail on > 1 segment; the UI already warned the operator.
+        if (
+          typeof payload.context?.body !== "string" ||
+          payload.context.body.trim().length === 0
+        ) {
+          return json({ error: "Freeform body is required" }, 400);
+        }
+        const freeform = renderFreeformSms(business, {
+          body: payload.context.body,
+        });
+        if (freeform.segments > 1) {
+          console.log(
+            `freeform send is ${freeform.segments} segments (${freeform.body.length} chars)`,
+          );
+        }
+        rendered = { body: freeform.body };
+        break;
+      }
+      case "quote_send": {
+        // Hydrate the quote row — caller only passes us a quote_id; we
+        // derive phone + first-name from the row so the operator doesn't
+        // have to re-thread them. Caller-supplied recipient.phone wins
+        // when present (lets the operator override "text a different
+        // number").
+        const { data: quote, error: qErr } = await supabase
+          .from("quotes")
+          .select("id, customer_id, customer_name, phone")
+          .eq("id", payload.context.quote_id)
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        if (qErr || !quote) return json({ error: "Quote not found" }, 404);
+
+        const callerPhone = payload.recipient?.phone;
+        const rawPhone =
+          (callerPhone && isValidPhone(callerPhone)
+            ? callerPhone
+            : (quote.phone as string | null) ?? "") || "";
+        if (!rawPhone || !isValidPhone(rawPhone)) {
+          return json({ error: "No phone on the quote" }, 400);
+        }
+        const normalized = normalizePhone(rawPhone);
+        if (!normalized) {
+          return json({ error: "Could not normalize phone to E.164" }, 400);
+        }
+        toPhone = normalized;
+        recipientFirstName =
+          recipientFirstName ||
+          (quote.customer_name as string | null)?.split(/\s+/)[0] ||
+          undefined;
+        customerIdForLog =
+          customerIdForLog ?? (quote.customer_id as string | null);
+        rendered = renderQuoteSendSms(business, {
+          firstName: recipientFirstName,
+          acceptUrl: `${origin}/accept/${quote.id}`,
+        });
+        break;
+      }
+      case "payment_retry": {
+        // Hydrate phone + name from the plan row's linked customer. Plan
+        // row also carries a `phone` column as a fallback (PressurePro-era
+        // rows didn't always denormalize customer rows).
+        const { data: plan, error: pErr } = await supabase
+          .from("maintenance_plans")
+          .select(
+            "id, customer_id, customer_name, phone, portal_token",
+          )
+          .eq("id", payload.context.plan_id)
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        if (pErr || !plan) return json({ error: "Plan not found" }, 404);
+
+        const callerPhone = payload.recipient?.phone;
+        let candidatePhone: string | null = null;
+        if (callerPhone && isValidPhone(callerPhone)) {
+          candidatePhone = callerPhone;
+        } else if (plan.customer_id) {
+          const { data: cust } = await supabase
+            .from("customers")
+            .select("phone, name")
+            .eq("id", plan.customer_id)
+            .maybeSingle();
+          if (cust?.phone && isValidPhone(cust.phone as string)) {
+            candidatePhone = cust.phone as string;
+          }
+          if (!recipientFirstName) {
+            recipientFirstName =
+              (cust?.name as string | null)?.trim().split(/\s+/)[0] ||
+              undefined;
+          }
+        }
+        if (!candidatePhone && plan.phone && isValidPhone(plan.phone as string)) {
+          candidatePhone = plan.phone as string;
+        }
+        if (!candidatePhone) {
+          return json({ error: "No phone on file for this plan" }, 400);
+        }
+        const normalized = normalizePhone(candidatePhone);
+        if (!normalized) {
+          return json({ error: "Could not normalize phone to E.164" }, 400);
+        }
+        toPhone = normalized;
+        recipientFirstName =
+          recipientFirstName ||
+          (plan.customer_name as string | null)?.split(/\s+/)[0] ||
+          undefined;
+        customerIdForLog =
+          customerIdForLog ?? (plan.customer_id as string | null);
+        rendered = renderPaymentRetrySms(business, {
+          firstName: recipientFirstName,
+          portalUrl: `${origin}/plans/portal/${plan.portal_token}`,
+        });
+        break;
+      }
       case "plan_confirmation": {
         const { data: plan, error: pErr } = await supabase
           .from("maintenance_plans")
@@ -271,11 +440,17 @@ Deno.serve(async (req) => {
     //    Twilio call below throws / 5xxs, and we also need it for the
     //    quiet-hours-blocked branch.
     // -----------------------------------------------------------------
+    // toPhone is guaranteed non-null here — every case branch either
+    // accepts the up-front-validated recipient (in which case it was
+    // set before the switch) or hydrates + sets it (quote_send).
+    if (!toPhone) {
+      return json({ error: "Could not resolve recipient phone" }, 400);
+    }
     const { data: logRow, error: logInsertErr } = await supabase
       .from("sms_log")
       .insert({
         user_id: userData.user.id,
-        customer_id: payload.customer_id ?? null,
+        customer_id: customerIdForLog,
         route_stop_id: payload.route_stop_id ?? null,
         kind: payload.kind,
         recipient_phone: toPhone,

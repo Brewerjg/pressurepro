@@ -52,6 +52,7 @@ const Quotes = lazy(() => import("./pages/Quotes"));
 const NewQuote = lazy(() => import("./pages/NewQuote"));
 const QuoteDetail = lazy(() => import("./pages/QuoteDetail"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
+const Inbox = lazy(() => import("./pages/Inbox"));
 
 const queryClient = new QueryClient();
 
@@ -125,6 +126,8 @@ const App = () => (
           <Route path="/quotes/new" element={<Protected><NewQuote /></Protected>} />
           <Route path="/quotes/:id" element={<Protected><QuoteDetail /></Protected>} />
           <Route path="/campaigns" element={<Protected><Campaigns /></Protected>} />
+          <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
+          <Route path="/inbox/:customerId" element={<Protected><Inbox /></Protected>} />
           <Route path="/calc" element={<Protected><ApplicationCalc /></Protected>} />
           <Route path="/chem-log" element={<Protected><ChemicalLog /></Protected>} />
           <Route path="/photos" element={<Protected><Photos /></Protected>} />

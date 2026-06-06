@@ -25,10 +25,13 @@ import {
   isValidEmail,
   renderCompleted,
   renderOnTheWay,
+  renderPaymentRetry,
   renderPlanConfirmation,
+  renderQuoteSend,
   renderReviewRequest,
   type BusinessInfo,
   type EmailKind,
+  type QuoteSendLine,
   type RenderedEmail,
 } from "../_shared/email-templates.ts";
 
@@ -42,13 +45,22 @@ interface Recipient {
 
 interface BasePayload {
   kind: EmailKind;
-  recipient: Recipient;
+  /**
+   * For most kinds the caller supplies the recipient. quote_send is an
+   * exception — it hydrates {email, name} from the quote row when omitted,
+   * so the operator doesn't have to re-derive what's already on the quote.
+   */
+  recipient?: Recipient;
   /** Optional foreign keys threaded through to email_log for traceability. */
   customer_id?: string | null;
   route_stop_id?: string | null;
 }
 
-interface OnTheWayPayload extends BasePayload {
+interface RequiredRecipientBasePayload extends BasePayload {
+  recipient: Recipient;
+}
+
+interface OnTheWayPayload extends RequiredRecipientBasePayload {
   kind: "on_the_way";
   context: {
     address: string;
@@ -56,7 +68,7 @@ interface OnTheWayPayload extends BasePayload {
   };
 }
 
-interface CompletedPayload extends BasePayload {
+interface CompletedPayload extends RequiredRecipientBasePayload {
   kind: "completed";
   context: {
     address: string;
@@ -64,7 +76,7 @@ interface CompletedPayload extends BasePayload {
   };
 }
 
-interface ReviewRequestPayload extends BasePayload {
+interface ReviewRequestPayload extends RequiredRecipientBasePayload {
   kind: "review_request";
   context: {
     quote_id?: string | null;
@@ -72,8 +84,25 @@ interface ReviewRequestPayload extends BasePayload {
   };
 }
 
-interface PlanConfirmationPayload extends BasePayload {
+interface PlanConfirmationPayload extends RequiredRecipientBasePayload {
   kind: "plan_confirmation";
+  context: {
+    plan_id: string;
+  };
+}
+
+interface QuoteSendPayload extends BasePayload {
+  kind: "quote_send";
+  context: {
+    quote_id: string;
+  };
+}
+
+// payment_retry hydrates {email, name, amount, card_last4, portal_token} from
+// the plan row. The caller (PlanDetail UI, or the payments-webhook on
+// invoice.payment_failed) only has to thread the plan_id.
+interface PaymentRetryPayload extends BasePayload {
+  kind: "payment_retry";
   context: {
     plan_id: string;
   };
@@ -83,7 +112,9 @@ type IncomingPayload =
   | OnTheWayPayload
   | CompletedPayload
   | ReviewRequestPayload
-  | PlanConfirmationPayload;
+  | PlanConfirmationPayload
+  | QuoteSendPayload
+  | PaymentRetryPayload;
 
 // ---------------------------------------------------------------------
 // Handler
@@ -116,8 +147,17 @@ Deno.serve(async (req) => {
 
     const payload = (await req.json()) as IncomingPayload;
     if (!payload?.kind) return json({ error: "Missing kind" }, 400);
-    if (!payload?.recipient?.email || !isValidEmail(payload.recipient.email)) {
-      return json({ error: "Invalid recipient email" }, 400);
+    // quote_send + payment_retry are allowed to omit the recipient — we
+    // hydrate it from the quote / plan row below. Every other kind must
+    // supply a valid recipient.email up-front because there's no DB row
+    // we can resolve it from.
+    if (payload.kind !== "quote_send" && payload.kind !== "payment_retry") {
+      if (
+        !payload?.recipient?.email ||
+        !isValidEmail(payload.recipient.email)
+      ) {
+        return json({ error: "Invalid recipient email" }, 400);
+      }
     }
 
     const apiKey = Deno.env.get("RESEND_API_KEY");
@@ -150,8 +190,15 @@ Deno.serve(async (req) => {
       Deno.env.get("PUBLIC_APP_ORIGIN") ||
       "https://example.com";
 
-    const recipientFirstName =
-      payload.recipient.name?.trim().split(/\s+/)[0] || undefined;
+    // For quote_send, the recipient is hydrated from the quote row in its
+    // case branch — until then it may legitimately be undefined. Every other
+    // kind already passed the up-front validation that requires a recipient,
+    // so the optional-chain here is just narrowing for the type system.
+    let recipientEmail = payload.recipient?.email ?? "";
+    let recipientName = payload.recipient?.name;
+    let recipientFirstName =
+      recipientName?.trim().split(/\s+/)[0] || undefined;
+    let customerIdForLog = payload.customer_id ?? null;
 
     // -----------------------------------------------------------------
     // Build the rendered email for the requested kind. Each branch can
@@ -203,6 +250,173 @@ Deno.serve(async (req) => {
         });
         break;
       }
+      case "quote_send": {
+        // Hydrate the quote row — the operator only passes us a quote_id;
+        // we derive customer name/email/address/lines from the row so the
+        // caller doesn't have to redundantly thread them through.
+        const { data: quote, error: qErr } = await supabase
+          .from("quotes")
+          .select(
+            "id, customer_id, customer_name, customer_email, address, lines, total, notes, expires_at",
+          )
+          .eq("id", payload.context.quote_id)
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        if (qErr || !quote) return json({ error: "Quote not found" }, 404);
+
+        // Caller-provided recipient takes precedence (lets the operator
+        // override "send to a different address" without editing the row);
+        // otherwise we pull customer_email straight off the quote.
+        const targetEmail =
+          (recipientEmail && isValidEmail(recipientEmail)
+            ? recipientEmail
+            : (quote.customer_email as string | null) ?? "") || "";
+        if (!targetEmail || !isValidEmail(targetEmail)) {
+          return json(
+            { error: "No customer_email on the quote" },
+            400,
+          );
+        }
+        recipientEmail = targetEmail;
+        recipientName = recipientName || (quote.customer_name as string);
+        recipientFirstName =
+          recipientFirstName ||
+          (recipientName?.trim().split(/\s+/)[0] || undefined);
+        customerIdForLog =
+          customerIdForLog ?? (quote.customer_id as string | null);
+
+        // Defensively coerce the JSON lines column into the
+        // QuoteSendLine[] shape. PressurePro-era rows store { sqft, rate,
+        // surface } which we translate; native TurfPro rows have
+        // { name, qty, rate, total }.
+        const rawLines = Array.isArray(quote.lines) ? quote.lines : [];
+        const lines: QuoteSendLine[] = rawLines
+          .map((r: unknown) => {
+            if (!r || typeof r !== "object") return null;
+            const obj = r as Record<string, unknown>;
+            // Legacy PressurePro: synthesize qty/rate from sqft × rate.
+            if (
+              typeof obj.sqft === "number" &&
+              typeof obj.rate === "number" &&
+              !("qty" in obj)
+            ) {
+              const qty = Number(obj.sqft) || 0;
+              const rate = Number(obj.rate) || 0;
+              const name =
+                (typeof obj.label === "string" && obj.label) ||
+                (typeof obj.surface === "string" && obj.surface) ||
+                "Service";
+              return {
+                name: String(name),
+                qty,
+                rate,
+                total:
+                  typeof obj.total === "number"
+                    ? Number(obj.total)
+                    : Math.round(qty * rate * 100) / 100,
+              };
+            }
+            const qty = Number(obj.qty) || 0;
+            const rate = Number(obj.rate) || 0;
+            const total =
+              typeof obj.total === "number"
+                ? Number(obj.total)
+                : Math.round(qty * rate * 100) / 100;
+            const name =
+              (typeof obj.name === "string" && obj.name) ||
+              (typeof obj.label === "string" && obj.label) ||
+              "Line";
+            return { name: String(name), qty, rate, total };
+          })
+          .filter((l): l is QuoteSendLine => l !== null);
+
+        rendered = renderQuoteSend(business, {
+          firstName: recipientFirstName,
+          shortId: (quote.id as string).slice(0, 4).toUpperCase(),
+          address: (quote.address as string | null) ?? null,
+          lines,
+          totalAmount: Number(quote.total ?? 0),
+          notes: (quote.notes as string | null) ?? null,
+          acceptUrl: `${origin}/accept/${quote.id}`,
+          expiresAt: (quote.expires_at as string | null) ?? null,
+        });
+        break;
+      }
+      case "payment_retry": {
+        // Hydrate from the plan row. Caller (PlanDetail UI or
+        // payments-webhook) only passes us plan_id — we pull amount,
+        // card_last4, portal_token, and the most-recent failed charge date
+        // out of the plan, and the email/name out of the linked customer.
+        const { data: plan, error: pErr } = await supabase
+          .from("maintenance_plans")
+          .select(
+            "id, customer_id, customer_name, amount, portal_token, card_last4, charge_history",
+          )
+          .eq("id", payload.context.plan_id)
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        if (pErr || !plan) return json({ error: "Plan not found" }, 404);
+
+        // Customer-side hydration. The plan can carry a customer_id; if it
+        // doesn't (older row), fall back to whatever the caller passed in.
+        let resolvedEmail = recipientEmail;
+        let resolvedName = recipientName;
+        if ((!resolvedEmail || !isValidEmail(resolvedEmail)) && plan.customer_id) {
+          const { data: cust } = await supabase
+            .from("customers")
+            .select("email, name")
+            .eq("id", plan.customer_id)
+            .maybeSingle();
+          if (cust?.email && isValidEmail(cust.email as string)) {
+            resolvedEmail = cust.email as string;
+          }
+          if (!resolvedName) {
+            resolvedName =
+              (cust?.name as string | null) ??
+              (plan.customer_name as string | null) ??
+              undefined;
+          }
+        }
+        if (!resolvedEmail || !isValidEmail(resolvedEmail)) {
+          return json(
+            { error: "No customer email on file for this plan" },
+            400,
+          );
+        }
+        recipientEmail = resolvedEmail;
+        recipientName = resolvedName;
+        recipientFirstName =
+          recipientFirstName ||
+          (resolvedName?.trim().split(/\s+/)[0]) ||
+          (plan.customer_name as string | null)?.split(/\s+/)[0] ||
+          undefined;
+        customerIdForLog =
+          customerIdForLog ?? (plan.customer_id as string | null);
+
+        // Best-effort: scrape the most recent failed entry off charge_history
+        // so the body can say "we tried to charge on May 21". The webhook
+        // appends entries with status='failed' on invoice.payment_failed.
+        let failedOnIso: string | null = null;
+        if (Array.isArray(plan.charge_history)) {
+          const history = plan.charge_history as Array<{
+            date?: string;
+            status?: string;
+          }>;
+          const failed = history.find(
+            (h) => h && (h.status === "failed" || h.status === "payment_failed"),
+          );
+          failedOnIso = failed?.date ?? null;
+        }
+
+        rendered = renderPaymentRetry(business, {
+          firstName: recipientFirstName,
+          amountCents: Math.round(Number(plan.amount) * 100),
+          failedOn: failedOnIso,
+          cardLast4: (plan.card_last4 as string | null) ?? null,
+          portalUrl: `${origin}/plans/portal/${plan.portal_token}`,
+        });
+        break;
+      }
       case "plan_confirmation": {
         const { data: plan, error: pErr } = await supabase
           .from("maintenance_plans")
@@ -248,10 +462,10 @@ Deno.serve(async (req) => {
       .from("email_log")
       .insert({
         user_id: userData.user.id,
-        customer_id: payload.customer_id ?? null,
+        customer_id: customerIdForLog,
         route_stop_id: payload.route_stop_id ?? null,
         kind: payload.kind,
-        recipient_email: payload.recipient.email,
+        recipient_email: recipientEmail,
         subject: rendered.subject,
         status: "queued",
       })
@@ -279,7 +493,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           from: fromAddress,
-          to: payload.recipient.email,
+          to: recipientEmail,
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,

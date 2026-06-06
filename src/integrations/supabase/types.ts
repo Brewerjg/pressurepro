@@ -300,6 +300,8 @@ export type Database = {
       profiles: {
         Row: {
           business_name: string | null
+          connect_completed_at: string | null
+          connect_ready: boolean
           created_at: string
           display_name: string | null
           google_place_id: string | null
@@ -316,6 +318,8 @@ export type Database = {
         }
         Insert: {
           business_name?: string | null
+          connect_completed_at?: string | null
+          connect_ready?: boolean
           created_at?: string
           display_name?: string | null
           google_place_id?: string | null
@@ -332,6 +336,8 @@ export type Database = {
         }
         Update: {
           business_name?: string | null
+          connect_completed_at?: string | null
+          connect_ready?: boolean
           created_at?: string
           display_name?: string | null
           google_place_id?: string | null

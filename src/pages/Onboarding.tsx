@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  CreditCard,
   Leaf,
   Loader2,
   SkipForward,
@@ -17,10 +18,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { seedDefaultLawnCatalog } from "@/components/onboarding/seedCatalog";
+import {
+  refreshConnectStatus,
+  startConnectOnboarding,
+} from "@/lib/connect-onboarding";
 
-// First-run wizard. Four steps; stepper at top; "Skip for now" anywhere bails
+// First-run wizard. Five steps; stepper at top; "Skip for now" anywhere bails
 // out but still stamps profiles.onboarded_at so the gate doesn't re-fire (we'd
 // rather let an operator escape than trap them on a screen they don't want).
+// Note: skipping at Step 5 still stamps onboarded_at — the operator just
+// isn't Connect-ready yet, which they can finish from Settings later.
 //
 // Why zip is the only required field in Step 1: it unblocks the live weather
 // strip on Home, which is the highest-perceived-value surface for a fresh
@@ -32,7 +39,13 @@ import { seedDefaultLawnCatalog } from "@/components/onboarding/seedCatalog";
 // Each step submits to Supabase and advances; on the final step we stamp
 // onboarded_at and navigate to Home.
 
-const TOTAL_STEPS = 4;
+// Five steps: business → crews → catalog → first customer → Stripe Connect.
+// Step 5 lives between "first customer" and the actual finish/navigate so
+// operators can immediately accept Connect-routed payments. Skipping Step 5
+// is fine — they can connect later from Settings. The wizard's final
+// onboarded_at stamp happens AFTER Step 5 regardless of whether they
+// connected or skipped, so the post-signup gate doesn't re-fire either way.
+const TOTAL_STEPS = 5;
 const MAX_CREWS = 3;
 
 const CREW_COLORS = [
@@ -55,7 +68,12 @@ const SEED_PREVIEW: ReadonlyArray<{ name: string; price: string }> = [
   { name: "+ 17 more (cleanups, fert, snow…)", price: "" },
 ];
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
+
+// Step 5 sub-state. When the wizard mounts at /onboarding?connect=return
+// we kick off a refresh_status call; the result determines what the
+// operator sees on Step 5 rather than restarting them at Step 1.
+type ConnectStatus = "idle" | "checking" | "ready" | "incomplete" | "error";
 
 type CrewDraft = { name: string; color: string };
 
@@ -97,8 +115,47 @@ export default function Onboarding() {
   const [custPhone, setCustPhone] = useState("");
   const [custAddress, setCustAddress] = useState("");
 
+  // Step 5 state — Stripe Connect onboarding status. Drives whether we
+  // render the "Connect Stripe" CTA, a "checking…" spinner, or a
+  // "Connected ✓" success card.
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
+  const [connectStarting, setConnectStarting] = useState(false);
+
   // Errors per step (we surface a single inline message instead of toasting).
   const [error, setError] = useState<string | null>(null);
+
+  // Detect ?connect=return on mount. Stripe bounces the operator back here
+  // with that query param after the hosted form completes (success OR
+  // user-abandoned-with-back-button). We jump straight to Step 5 and call
+  // refresh_status — DON'T restart the wizard from Step 1, that would be
+  // infuriating after the operator just spent 2 minutes in Stripe.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const search = new URLSearchParams(window.location.search);
+    const connectParam = search.get("connect");
+    if (connectParam !== "return") return;
+    setStep(5);
+    setConnectStatus("checking");
+    refreshConnectStatus()
+      .then((res) => {
+        setConnectStatus(res.ready ? "ready" : "incomplete");
+        queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+      })
+      .catch((err) => {
+        console.error("refreshConnectStatus failed", err);
+        setConnectStatus("error");
+        setError(
+          err instanceof Error ? err.message : "Could not verify Stripe status",
+        );
+      });
+    // Strip the query so a refresh of the page doesn't re-trigger the check
+    // (and so the next "Connect Stripe" click mints a fresh AccountLink).
+    const url = new URL(window.location.href);
+    url.searchParams.delete("connect");
+    window.history.replaceState({}, "", url.toString());
+    // We only run this once on mount — react-query handles its own keys.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- Mutations -----------------------------------------------------------
 
@@ -270,8 +327,12 @@ export default function Onboarding() {
     onError: (err) => setError(err instanceof Error ? err.message : "Couldn't seed catalog"),
   });
 
-  // Step 4 — optional customer + property insert, then finish.
-  const finishMutation = useMutation({
+  // Step 4 — optional customer + property insert, then ADVANCE to Step 5
+  // (Stripe Connect). We do NOT stamp onboarded_at here; that happens in
+  // completeMutation once the operator either connects or skips Step 5.
+  // This keeps the gate logic simple: onboarded_at is the single signal,
+  // set exactly once per wizard run.
+  const step4Mutation = useMutation({
     mutationFn: async (opts: { insertCustomer: boolean }) => {
       if (!user) throw new Error("Not signed in");
       if (opts.insertCustomer) {
@@ -300,14 +361,27 @@ export default function Onboarding() {
           if (propErr) throw propErr;
         }
       }
-      // CRITICAL: Ensure is_demo is false when onboarding completes
-      await upsertProfile({
-        onboarded_at: new Date().toISOString(),
-        is_demo: false
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
+      setError(null);
+      setStep(5);
+    },
+    onError: (err) => setError(err instanceof Error ? err.message : "Couldn't save customer"),
+  });
+
+  // Final stamp at the end of Step 5. Whether the operator connected
+  // Stripe or skipped, we set onboarded_at so the post-signup gate
+  // doesn't re-fire. is_demo stays false (same invariant as Step 4).
+  const completeMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Not signed in");
+      await upsertProfile({
+        onboarded_at: new Date().toISOString(),
+        is_demo: false,
+      });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile-onboarded", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       setError(null);
@@ -422,10 +496,39 @@ export default function Onboarding() {
               setCustPhone={setCustPhone}
               custAddress={custAddress}
               setCustAddress={setCustAddress}
-              submitting={finishMutation.isPending}
-              onFinish={(insertCustomer) =>
-                finishMutation.mutate({ insertCustomer })
+              submitting={step4Mutation.isPending}
+              onContinue={(insertCustomer) =>
+                step4Mutation.mutate({ insertCustomer })
               }
+              onBack={goBack}
+            />
+          )}
+
+          {step === 5 && (
+            <Step5
+              icon={<CreditCard className="h-5 w-5 text-green-700" strokeWidth={2} />}
+              status={connectStatus}
+              starting={connectStarting}
+              finishing={completeMutation.isPending}
+              onConnect={async () => {
+                setError(null);
+                setConnectStarting(true);
+                try {
+                  // Redirects the browser to Stripe. On success Stripe
+                  // bounces back to /onboarding?connect=return which the
+                  // mount effect picks up and re-runs refresh_status.
+                  await startConnectOnboarding();
+                } catch (err) {
+                  console.error(err);
+                  setConnectStarting(false);
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "Could not start Stripe Connect",
+                  );
+                }
+              }}
+              onFinish={() => completeMutation.mutate()}
               onBack={goBack}
             />
           )}
@@ -462,9 +565,15 @@ export default function Onboarding() {
 // ---- Stepper --------------------------------------------------------------
 
 function Stepper({ current }: { current: Step }) {
+  // Connector width tightens at 5 steps so the row still centers cleanly
+  // inside the max-w-md card on a 360px-wide phone (5 × 28px dots + 4
+  // connectors). The gap shrinks in lockstep so the visual rhythm stays
+  // consistent with the original 4-step layout.
+  const connectorWidth = TOTAL_STEPS >= 5 ? "w-4" : "w-6";
+  const rowGap = TOTAL_STEPS >= 5 ? "gap-1.5" : "gap-2";
   return (
     <div
-      className="flex items-center justify-center gap-2 mb-4"
+      className={cn("flex items-center justify-center mb-4", rowGap)}
       role="progressbar"
       aria-valuenow={current}
       aria-valuemin={1}
@@ -474,7 +583,7 @@ function Stepper({ current }: { current: Step }) {
         const isDone = n < current;
         const isCurrent = n === current;
         return (
-          <div key={n} className="flex items-center gap-2">
+          <div key={n} className={cn("flex items-center", rowGap)}>
             <div
               className={cn(
                 "h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold transition-colors",
@@ -488,7 +597,8 @@ function Stepper({ current }: { current: Step }) {
             {n < TOTAL_STEPS && (
               <div
                 className={cn(
-                  "h-px w-6 transition-colors",
+                  "h-px transition-colors",
+                  connectorWidth,
                   isDone ? "bg-green-700" : "bg-ink-200",
                 )}
               />
@@ -798,7 +908,7 @@ function Step4(props: {
   custAddress: string;
   setCustAddress: (v: string) => void;
   submitting: boolean;
-  onFinish: (insertCustomer: boolean) => void;
+  onContinue: (insertCustomer: boolean) => void;
   onBack: () => void;
 }) {
   const hasData =
@@ -806,7 +916,7 @@ function Step4(props: {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    props.onFinish(true);
+    props.onContinue(true);
   };
 
   return (
@@ -845,7 +955,7 @@ function Step4(props: {
         <BackButton onClick={props.onBack} />
         <button
           type="button"
-          onClick={() => props.onFinish(false)}
+          onClick={() => props.onContinue(false)}
           disabled={props.submitting}
           className="flex-1 h-11 rounded-2xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold hover:bg-ink-50 disabled:opacity-60"
         >
@@ -854,10 +964,115 @@ function Step4(props: {
       </div>
 
       <PrimaryButton submitting={props.submitting} type="submit" disabled={!hasData}>
-        <Check className="h-4 w-4" strokeWidth={2.4} />
-        Finish setup
+        <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
+        Continue
       </PrimaryButton>
     </form>
+  );
+}
+
+// ---- Step 5: Stripe Connect payouts ----------------------------------------
+
+function Step5(props: {
+  icon: React.ReactNode;
+  status: ConnectStatus;
+  starting: boolean;
+  finishing: boolean;
+  onConnect: () => void;
+  onFinish: () => void;
+  onBack: () => void;
+}) {
+  const { status } = props;
+  const isReady = status === "ready";
+  const isChecking = status === "checking";
+  const isIncomplete = status === "incomplete";
+
+  return (
+    <div className="space-y-3.5">
+      <StepHeader
+        icon={props.icon}
+        title="Connect your payouts"
+        subtitle="TurfPro charges your customers and deposits the money in your bank account. Connect Stripe once — takes about 2 minutes."
+      />
+
+      {isChecking && (
+        <div className="rounded-xl border border-ink-200 bg-ink-100/40 p-3 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-ink-500" />
+          <span className="text-[12.5px] text-ink-700">
+            Checking your Stripe account…
+          </span>
+        </div>
+      )}
+
+      {isReady && (
+        <div className="rounded-xl border border-green-700/30 bg-green-50/60 p-3 flex items-center gap-2">
+          <Check className="h-4 w-4 text-green-700" strokeWidth={2.6} />
+          <span className="text-[12.5px] font-semibold text-green-800">
+            Connected ✓ — payouts will flow to your Stripe account.
+          </span>
+        </div>
+      )}
+
+      {isIncomplete && (
+        <div className="rounded-xl border border-bronze-500/30 bg-bronze-100/40 p-3">
+          <div className="text-[12.5px] font-semibold text-bronze-700">
+            Almost there — Stripe needs more info.
+          </div>
+          <div className="text-[11.5px] text-ink-600 mt-0.5 leading-snug">
+            Tap "Connect Stripe" to finish the remaining fields.
+          </div>
+        </div>
+      )}
+
+      {!isReady && (
+        <div className="rounded-xl bg-green-50/60 border border-green-700/20 p-3 space-y-1.5">
+          <div className="text-[12.5px] text-ink-700 leading-snug">
+            On the free <span className="font-semibold">Pay-as-you-go</span> plan,
+            we take 2% per payment. On Solo / Pro / Crew, you keep
+            <span className="font-semibold"> 100%</span> of payments.
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <BackButton onClick={props.onBack} />
+        {!isReady && (
+          <button
+            type="button"
+            onClick={props.onFinish}
+            disabled={props.finishing || props.starting}
+            className="flex-1 h-11 rounded-2xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold hover:bg-ink-50 disabled:opacity-60"
+          >
+            {props.finishing ? (
+              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+            ) : (
+              "Skip — I'll do this later"
+            )}
+          </button>
+        )}
+      </div>
+
+      {isReady ? (
+        <PrimaryButton
+          submitting={props.finishing}
+          type="button"
+          onClick={props.onFinish}
+        >
+          <Check className="h-4 w-4" strokeWidth={2.4} />
+          Finish setup
+        </PrimaryButton>
+      ) : (
+        <PrimaryButton
+          submitting={props.starting || isChecking}
+          type="button"
+          onClick={props.onConnect}
+        >
+          <CreditCard className="h-4 w-4" strokeWidth={2.2} />
+          {isIncomplete ? "Finish Stripe setup" : "Connect Stripe"}
+          <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
+        </PrimaryButton>
+      )}
+    </div>
   );
 }
 

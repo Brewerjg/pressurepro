@@ -15,9 +15,12 @@ import {
 import {
   ArrowUp,
   ArrowDown,
+  ArrowUpRight,
+  DollarSign,
   Gauge,
   Users,
   AlertTriangle,
+  Receipt,
   Repeat,
   Wrench,
   Calendar as CalendarIcon,
@@ -27,6 +30,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { Route, RouteStop } from "@/components/routes/types";
 import { cn } from "@/lib/utils";
+import {
+  listManualPaymentsLifetime,
+  type ManualPayment,
+} from "@/lib/manual-payments";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { getTier, type TierId } from "@/lib/stripe";
 
 // Reports — TurfPro operator KPIs (v2). MRR is the headline (recurring is the
 // lawn-care default per TURFPRO_SPEC.md). v1 windows are still 30/60/90 day;
@@ -110,6 +119,18 @@ const monthlyValue = (plan: PlanRow): number => {
   return Number(plan.amount) / Number(plan.interval_months);
 };
 
+// Application fees — narrow projection from the new application_fees table
+// (migration 0020, populated by the Stripe Connect webhook). We pull a 6-month
+// trailing window so the current-month sum AND a 6-month sparkline can be
+// computed from a single fetch. The table may not yet be in the generated
+// Database types when this code lands, so we read it via the `as never` cast
+// pattern the rest of this file already uses for `routes` / `route_stops`.
+interface ApplicationFeeRow {
+  fee_amount_cents: number | null;
+  charge_amount_cents: number | null;
+  collected_at: string;
+}
+
 interface ReportData {
   plans: PlanRow[];
   routes: Route[]; // 52-week window — feeds seasonality + 30d-derived crew/$/drive
@@ -117,6 +138,9 @@ interface ReportData {
   crews: CrewRow[];
   quotes: QuoteRow[]; // last 90d, used for quote-vs-plan revenue split
   lifetimeStops: LifetimeStop[]; // ALL done stops — feeds true-lifetime totals
+  manualPayments: ManualPayment[]; // ALL manual (offline) payments — feeds the
+  // Cash + checks (30d) hero stat and the lifetime customer revenue rollup.
+  applicationFees: ApplicationFeeRow[]; // 6 months — feeds TurfPro fees card
 }
 
 async function fetchReportData(): Promise<ReportData> {
@@ -131,6 +155,14 @@ async function fetchReportData(): Promise<ReportData> {
   const fiftyTwoWeeksAgoDate = new Date(now - 52 * MS_PER_WEEK)
     .toISOString()
     .slice(0, 10);
+  // 6 months back for the application_fees window — covers the current-month
+  // sum AND the 6-bucket sparkline trend. Anchored to the 1st of (now-5mo) so
+  // the earliest bucket is a clean calendar month.
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setUTCDate(1);
+  sixMonthsAgo.setUTCHours(0, 0, 0, 0);
+  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 5);
+  const sixMonthsAgoIso = sixMonthsAgo.toISOString();
 
   const [
     plansRes,
@@ -138,6 +170,7 @@ async function fetchReportData(): Promise<ReportData> {
     stopsRes,
     crewsRes,
     quotesRes,
+    feesRes,
   ] = await Promise.all([
     supabase.from("maintenance_plans").select("*"),
     // routes table isn't in generated types — cast via `from` as any-keyed
@@ -158,6 +191,14 @@ async function fetchReportData(): Promise<ReportData> {
       .select("id, status, total, created_at")
       .in("status", ["accepted", "paid"])
       .gte("created_at", ninetyAgo),
+    // application_fees — populated by the Stripe Connect webhook (migration
+    // 0020, landing in parallel). We pull 6 months for the TurfPro fees card +
+    // sparkline. Cast pattern matches routes/route_stops above; if the table
+    // doesn't exist yet the request errors and we soft-fall-back to an empty
+    // list rather than failing the whole reports page.
+    (supabase.from("application_fees" as never) as never as ReturnType<typeof supabase.from>)
+      .select("fee_amount_cents, charge_amount_cents, collected_at")
+      .gte("collected_at", sixMonthsAgoIso),
   ]);
 
   if (plansRes.error) throw plansRes.error;
@@ -165,6 +206,15 @@ async function fetchReportData(): Promise<ReportData> {
   if (stopsRes.error) throw stopsRes.error;
   if (crewsRes.error) throw crewsRes.error;
   if (quotesRes.error) throw quotesRes.error;
+  // application_fees error is non-fatal — the table may not exist in the
+  // current environment yet. Log and fall through with an empty list so the
+  // rest of the report renders. Once the migration is universally applied
+  // this branch can tighten to `throw feesRes.error`.
+  if (feesRes.error) {
+    console.warn("[reports] application_fees fetch failed", feesRes.error);
+  }
+  const applicationFees =
+    (feesRes.data as unknown as ApplicationFeeRow[] | null) ?? [];
 
   // Stops carry an embedded `routes` join; keep that around for the aging
   // skip log which needs route.date for the 60d window.
@@ -204,6 +254,10 @@ async function fetchReportData(): Promise<ReportData> {
     if (offset > 50_000) break;
   }
 
+  // Manual (offline) payments — cash, checks, Venmo, etc. The list is
+  // small per operator so we fetch lifetime in one go and slice client-side.
+  const manualPayments = await listManualPaymentsLifetime();
+
   return {
     plans: (plansRes.data ?? []) as PlanRow[],
     routes: (routesRes.data ?? []) as unknown as Route[],
@@ -214,6 +268,8 @@ async function fetchReportData(): Promise<ReportData> {
     crews: (crewsRes.data ?? []) as CrewRow[],
     quotes: (quotesRes.data ?? []) as QuoteRow[],
     lifetimeStops,
+    manualPayments,
+    applicationFees,
   };
 }
 
@@ -263,6 +319,26 @@ interface Derived {
     count: number;
     atRisk: boolean;
   }>;
+  // Offline (cash/check/etc) money collected — last 30 days. Bronze card
+  // sitting beneath the MRR hero to make the breakout obvious.
+  manualPayments30d: {
+    totalCents: number;
+    paymentCount: number;
+  };
+  // Plans whose most recent charge entry is a failure in the last 30 days.
+  // Renders as a destructive-tinted card that links to /plans?filter=dunning.
+  paymentFailures30d: number;
+  // TurfPro application fees — current calendar month plus a 6-month trailing
+  // monthly trend for the sparkline. Charge volume (gross processed) is also
+  // surfaced so the operator can see the denominator behind the 2% fee.
+  turfproFees: {
+    currentMonthFeeCents: number;
+    currentMonthChargeCents: number;
+    currentMonthCount: number;
+    // 6 monthly buckets, oldest -> newest. monthLabel is e.g. "Jan", "Feb".
+    // The last bucket is the current (in-progress) calendar month.
+    monthlyTrend: Array<{ monthLabel: string; feeCents: number }>;
+  };
 }
 
 function deriveKPIs(data: ReportData): Derived {
@@ -393,7 +469,9 @@ function deriveKPIs(data: ReportData): Derived {
 
   // --- 6. Top customers — TRUE lifetime totals (all-time done stops) ---
   // v1 used a 90d proxy; v2 reads from the dedicated lifetime fetch which
-  // pages through every done stop the operator has logged.
+  // pages through every done stop the operator has logged. Manual (offline)
+  // payments roll into the same per-customer total via customer_id so a
+  // cash-paying regular shows up correctly in the leaderboard.
   const customerLifetime = new Map<
     string,
     {
@@ -426,6 +504,26 @@ function deriveKPIs(data: ReportData): Derived {
       cur.address = stop.address_snapshot ?? cur.address;
     }
     customerLifetime.set(stop.customer_id, cur);
+  }
+  // Roll manual payments into per-customer lifetime totals so cash-paying
+  // customers don't fall off the leaderboard. Voided payments are excluded.
+  for (const pmt of data.manualPayments) {
+    if (pmt.status === "voided") continue;
+    if (!pmt.customer_id) continue;
+    const fee = pmt.amount_cents / 100;
+    if (fee <= 0) continue;
+    const ts = new Date(pmt.received_at).getTime();
+    const cur = customerLifetime.get(pmt.customer_id) ?? {
+      name: "Customer",
+      address: null,
+      total: 0,
+      first: ts,
+      last: ts,
+    };
+    cur.total += fee;
+    if (ts < cur.first) cur.first = ts;
+    if (ts > cur.last) cur.last = ts;
+    customerLifetime.set(pmt.customer_id, cur);
   }
   const topCustomers = Array.from(customerLifetime.entries())
     .map(([id, v]) => ({
@@ -576,6 +674,105 @@ function deriveKPIs(data: ReportData): Derived {
     }))
     .sort((a, b) => b.count - a.count);
 
+  // --- 9b. Payment failures (30d) ---
+  // Count plans whose most-recent charge_history entry has status 'failed'
+  // (or 'payment_failed') AND the entry's date falls in the last 30 days.
+  // Webhook prepends new entries newest-first, so history[0] is the source
+  // of truth. We deliberately do NOT count plans where the failure is older
+  // than the window — those are likely either already resolved or the
+  // operator has stopped caring (the row's still surfaced on PlanDetail).
+  interface ChargeHistoryEntry {
+    date?: string;
+    status?: string;
+  }
+  let paymentFailures30d = 0;
+  for (const plan of data.plans) {
+    const history = plan.charge_history as unknown;
+    if (!Array.isArray(history) || history.length === 0) continue;
+    const latest = history[0] as ChargeHistoryEntry | null;
+    if (!latest || typeof latest !== "object") continue;
+    if (latest.status !== "failed" && latest.status !== "payment_failed") {
+      continue;
+    }
+    const ts = latest.date ? new Date(latest.date).getTime() : NaN;
+    if (!isFinite(ts) || ts < thirtyAgo) continue;
+    paymentFailures30d += 1;
+  }
+
+  // --- 9c. TurfPro application fees (current calendar month + 6mo trend) ---
+  // Buckets are calendar months in UTC (spec calls out "operator's local time
+  // approximated as UTC for v1"). The trend array is fixed-length 6, oldest
+  // first; the last bucket is the current in-progress month.
+  const nowDate = new Date(now);
+  const currentMonthStart = Date.UTC(
+    nowDate.getUTCFullYear(),
+    nowDate.getUTCMonth(),
+    1,
+  );
+  // Build 6 month buckets keyed by "YYYY-MM" for fast lookup.
+  const monthFmtShort = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  });
+  const trendBuckets: Array<{
+    key: string;
+    monthLabel: string;
+    feeCents: number;
+    startMs: number;
+  }> = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(currentMonthStart);
+    d.setUTCMonth(d.getUTCMonth() - i);
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+    trendBuckets.push({
+      key,
+      monthLabel: monthFmtShort.format(d),
+      feeCents: 0,
+      startMs: d.getTime(),
+    });
+  }
+  const trendByKey = new Map(trendBuckets.map((b) => [b.key, b]));
+
+  let currentMonthFeeCents = 0;
+  let currentMonthChargeCents = 0;
+  let currentMonthCount = 0;
+  for (const row of data.applicationFees) {
+    const ts = new Date(row.collected_at).getTime();
+    if (!isFinite(ts)) continue;
+    const d = new Date(ts);
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+    const bucket = trendByKey.get(key);
+    const feeCents = Number(row.fee_amount_cents ?? 0);
+    if (bucket) bucket.feeCents += feeCents;
+    if (ts >= currentMonthStart) {
+      currentMonthFeeCents += feeCents;
+      currentMonthChargeCents += Number(row.charge_amount_cents ?? 0);
+      currentMonthCount += 1;
+    }
+  }
+  const turfproFees = {
+    currentMonthFeeCents,
+    currentMonthChargeCents,
+    currentMonthCount,
+    monthlyTrend: trendBuckets.map((b) => ({
+      monthLabel: b.monthLabel,
+      feeCents: b.feeCents,
+    })),
+  };
+
+  // --- 10. Manual payments — last 30 days ---
+  // The headline number for the bronze "Cash + checks (30d)" card. Voided
+  // entries are excluded so the operator sees only money they actually have.
+  let manualPayments30dCents = 0;
+  let manualPayments30dCount = 0;
+  for (const pmt of data.manualPayments) {
+    if (pmt.status === "voided") continue;
+    const ts = new Date(pmt.received_at).getTime();
+    if (ts < thirtyAgo) continue;
+    manualPayments30dCents += pmt.amount_cents;
+    manualPayments30dCount += 1;
+  }
+
   return {
     mrr,
     mrrPrior,
@@ -592,6 +789,12 @@ function deriveKPIs(data: ReportData): Derived {
     topCustomers,
     lifetime,
     agingSkips,
+    manualPayments30d: {
+      totalCents: manualPayments30dCents,
+      paymentCount: manualPayments30dCount,
+    },
+    paymentFailures30d,
+    turfproFees,
   };
 }
 
@@ -601,6 +804,15 @@ export default function Reports() {
     queryFn: fetchReportData,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Subscription state drives the TurfPro fees card's framing. The hook
+  // returns `tier: null` for the no-subscription / no-active-sub state; we
+  // defensively coerce null -> 'payg' here for the purposes of this card so
+  // the operator on the implicit pay-as-you-go path sees the right copy and
+  // the upgrade callout math runs. Once the hook is updated to return 'payg'
+  // explicitly this coercion can be removed.
+  const subStatus = useSubscriptionStatus();
+  const effectiveTier: TierId = subStatus.tier ?? "payg";
 
   const k = useMemo(() => (data ? deriveKPIs(data) : null), [data]);
 
@@ -632,6 +844,41 @@ export default function Reports() {
             activePlans={k?.activePlans ?? 0}
             deltaPct={k?.mrrDeltaPct ?? 0}
           />
+
+          {/* TurfPro fees (this month) — sits between MRR and Cash+checks
+              inside the "money flow" cluster so the operator sees what they
+              pay TurfPro on PAYG before they see their cash intake. When
+              their MTD fees exceed Pro's $25 monthly the upgrade callout
+              below makes the savings math self-evident. */}
+          <section className="mx-4 mb-3.5">
+            <TurfProFeesCard
+              loading={isLoading || !k}
+              tier={effectiveTier}
+              fees={k?.turfproFees ?? null}
+            />
+          </section>
+
+          {/* Cash + checks (30d) — offline money sits directly below MRR so
+              the operator sees the two-channel revenue picture at a glance.
+              Bronze tone deliberately distinguishes it from Stripe-tracked
+              recurring revenue. */}
+          <section className="mx-4 mb-3.5">
+            <ManualPaymentsCard
+              loading={isLoading || !k}
+              totalCents={k?.manualPayments30d.totalCents ?? 0}
+              paymentCount={k?.manualPayments30d.paymentCount ?? 0}
+            />
+          </section>
+
+          {/* Payment failures (30d) — destructive-tinted card that links into
+              Plans?filter=dunning so the operator can triage failed cards in
+              one place. Only renders when count > 0 to avoid surfacing an
+              "0 failures" card in the happy path. */}
+          {(k?.paymentFailures30d ?? 0) > 0 && (
+            <section className="mx-4 mb-3.5">
+              <PaymentFailuresCard count={k?.paymentFailures30d ?? 0} />
+            </section>
+          )}
 
           {/* Churn — own row (drive-time sits below the new strategic cards) */}
           <section className="mx-4 mb-3">
@@ -808,6 +1055,255 @@ function HeroStat({ value, label }: { value: string; label: string }) {
       <div className="tp-num text-lg font-semibold">{value}</div>
       <div className="text-[11px] text-[#a8c9b7] mt-px">{label}</div>
     </div>
+  );
+}
+
+// =====================================================================
+// ManualPaymentsCard — "Cash + checks (30d)" hero stat.
+//
+// Visually tagged BRONZE (not green) so operators read it as offline /
+// uncleared money rather than confusing it with Stripe revenue. The label
+// is explicit ("Offline payments") and the count of payments is shown so
+// the operator can sense-check intake volume at a glance.
+// =====================================================================
+function ManualPaymentsCard({
+  loading,
+  totalCents,
+  paymentCount,
+}: {
+  loading: boolean;
+  totalCents: number;
+  paymentCount: number;
+}) {
+  if (loading) {
+    return <div className="tp-card p-3.5 h-[88px] animate-pulse bg-ink-100" />;
+  }
+  return (
+    <div className="rounded-[18px] bg-bronze-100 border border-bronze-400/40 p-3.5">
+      <div className="flex items-center gap-1.5 mb-1">
+        <DollarSign className="h-3.5 w-3.5 text-bronze-700" strokeWidth={2} />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-bronze-700">
+          Cash + checks · 30d
+        </div>
+      </div>
+      <div className="tp-num tp-display text-[26px] font-bold leading-none text-bronze-700">
+        {fmtUSD(totalCents / 100)}
+      </div>
+      <div className="text-[11px] text-bronze-700/80 mt-1.5">
+        Offline {paymentCount} payment{paymentCount === 1 ? "" : "s"} · not via Stripe
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// PaymentFailuresCard — "X plans with failed charges in the last 30 days"
+//
+// Destructive-tinted so it doesn't get confused with the green / bronze
+// revenue cards. Tap target is the whole card; navigates to
+// /plans?filter=dunning, where Plans.tsx interprets the query param and
+// restricts the list to plans whose most-recent charge entry is a failure.
+// =====================================================================
+function PaymentFailuresCard({ count }: { count: number }) {
+  return (
+    <Link
+      to="/plans?filter=dunning"
+      className="block rounded-[18px] bg-[hsl(var(--destructive-bg))] border border-destructive/30 p-3.5 active:scale-[0.99] transition-transform"
+    >
+      <div className="flex items-center gap-1.5 mb-1">
+        <AlertTriangle
+          className="h-3.5 w-3.5 text-destructive"
+          strokeWidth={2}
+        />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-destructive">
+          Payment failures · 30d
+        </div>
+      </div>
+      <div className="tp-num tp-display text-[26px] font-bold leading-none text-destructive">
+        {count}
+      </div>
+      <div className="text-[11px] text-destructive/85 mt-1.5">
+        {count === 1 ? "1 plan" : `${count} plans`} need attention · tap to triage
+      </div>
+    </Link>
+  );
+}
+
+// =====================================================================
+// TurfProFeesCard — "TurfPro fees this month" + Pro upgrade callout
+//
+// Shows the application fees the operator has accrued in the current
+// calendar month (from the application_fees table, populated by the
+// Stripe Connect webhook). Three render modes drive the framing:
+//
+//   1. Paid tier (solo / pro / crew) — fees are always $0 (0%
+//      application fee). Headline reads green; subtext reminds the
+//      operator their tier zeros out fees. No upgrade callout.
+//   2. PAYG, no fees processed this month — headline $0 with the
+//      "no card payments processed" note. Cash-only operators are
+//      explicitly NOT pushed to upgrade; the 2% on $0 is still $0.
+//   3. PAYG, fees > 0 — headline rendered in bronze. If the MTD fee
+//      exceeds Pro's $25/mo flat price, a bronze callout below the
+//      card shows the operator how much they'd save by switching.
+//
+// The 6-month sparkline at the bottom uses recharts LineChart at ~40px
+// height with the same palette as the other charts. It's rendered only
+// when at least one historical month has fees; otherwise the card stays
+// compact for first-time / cash-only operators.
+// =====================================================================
+function TurfProFeesCard({
+  loading,
+  tier,
+  fees,
+}: {
+  loading: boolean;
+  tier: TierId;
+  fees: Derived["turfproFees"] | null;
+}) {
+  if (loading || !fees) {
+    return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-ink-100" />;
+  }
+
+  const proPrice = getTier("pro").monthly.price; // $25
+  const crewPrice = getTier("crew").monthly.price; // $49
+  // Crew (0% fee) becomes the better deal vs Pro once the operator's
+  // 2% take exceeds $49 + $25 = wait, no — the apples-to-apples comparison
+  // is the same $0-fee tier swap. Crew saves more than Pro for ops over
+  // (49 - 25) / 0.02 = $1,200/mo MORE in processing than the Pro
+  // break-even, i.e. processing > ($49 / 0.02) = $2,450/mo.
+  const crewBreakEvenProcessing = (crewPrice / 0.02) * 100; // cents
+
+  const feeDollars = fees.currentMonthFeeCents / 100;
+  const chargeDollars = fees.currentMonthChargeCents / 100;
+
+  const isPayg = tier === "payg";
+  const hasFees = fees.currentMonthFeeCents > 0;
+
+  // Pro savings = (fees they paid on PAYG) - ($25 Pro flat). Only meaningful
+  // when positive; the upgrade callout gates on that.
+  const proSavingsDollars = feeDollars - proPrice;
+  const showUpgradeCallout = isPayg && proSavingsDollars > 0;
+
+  // Headline color rules per spec:
+  //  - $0 = green (good news)
+  //  - PAYG with fees the operator would save on by upgrading = bronze
+  //  - PAYG with fees below the upgrade threshold = ink (neutral — they're
+  //    on the right tier)
+  let headlineClass = "text-green-700";
+  if (hasFees) {
+    headlineClass = showUpgradeCallout ? "text-bronze-600" : "text-ink-900";
+  }
+
+  // Sub-line tier-aware copy.
+  let subline: string;
+  if (!isPayg) {
+    subline = `You're on ${getTier(tier).name} — no application fees.`;
+  } else if (!hasFees) {
+    subline = "No card payments processed this month.";
+  } else {
+    subline = "On Pay-as-you-go (2% per payment)";
+  }
+
+  // 6-month sparkline only if any historical fees exist. We deliberately
+  // include the current (in-progress) month — it's the rightmost dot the
+  // operator's eye lands on after reading the headline number.
+  const sparkData = fees.monthlyTrend.map((m) => ({
+    month: m.monthLabel,
+    fee: m.feeCents / 100,
+  }));
+  const sparkHasData = sparkData.some((d) => d.fee > 0);
+
+  return (
+    <>
+      <div className="tp-card p-3.5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Receipt className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
+          <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+            TurfPro fees · this month
+          </div>
+        </div>
+        <div
+          className={cn(
+            "tp-num tp-display text-[26px] font-bold leading-none",
+            headlineClass,
+          )}
+        >
+          {fmtUSD(feeDollars)}
+        </div>
+        <div className="text-[11px] text-ink-500 mt-1.5">{subline}</div>
+
+        {hasFees && (
+          <div className="text-[11px] text-ink-500 mt-1">
+            {fees.currentMonthCount} charge
+            {fees.currentMonthCount === 1 ? "" : "s"} · {fmtUSD(chargeDollars)}{" "}
+            total processed
+          </div>
+        )}
+
+        {sparkHasData && (
+          <div className="mt-3 -mx-1" style={{ height: 40 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={sparkData}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <XAxis dataKey="month" hide />
+                <YAxis hide domain={[0, "dataMax + 1"]} />
+                <Tooltip
+                  cursor={{ stroke: "hsl(150 6% 80%)", strokeDasharray: "3 3" }}
+                  formatter={(v: number) => [fmtUSD(v), "Fees"]}
+                  labelFormatter={(m: string) => m}
+                  contentStyle={{
+                    fontSize: 11,
+                    borderRadius: 8,
+                    border: "1px solid hsl(150 6% 88%)",
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="fee"
+                  stroke={
+                    showUpgradeCallout ? PALETTE.bronze500 : PALETTE.green700
+                  }
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {showUpgradeCallout && (
+        <Link
+          to="/pricing"
+          className="mt-3 block rounded-[18px] bg-bronze-100 border border-bronze-400/50 p-3.5 active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-start gap-2">
+            <ArrowUpRight
+              className="h-4 w-4 text-bronze-700 shrink-0 mt-0.5"
+              strokeWidth={2.2}
+            />
+            <div className="flex-1">
+              <div className="text-[13.5px] font-semibold text-bronze-700 leading-tight">
+                You'd save {fmtUSD(proSavingsDollars)} by switching to Pro this
+                month.
+              </div>
+              <div className="text-[11.5px] text-bronze-700/85 mt-1 leading-snug">
+                Pay {fmtUSD(proPrice)} flat instead of {fmtUSD(feeDollars)} in
+                fees. Crew at {fmtUSD(crewPrice)} starts saving for processors
+                over {fmtUSD(crewBreakEvenProcessing / 100)}/mo.
+              </div>
+              <div className="inline-flex items-center gap-1 mt-2 text-[12px] font-semibold text-bronze-700">
+                Switch to Pro
+                <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+    </>
   );
 }
 

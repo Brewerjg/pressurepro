@@ -83,24 +83,72 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, status: action, note: "no_stripe_sub" });
     }
 
+    // ----- Connect routing detection -----
+    // If create-plan-subscription set transfer_data + application_fee_percent
+    // on the subscription, the subscription LIVES on the operator's connected
+    // account — NOT the platform account. Stripe API calls against it must
+    // include the `stripeAccount` request option so they're scoped correctly.
+    //
+    // We try a platform-account retrieve first; if Stripe returns
+    // "resource_missing" (or similar) we know it's a connected-account
+    // subscription. Cheaper: look it up on the operator's profile and use
+    // that account directly if profiles.stripe_account_id is set, then
+    // verify application_fee_percent is non-null to confirm.
+    let stripeAccount: string | undefined;
+    try {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("stripe_account_id")
+        .eq("id", userId)
+        .maybeSingle();
+      const acct = profile?.stripe_account_id as string | null;
+      if (acct) {
+        // Probe the connected account: if the sub exists there with
+        // application_fee_percent set, we route mutations through it.
+        try {
+          const subOnAcct = await stripe.subscriptions.retrieve(
+            plan.stripe_subscription_id,
+            {} as never,
+            { stripeAccount: acct } as never,
+          );
+          if (subOnAcct && subOnAcct.application_fee_percent != null) {
+            stripeAccount = acct;
+          }
+        } catch {
+          // Sub isn't on the connected account — falls through to
+          // platform-account behavior below.
+        }
+      }
+    } catch (e) {
+      console.warn("profile lookup for Connect routing failed", e);
+    }
+
+    const reqOpts = stripeAccount ? ({ stripeAccount } as never) : undefined;
+
     if (action === "pause") {
-      await stripe.subscriptions.update(plan.stripe_subscription_id, {
-        pause_collection: { behavior: "mark_uncollectible" },
-      });
+      await stripe.subscriptions.update(
+        plan.stripe_subscription_id,
+        { pause_collection: { behavior: "mark_uncollectible" } },
+        reqOpts,
+      );
       return jsonResponse({ ok: true, status: "paused" });
     }
     if (action === "resume") {
       // Stripe wants pause_collection set to '' / null to clear it. The
       // SDK accepts null via the typed shape.
-      await stripe.subscriptions.update(plan.stripe_subscription_id, {
-        pause_collection: null as never,
-      });
+      await stripe.subscriptions.update(
+        plan.stripe_subscription_id,
+        { pause_collection: null as never },
+        reqOpts,
+      );
       return jsonResponse({ ok: true, status: "active" });
     }
     // cancel
-    await stripe.subscriptions.update(plan.stripe_subscription_id, {
-      cancel_at_period_end: true,
-    });
+    await stripe.subscriptions.update(
+      plan.stripe_subscription_id,
+      { cancel_at_period_end: true },
+      reqOpts,
+    );
     return jsonResponse({ ok: true, status: "canceling_at_period_end" });
   } catch (e) {
     console.error("mutate-plan-subscription error:", e);

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Repeat, ChevronRight, Calendar } from "lucide-react";
+import { AlertTriangle, Plus, Repeat, ChevronRight, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,20 @@ type LawnPlan = Database["public"]["Tables"]["maintenance_plans"]["Row"] & {
 };
 
 type StatusFilter = "active" | "paused" | "canceled" | "all";
+
+// `?filter=dunning` (set by the Reports "Payment failures (30d)" card)
+// restricts the list to plans whose most recent charge_history entry is a
+// failure. We surface this as a banner ABOVE the status tabs rather than
+// adding a fifth tab, since dunning crosses statuses (an active plan can
+// be dunning; a canceled plan won't be).
+type ChargeEntry = { status?: string; date?: string };
+const isPlanDunning = (plan: LawnPlan): boolean => {
+  const history = plan.charge_history as unknown;
+  if (!Array.isArray(history) || history.length === 0) return false;
+  const latest = history[0] as ChargeEntry | null;
+  if (!latest || typeof latest !== "object") return false;
+  return latest.status === "failed" || latest.status === "payment_failed";
+};
 
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
@@ -60,6 +74,8 @@ const monthlyRevenue = (plan: LawnPlan) => {
 };
 
 export default function Plans() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dunningMode = searchParams.get("filter") === "dunning";
   const [filter, setFilter] = useState<StatusFilter>("active");
 
   const { data: plans, isLoading, error } = useQuery({
@@ -85,9 +101,20 @@ export default function Plans() {
 
   const filtered = useMemo(() => {
     if (!plans) return [];
+    // Dunning mode trumps the status tab — operator landed here to triage
+    // failed payments, so we restrict the list to plans whose most recent
+    // charge_history entry is a failure. The status tabs still render so
+    // they can switch back (clicking any tab clears the dunning param).
+    if (dunningMode) return plans.filter(isPlanDunning);
     if (filter === "all") return plans;
     return plans.filter((p) => p.status === filter);
-  }, [plans, filter]);
+  }, [plans, filter, dunningMode]);
+
+  const clearDunning = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("filter");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className="pt-3">
@@ -113,16 +140,50 @@ export default function Plans() {
         </Link>
       </header>
 
+      {/* Dunning banner — explains why the list is restricted. */}
+      {dunningMode && (
+        <section className="mx-4 mb-3">
+          <div className="rounded-[14px] bg-[hsl(var(--destructive-bg))] border border-destructive/30 px-3.5 py-2.5 flex items-center gap-2.5">
+            <AlertTriangle
+              className="h-4 w-4 text-destructive shrink-0"
+              strokeWidth={2}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-[12.5px] font-bold text-destructive">
+                Payment failures
+              </div>
+              <div className="text-[11px] text-destructive/85 mt-0.5">
+                Showing plans whose last charge failed. Open a plan to send a
+                retry link.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={clearDunning}
+              className="text-[11.5px] font-semibold text-destructive underline"
+            >
+              Clear
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* Status filter — segmented control */}
       <section className="mx-4 mb-3">
         <div className="tp-card p-1 flex gap-1">
           {STATUS_TABS.map((tab) => {
-            const isActive = filter === tab.key;
+            // Dunning mode visually disables the segmented control (the list
+            // ignores the tab anyway). Clicking any tab also clears dunning
+            // so the operator returns to the normal filter UX.
+            const isActive = !dunningMode && filter === tab.key;
             return (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setFilter(tab.key)}
+                onClick={() => {
+                  setFilter(tab.key);
+                  if (dunningMode) clearDunning();
+                }}
                 className={cn(
                   "flex-1 py-2 rounded-[12px] text-[12px] font-semibold transition-colors",
                   isActive

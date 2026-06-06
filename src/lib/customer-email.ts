@@ -12,7 +12,9 @@ export type EmailKind =
   | "on_the_way"
   | "completed"
   | "review_request"
-  | "plan_confirmation";
+  | "plan_confirmation"
+  | "quote_send"
+  | "payment_retry";
 
 export interface CustomerEmailResult {
   ok: boolean;
@@ -22,7 +24,11 @@ export interface CustomerEmailResult {
 
 interface InvokeArgs {
   kind: EmailKind;
-  recipient: { email: string; name?: string };
+  /**
+   * quote_send hydrates {email, name} server-side from the quote row when
+   * omitted; every other kind requires it up-front.
+   */
+  recipient?: { email: string; name?: string };
   customer_id?: string | null;
   route_stop_id?: string | null;
   context: Record<string, unknown>;
@@ -151,5 +157,45 @@ export async function sendPlanConfirmation(
     recipient,
     customer_id: customerId ?? null,
     context: { plan_id: planId },
+  });
+}
+
+/**
+ * Send a "your card was declined, please update it" email tied to a plan.
+ *
+ * Caller threads only the plan_id; the edge function hydrates the customer
+ * email (via plan.customer_id → customers.email), amount, card last4, and
+ * the portal URL from the plan row. The customer lands on the existing
+ * /plans/portal/{token} page which links into the Stripe Billing Portal
+ * for the actual card update.
+ *
+ * Non-throwing — the operator's PlanDetail UI fires this and a SMS in
+ * parallel; we don't want one transport's failure to derail the other.
+ */
+export async function sendPaymentRetryLink(
+  planId: string,
+): Promise<CustomerEmailResult> {
+  return invokeEmail({
+    kind: "payment_retry",
+    context: { plan_id: planId },
+  });
+}
+
+/**
+ * Send the customer their quote — the email includes line items, total,
+ * any operator-authored notes, and a "View & accept" CTA pointing at the
+ * public /accept/{quote_id} page.
+ *
+ * Recipient is resolved server-side from the quote row (customer_email +
+ * customer_name) so callers don't have to re-hydrate. Returns the standard
+ * non-throwing `{ ok, error }` shape — Send is fire-and-forget on the
+ * NewQuote/QuoteDetail paths; UI shouldn't block on a 5xx.
+ */
+export async function sendQuote(
+  quoteId: string,
+): Promise<CustomerEmailResult> {
+  return invokeEmail({
+    kind: "quote_send",
+    context: { quote_id: quoteId },
   });
 }

@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Database, Json } from "@/integrations/supabase/types";
 import QuoteForm, { type QuoteFormValues } from "@/components/quotes/QuoteForm";
 import { quoteTotal } from "@/components/quotes/types";
+import { sendQuote } from "@/lib/customer-email";
+import { sendQuoteSms } from "@/lib/customer-sms";
 
 // NewQuote — the operator-side "author a quote" page. Routed at /quotes/new.
 // Accepts ?customer=<id> so CustomerDetail can deep-link with a prefilled
@@ -46,11 +48,6 @@ export default function NewQuote() {
       const status: Database["public"]["Enums"]["quote_status"] =
         action === "send" ? "sent" : "draft";
 
-      // TODO: when action === "send", wire send-customer-email with kind:
-      // 'quote_send'. Adding the email kind crosses the email agent's
-      // namespace, so we just flip status -> 'sent' and rely on the
-      // operator's own channel (or QuoteDetail's Resend) for now.
-
       const insert: QuoteInsert = {
         user_id: user.id,
         customer_id: values.customer_id || null,
@@ -76,7 +73,31 @@ export default function NewQuote() {
         .select("id")
         .single();
       if (error) throw error;
-      return data.id as string;
+      const quoteId = data.id as string;
+
+      // Fire-and-forget customer comms when the operator picked "Send".
+      // We don't roll back the row on a send failure — the status pill
+      // reflects what the operator chose to do; an email/SMS hiccup is
+      // logged in email_log/sms_log and surfaced in the inline error.
+      // Email always goes if there's an address on file; SMS only fires
+      // when there's a phone — quiet-hours/Twilio config are handled in
+      // the edge function. This matches the "lean, always-send-if-channel
+      // -available" behavior from the spec.
+      if (action === "send") {
+        if (values.customer_email) {
+          const r = await sendQuote(quoteId);
+          if (!r.ok) {
+            console.warn("sendQuote failed:", r.error);
+          }
+        }
+        if (values.phone) {
+          const r = await sendQuoteSms(quoteId);
+          if (!r.ok && !r.deferred) {
+            console.warn("sendQuoteSms failed:", r.error);
+          }
+        }
+      }
+      return quoteId;
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });

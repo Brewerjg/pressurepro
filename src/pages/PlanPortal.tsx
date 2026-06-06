@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
+import { nextVisitDate } from "@/lib/next-visit";
 
 // Public plan-management portal for TurfPro maintenance customers.
 // Unlike PressurePro (which immediately mints a Stripe billing portal
@@ -32,6 +33,19 @@ interface Plan {
   card_last4: string | null;
   user_id: string;
   portal_token: string;
+  // Service-cadence fields. Added in 0001_turfpro_lawn_care.sql. day_of_week
+  // is nullable when the operator hasn't assigned a route day yet.
+  day_of_week: number | null;
+  frequency: string;
+  start_date: string;
+}
+
+interface NextVisitInfo {
+  date: Date;
+  // Soft prediction of arrival window, derived from this customer's route
+  // stop sort_order. null when there's no scheduled route_stop matching
+  // the visit date (typical until the operator builds that day's route).
+  approxTimeLabel: string | null;
 }
 
 interface BusinessInfo {
@@ -63,6 +77,7 @@ const PlanPortal = () => {
   const { token } = useParams();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [business, setBusiness] = useState<BusinessInfo>({ business: "", phone: "" });
+  const [nextVisit, setNextVisit] = useState<NextVisitInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -75,10 +90,21 @@ const PlanPortal = () => {
       return;
     }
     (async () => {
-      const { data, error } = await supabase
+      // Cast: day_of_week / frequency / start_date were added in migration
+      // 0001 and are present in generated types, but the runtime select
+      // string drives the response shape — we narrow to Plan after.
+      const { data, error } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (cols: string) => {
+            eq: (k: string, v: string) => {
+              maybeSingle: () => Promise<{ data: Plan | null; error: unknown }>;
+            };
+          };
+        };
+      })
         .from("maintenance_plans")
         .select(
-          "id, customer_name, address, amount, interval_months, next_charge_date, services, status, card_last4, user_id, portal_token",
+          "id, customer_name, address, amount, interval_months, next_charge_date, services, status, card_last4, user_id, portal_token, day_of_week, frequency, start_date",
         )
         .eq("portal_token", token)
         .maybeSingle();
@@ -87,12 +113,56 @@ const PlanPortal = () => {
         setLoading(false);
         return;
       }
-      setPlan(data as unknown as Plan);
+      const planRow = data as Plan;
+      setPlan(planRow);
       const { data: prof } = await supabase.rpc("public_business_info", {
-        p_user_id: (data as { user_id: string }).user_id,
+        p_user_id: planRow.user_id,
       });
       const row = prof?.[0];
       if (row) setBusiness({ business: row.business_name ?? "", phone: row.phone ?? "" });
+
+      // Compute the next visit + (optionally) the approx arrival window.
+      // Only meaningful for active plans — paused/canceled customers don't
+      // have an upcoming visit.
+      if (planRow.status === "active") {
+        const visit = nextVisitDate({
+          day_of_week: planRow.day_of_week,
+          frequency: planRow.frequency,
+          start_date: planRow.start_date,
+        });
+        if (visit) {
+          let approxTimeLabel: string | null = null;
+          // Look up a route_stop on this date for this plan. RLS will
+          // silently return zero rows for the unauth'd public client; that's
+          // fine — we just won't show a time estimate. (When the operator's
+          // RLS policy is later extended to portal-token-scoped access this
+          // will start showing.)
+          const ymd = visit.toISOString().slice(0, 10);
+          const { data: stopRows } = await (supabase as unknown as {
+            from: (t: string) => {
+              select: (cols: string) => {
+                eq: (k: string, v: string) => {
+                  eq: (k2: string, v2: string) => Promise<{ data: Array<{ sort_order: number; routes: { date: string } | null }> | null }>;
+                };
+              };
+            };
+          })
+            .from("route_stops")
+            .select("sort_order, routes!inner(date)")
+            .eq("plan_id", planRow.id)
+            .eq("routes.date", ymd);
+          const stop = stopRows?.[0];
+          if (stop) {
+            approxTimeLabel = approxArrivalLabel(stop.sort_order);
+          }
+          setNextVisit({ date: visit, approxTimeLabel });
+        }
+        // TODO: weather caveat (e.g. "may be rescheduled if rain") — the
+        // existing useForecast hook requires operator auth. A public-safe
+        // path could call the forecast edge function with just the zip from
+        // plan.address; skipped for v1.
+      }
+
       setLoading(false);
     })();
   }, [token]);
@@ -260,6 +330,38 @@ const PlanPortal = () => {
           )}
         </section>
 
+        {/* Your next visit — only meaningful for active plans where we
+            can compute a real day. Paused/canceled plans skip this. */}
+        {plan.status === "active" && nextVisit && (
+          <section>
+            <h2 className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground mb-2.5">
+              Your next visit
+            </h2>
+            <div className="tp-card p-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-green-50 text-green-800 flex items-center justify-center shrink-0">
+                  <CalendarClock className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-sm text-ink-900">
+                    {fmtVisitDate(nextVisit.date)}
+                  </div>
+                  {nextVisit.approxTimeLabel && (
+                    <div className="text-[12px] text-muted-foreground mt-0.5">
+                      Around {nextVisit.approxTimeLabel}
+                    </div>
+                  )}
+                  {!nextVisit.approxTimeLabel && (
+                    <div className="text-[12px] text-muted-foreground mt-0.5">
+                      We'll send a heads-up the night before.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Actions */}
         {!isCanceled && (
           <section>
@@ -389,6 +491,31 @@ function addMonths(iso: string, months: number): string {
   const d = new Date(iso);
   d.setMonth(d.getMonth() + (months || 1));
   return d.toISOString().slice(0, 10);
+}
+
+// Rough arrival-window guess for a route_stop. We assume operators start
+// their first stop at 8:00 am and that each stop takes ~25 minutes including
+// drive time. This is intentionally fuzzy ("~10:30 am") because:
+//   - real-world routes vary by traffic, weather, and equipment problems,
+//   - we don't yet have the operator's actual start hour on a profile, and
+//   - over-promising would erode trust on the first late visit.
+function approxArrivalLabel(sortOrder: number | null | undefined): string | null {
+  if (sortOrder == null || sortOrder < 0) return null;
+  const totalMinutes = 8 * 60 + sortOrder * 25;
+  const hour = Math.floor(totalMinutes / 60) % 24;
+  const min = totalMinutes % 60;
+  const period = hour < 12 ? "am" : "pm";
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  const minStr = min === 0 ? "00" : min < 10 ? `0${min}` : `${min}`;
+  return `~${displayHour}:${minStr} ${period}`;
+}
+
+function fmtVisitDate(d: Date): string {
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // Inline confirmation view shown immediately after an action completes

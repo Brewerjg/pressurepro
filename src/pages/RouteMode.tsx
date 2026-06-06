@@ -22,6 +22,9 @@ import {
   DollarSign,
   Mail,
   Camera,
+  CloudOff,
+  MapPin,
+  RefreshCw,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +33,18 @@ import { cn } from "@/lib/utils";
 import { sendCompleted, sendOnTheWay } from "@/lib/customer-email";
 import { sendCompletedSms, sendOnTheWaySms } from "@/lib/customer-sms";
 import { openExternalUrl } from "@/lib/native-maps";
+import {
+  recordPayment,
+  type ManualPaymentMethod,
+} from "@/lib/manual-payments";
+import {
+  cacheRoute,
+  loadCachedRoute,
+  clearCachedRoute,
+  queueMutation,
+  flushPendingMutations,
+  pendingMutationCount,
+} from "@/lib/offline-cache";
 import type {
   Route,
   RouteStop,
@@ -50,6 +65,10 @@ interface PropertyFlags {
 }
 type RouteStopWithProperty = RouteStop & {
   properties: PropertyFlags | null;
+  // 0017_time_tracking.sql additions — typed locally because the generated
+  // Database type doesn't know about them yet.
+  arrival_adjusted?: boolean | null;
+  assigned_user_id?: string | null;
 };
 type RouteWithStops = Route & {
   route_stops?: RouteStopWithProperty[];
@@ -77,11 +96,72 @@ export default function RouteMode() {
   const [skipOpen, setSkipOpen] = useState(false);
 
   // Live-tick the elapsed clock once a minute. Stored in state so React
-  // re-renders the "Elapsed" pill without us having to thread refs through.
+  // re-renders the "Elapsed" pill — and the per-stop "On site since"
+  // elapsed counter — without us having to thread refs through.
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), 60_000);
     return () => window.clearInterval(id);
+  }, []);
+
+  // -----------------------------------------------------------------
+  // Offline awareness. We track navigator.onLine so the active-stop
+  // card can show a small "Offline — N pending" pill, and so we can
+  // skip the network round-trip for mutations and go straight to the
+  // queue when the radio is down.
+  //
+  // Pending count is read async (Capacitor Preferences is a promise on
+  // native) and refreshed whenever we enqueue or flush.
+  // -----------------------------------------------------------------
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== "undefined" ? navigator.onLine : true,
+  );
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const refreshPendingCount = async () => {
+    try {
+      const n = await pendingMutationCount();
+      setPendingCount(n);
+    } catch {
+      // ignore — pending count is decorative
+    }
+  };
+
+  useEffect(() => {
+    void refreshPendingCount();
+  }, []);
+
+  // Online/offline event listeners + flush-on-reconnect. When the radio
+  // comes back, we replay queued mutations in the background and surface
+  // a banner only if some failed (e.g. RLS denied, row deleted).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onOnline = () => {
+      setIsOnline(true);
+      void (async () => {
+        const res = await flushPendingMutations(supabase);
+        await refreshPendingCount();
+        if (res.failed > 0) {
+          setSyncError(
+            `${res.failed} action${res.failed === 1 ? "" : "s"} couldn't sync`,
+          );
+        } else if (res.ok > 0) {
+          // Successful drain — invalidate so the UI reflects DB state.
+          await qc.invalidateQueries({ queryKey: ["route-mode", routeId] });
+        }
+      })();
+    };
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+    // routeId / qc are stable per mount; we deliberately don't list them
+    // to avoid re-binding listeners on every navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // -----------------------------------------------------------------
@@ -93,19 +173,34 @@ export default function RouteMode() {
     enabled: !!routeId,
     queryFn: async (): Promise<RouteWithStops | null> => {
       if (!routeId) return null;
-      const { data, error } = await (supabase as any)
-        .from("routes")
-        .select(
-          `*,
-           route_stops (
-             *,
-             properties (gate_code, dog_warning, slope_warning, pet_safe_only, irrigation_present)
-           )`,
-        )
-        .eq("id", routeId)
-        .single();
-      if (error) throw error;
-      return data as RouteWithStops;
+      try {
+        const { data, error } = await (supabase as any)
+          .from("routes")
+          .select(
+            `*,
+             route_stops (
+               *,
+               properties (gate_code, dog_warning, slope_warning, pet_safe_only, irrigation_present)
+             )`,
+          )
+          .eq("id", routeId)
+          .single();
+        if (error) throw error;
+        // Persist a snapshot for offline fall-back on subsequent loads.
+        // Fire-and-forget — caching latency shouldn't block render.
+        void cacheRoute(routeId, data);
+        return data as RouteWithStops;
+      } catch (err) {
+        // Network down or Supabase unreachable: try the cache. If we have
+        // a snapshot, the operator can keep working through skips /
+        // Mark-done; mutations will queue and flush on reconnect.
+        const cached = await loadCachedRoute(routeId);
+        if (cached) {
+          console.warn("[RouteMode] using cached route payload:", err);
+          return cached as RouteWithStops;
+        }
+        throw err;
+      }
     },
   });
 
@@ -178,6 +273,16 @@ export default function RouteMode() {
   const [onTheWayStatus, setOnTheWayStatus] = useState<
     null | { kind: "success" | "error" | "sending"; message: string }
   >(null);
+
+  // Inline manual-payment form for the active stop card. When open we
+  // render a small mini-form below the action row. Closed (default) state
+  // shows just the "+ Payment" pill.
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Inline "Forgot to clock arrival?" picker. Shows 5/10/15-min-ago
+  // chips. Closed by default — just a small text link until tapped.
+  const [backfillOpen, setBackfillOpen] = useState(false);
 
   // -----------------------------------------------------------------
   // If we land on a 'planned' route, flip it to 'in_progress' once.
@@ -257,23 +362,81 @@ export default function RouteMode() {
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // Wrapper for "try network, queue on failure / when offline." Returns
+  // true if we got the mutation to the server, false if we queued it.
+  // Caller side-effects (email/SMS, banners) decide whether to fire based
+  // on this — we still trigger Mark-done emails even if we're offline,
+  // because the email-send function itself queues too (Resend retries are
+  // server-side once the request lands).
+  async function networkOrQueue(
+    fn: () => Promise<void>,
+    fallback: Parameters<typeof queueMutation>[0],
+  ): Promise<{ delivered: boolean }> {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await queueMutation(fallback);
+      await refreshPendingCount();
+      return { delivered: false };
+    }
+    try {
+      await fn();
+      return { delivered: true };
+    } catch (err) {
+      console.warn("[RouteMode] mutation failed, queueing:", err);
+      await queueMutation(fallback);
+      await refreshPendingCount();
+      return { delivered: false };
+    }
+  }
+
   const markDoneMutation = useMutation({
     mutationFn: async (stopId: string) => {
-      const { error } = await (supabase as any)
-        .from("route_stops")
-        .update({ status: "done", completed_at: new Date().toISOString() })
-        .eq("id", stopId);
-      if (error) throw error;
+      const now = new Date().toISOString();
+      // Find the current snapshot so we can auto-backfill arrived_at if
+      // the operator never tapped Arrive. We stamp arrival_adjusted=true
+      // so reports can flag "we don't have real on-site data on this
+      // stop" without lying about the timestamp.
+      const snap = stops.find((s) => s.id === stopId);
+      const needsArrivalBackfill = !!snap && !snap.arrived_at;
+      const update: Record<string, unknown> = {
+        status: "done",
+        completed_at: now,
+      };
+      if (needsArrivalBackfill) {
+        update.arrived_at = now;
+        update.arrival_adjusted = true;
+      }
+      await networkOrQueue(
+        async () => {
+          const { error } = await (supabase as any)
+            .from("route_stops")
+            .update(update)
+            .eq("id", stopId);
+          if (error) throw error;
+        },
+        { kind: "mark_done", stop_id: stopId, at: now },
+      );
+      // If we backfilled arrival, also queue an arrive mutation so the
+      // server eventually learns about it (the mark_done queue entry
+      // alone doesn't carry arrived_at).
+      if (needsArrivalBackfill && navigator.onLine === false) {
+        await queueMutation({
+          kind: "arrive",
+          stop_id: stopId,
+          at: now,
+          adjusted: true,
+        });
+        await refreshPendingCount();
+      }
       return stopId;
     },
     onSuccess: async (stopId) => {
       setSkipOpen(false);
-      // Fire completed-channel side-effects AFTER the DB write succeeds.
-      // Intentionally non-blocking on BOTH channels — we don't await
-      // either so the operator can move to the next stop while Resend
-      // and/or Twilio are still in-flight. Errors are logged but never
-      // surfaced; they keep moving. If both email AND SMS toggles are
-      // on, BOTH fire (duplex by design).
+      // Fire completed-channel side-effects AFTER the DB write succeeds
+      // (or queues). Intentionally non-blocking on BOTH channels — we
+      // don't await either so the operator can move to the next stop
+      // while Resend and/or Twilio are still in-flight. Errors are
+      // logged but never surfaced; they keep moving. If both email AND
+      // SMS toggles are on, BOTH fire (duplex by design).
       const snapshot = stops.find((s) => s.id === stopId);
       if (snapshot) {
         if (emailToggles.completed) {
@@ -292,13 +455,85 @@ export default function RouteMode() {
     },
   });
 
+  // -----------------------------------------------------------------
+  // Arrive mutation — stamps arrived_at on the active stop. When the
+  // operator manually back-fills (e.g. "I forgot to clock arrival, 10
+  // min ago"), we pass `at` and set `adjusted=true` so reports know.
+  // -----------------------------------------------------------------
+  const arriveMutation = useMutation({
+    mutationFn: async (args: { stopId: string; at?: string; adjusted?: boolean }) => {
+      const at = args.at ?? new Date().toISOString();
+      const adjusted = args.adjusted ?? false;
+      await networkOrQueue(
+        async () => {
+          const { error } = await (supabase as any)
+            .from("route_stops")
+            .update({ arrived_at: at, arrival_adjusted: adjusted })
+            .eq("id", args.stopId);
+          if (error) throw error;
+        },
+        { kind: "arrive", stop_id: args.stopId, at, adjusted },
+      );
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["route-mode", routeId] });
+    },
+  });
+
+  // Record a manual payment AND mark the stop done in one operator gesture.
+  // Per spec: insert the manual_payments row FIRST, then if the stop isn't
+  // already done, update route_stops. We don't wrap in a transaction (no
+  // PostgREST surface for it) — if the stop-update fails after the payment
+  // saves, the payment is still recorded and the operator sees the stop
+  // unchanged, which is the safer failure mode (money tracked > visit log
+  // accuracy).
+  const recordPaymentMutation = useMutation({
+    mutationFn: async (args: {
+      stopId: string;
+      customerId: string | null;
+      method: ManualPaymentMethod;
+      amountCents: number;
+      checkNumber: string | null;
+      stopAlreadyDone: boolean;
+    }) => {
+      await recordPayment({
+        route_stop_id: args.stopId,
+        customer_id: args.customerId,
+        method: args.method,
+        amount_cents: args.amountCents,
+        check_number: args.checkNumber,
+      });
+      if (!args.stopAlreadyDone) {
+        const { error } = await (supabase as any)
+          .from("route_stops")
+          .update({ status: "done", completed_at: new Date().toISOString() })
+          .eq("id", args.stopId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      setPaymentFormOpen(false);
+      setPaymentError(null);
+      await qc.invalidateQueries({ queryKey: ["route-mode", routeId] });
+      scrollToTop();
+    },
+    onError: (e) => {
+      setPaymentError(e instanceof Error ? e.message : "Couldn't save payment");
+    },
+  });
+
   const skipStopMutation = useMutation({
     mutationFn: async ({ stopId, reason }: { stopId: string; reason: SkipReason }) => {
-      const { error } = await (supabase as any)
-        .from("route_stops")
-        .update({ status: "skipped", skip_reason: reason })
-        .eq("id", stopId);
-      if (error) throw error;
+      await networkOrQueue(
+        async () => {
+          const { error } = await (supabase as any)
+            .from("route_stops")
+            .update({ status: "skipped", skip_reason: reason })
+            .eq("id", stopId);
+          if (error) throw error;
+        },
+        { kind: "skip", stop_id: stopId, reason },
+      );
     },
     onSuccess: async () => {
       setSkipOpen(false);
@@ -346,10 +581,24 @@ export default function RouteMode() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Cache eviction on route close — the snapshot is no longer
+      // useful and we don't want stale state if the operator re-opens
+      // a different route. Pending mutation queue is intentionally
+      // untouched: it flushes on its own schedule.
+      if (routeId) void clearCachedRoute(routeId);
       invalidate();
       navigate("/routes");
     },
   });
+
+  // Clear cached route on unmount (covers "back button out of RouteMode"
+  // and similar). We don't await — the cleanup runs as a side effect.
+  useEffect(() => {
+    return () => {
+      if (routeId) void clearCachedRoute(routeId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeId]);
 
   // =================================================================
   // Render branches
@@ -471,6 +720,41 @@ export default function RouteMode() {
 
         {/* ----- Body ----- */}
         <div className="px-6 pt-6 flex-1 flex flex-col">
+          {/* Offline pill — only when there's actually something queued
+              (i.e. we're not just offline-and-idle, we're carrying state
+              the server hasn't seen yet). Single bronze pill, no
+              inspect-the-queue affordance per spec. */}
+          {!isOnline && pendingCount > 0 && (
+            <div className="mb-3 inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-full bg-bronze-500/20 border border-bronze-400/40 text-bronze-200 text-[11.5px] font-semibold">
+              <CloudOff className="h-3.5 w-3.5" strokeWidth={2} />
+              Offline — {pendingCount} pending
+            </div>
+          )}
+
+          {/* Sync error banner — tap to retry the failed flush. Self-clears
+              once a retry succeeds. */}
+          {syncError && (
+            <button
+              type="button"
+              onClick={async () => {
+                setSyncError(null);
+                const res = await flushPendingMutations(supabase);
+                await refreshPendingCount();
+                if (res.failed > 0) {
+                  setSyncError(
+                    `${res.failed} action${res.failed === 1 ? "" : "s"} couldn't sync`,
+                  );
+                } else {
+                  await qc.invalidateQueries({ queryKey: ["route-mode", routeId] });
+                }
+              }}
+              className="mb-3 inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-200 text-[11.5px] font-semibold hover:bg-red-500/25 transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} />
+              {syncError} — tap to retry
+            </button>
+          )}
+
           <div className="text-[12px] font-semibold tracking-[0.8px] uppercase text-bronze-400 mb-2">
             Current stop
           </div>
@@ -480,6 +764,78 @@ export default function RouteMode() {
           <div className="text-[15px] font-medium text-[#cfead8] mt-2">
             {activeStop.customer_name_snapshot ?? "—"}
           </div>
+
+          {/* On-site since pill / Arrive button — exactly one renders
+              depending on whether arrived_at is populated. Arrive starts
+              the on-site clock; the pill shows live elapsed minutes
+              (re-rendered by the 60s tick effect at the top of this
+              component). */}
+          {activeStop.arrived_at ? (
+            <div className="mt-3 inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-full bg-green-600/20 border border-green-500/40 text-green-200 text-[12px] font-semibold">
+              <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
+              On site since {formatTimeOfDay(activeStop.arrived_at)}
+              <span className="text-green-300/80">
+                · {formatElapsedSince(activeStop.arrived_at)}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={arriveMutation.isPending}
+                onClick={() =>
+                  arriveMutation.mutate({ stopId: activeStop.id })
+                }
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-green-600/20 border border-green-500/50 text-green-200 text-[12.5px] font-semibold hover:bg-green-600/30 transition-colors disabled:opacity-60"
+              >
+                {arriveMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
+                )}
+                Arrive
+              </button>
+              <button
+                type="button"
+                onClick={() => setBackfillOpen((v) => !v)}
+                className="text-[11.5px] font-medium text-white/55 hover:text-white/80 underline-offset-2 hover:underline"
+              >
+                Forgot to clock arrival?
+              </button>
+            </div>
+          )}
+
+          {/* Backfill picker — 5/10/15 minute-ago chips. Stamps
+              arrival_adjusted=true so reports can flag the data
+              quality. */}
+          {!activeStop.arrived_at && backfillOpen && (
+            <div className="mt-2 rounded-2xl border border-white/15 bg-black/30 p-3">
+              <div className="text-[11px] font-semibold text-white/70 mb-2">
+                Stamp arrival how long ago?
+              </div>
+              <div className="flex gap-2">
+                {[5, 10, 15].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    disabled={arriveMutation.isPending}
+                    onClick={() => {
+                      const at = new Date(Date.now() - mins * 60_000).toISOString();
+                      arriveMutation.mutate({
+                        stopId: activeStop.id,
+                        at,
+                        adjusted: true,
+                      });
+                      setBackfillOpen(false);
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[12px] font-semibold transition-colors disabled:opacity-60"
+                  >
+                    {mins} min ago
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Service chips + fee */}
           <div className="flex flex-wrap gap-2 mt-4">
@@ -578,15 +934,59 @@ export default function RouteMode() {
           </div>
 
           {/* Capture before/after for this stop — route_stop_id links the
-              pair back to the stop for later reports. */}
-          {activeStop.property_id && (
-            <Link
-              to={`/photos/new?property_id=${activeStop.property_id}&route_stop_id=${activeStop.id}`}
-              className="mb-3 inline-flex items-center gap-1.5 self-start px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/85 text-[12.5px] font-semibold hover:bg-white/10 transition-colors"
+              pair back to the stop for later reports. The "+ Payment" pill
+              sits beside it for cash/check intake when the customer pays at
+              the stop. Tone is green-outline so it's clearly distinct from
+              the bronze "Mark done" CTA — operators shouldn't confuse it
+              for the primary action. */}
+          <div className="mb-3 flex flex-wrap gap-2">
+            {activeStop.property_id && (
+              <Link
+                to={`/photos/new?property_id=${activeStop.property_id}&route_stop_id=${activeStop.id}`}
+                className="inline-flex items-center gap-1.5 self-start px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/85 text-[12.5px] font-semibold hover:bg-white/10 transition-colors"
+              >
+                <Camera className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
+                + Capture photo
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentError(null);
+                setPaymentFormOpen((v) => !v);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 self-start px-3 py-2 rounded-xl text-[12.5px] font-semibold transition-colors border",
+                paymentFormOpen
+                  ? "bg-green-500/20 border-green-400/60 text-green-100"
+                  : "bg-transparent border-green-400/60 text-green-200 hover:bg-green-500/15",
+              )}
             >
-              <Camera className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
-              + Capture photo
-            </Link>
+              <DollarSign className="h-3.5 w-3.5" strokeWidth={2} />
+              {paymentFormOpen ? "Close" : "+ Payment"}
+            </button>
+          </div>
+
+          {paymentFormOpen && (
+            <ManualPaymentForm
+              defaultAmountCents={activeStop.fee_cents ?? 0}
+              submitting={recordPaymentMutation.isPending}
+              error={paymentError}
+              onCancel={() => {
+                setPaymentFormOpen(false);
+                setPaymentError(null);
+              }}
+              onSubmit={({ method, amountCents, checkNumber }) =>
+                recordPaymentMutation.mutate({
+                  stopId: activeStop.id,
+                  customerId: activeStop.customer_id ?? null,
+                  method,
+                  amountCents,
+                  checkNumber,
+                  stopAlreadyDone: activeStop.status === "done",
+                })
+              }
+            />
           )}
 
           {/* Inline feedback for the on-the-way email button. Auto-clears
@@ -988,4 +1388,182 @@ function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// Format an ISO timestamp as e.g. "9:42" — short local time-of-day used
+// in the "On site since H:MM" pill on the active stop. We deliberately
+// avoid seconds; the field-use case is glance-readable.
+function formatTimeOfDay(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+// Live elapsed since an arrival timestamp, formatted compactly (e.g.
+// "12m", "1h 3m"). Returns "just now" for < 1 minute so the pill isn't
+// stuck on "0m" right after Arrive is tapped.
+function formatElapsedSince(iso: string): string {
+  try {
+    const t = new Date(iso).getTime();
+    const mins = Math.max(0, Math.floor((Date.now() - t) / 60_000));
+    if (mins < 1) return "just now";
+    return formatDuration(mins);
+  } catch {
+    return "—";
+  }
+}
+
+// =====================================================================
+// ManualPaymentForm — inline mini-form for the active stop card.
+//
+// Mirrors the same shape used on PlanDetail and QuoteDetail (method radio,
+// amount $, optional check #). Kept local to RouteMode rather than a shared
+// component because the dark-theme RouteMode shell uses a different palette
+// than the white-card PlanDetail / QuoteDetail pages; sharing the form
+// would force a polymorphic theme prop for no real reuse savings.
+// =====================================================================
+const ROUTEMODE_METHOD_OPTIONS: { value: ManualPaymentMethod; label: string }[] = [
+  { value: "cash", label: "Cash" },
+  { value: "check", label: "Check" },
+  { value: "venmo", label: "Venmo" },
+  { value: "cashapp", label: "CashApp" },
+  { value: "zelle", label: "Zelle" },
+  { value: "other", label: "Other" },
+];
+
+function ManualPaymentForm({
+  defaultAmountCents,
+  submitting,
+  error,
+  onCancel,
+  onSubmit,
+}: {
+  defaultAmountCents: number;
+  submitting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSubmit: (args: {
+    method: ManualPaymentMethod;
+    amountCents: number;
+    checkNumber: string | null;
+  }) => void;
+}) {
+  const [method, setMethod] = useState<ManualPaymentMethod>("cash");
+  // Prefill with the stop's fee. Two-decimal dollars to keep parsing trivial.
+  const [amount, setAmount] = useState<string>(
+    defaultAmountCents > 0 ? (defaultAmountCents / 100).toFixed(2) : "",
+  );
+  const [checkNumber, setCheckNumber] = useState<string>("");
+
+  const submit = () => {
+    const amountNum = Number(amount);
+    if (!amountNum || amountNum <= 0) {
+      window.alert("Enter a valid amount");
+      return;
+    }
+    const cents = Math.round(amountNum * 100);
+    onSubmit({
+      method,
+      amountCents: cents,
+      checkNumber: method === "check" ? (checkNumber.trim() || null) : null,
+    });
+  };
+
+  return (
+    <div className="mb-3 rounded-2xl border border-green-400/40 bg-black/30 p-3.5">
+      <div className="text-[12px] font-semibold text-white/85 mb-2 flex items-center justify-between">
+        <span>Record payment</span>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-[11px] font-medium text-white/60 hover:text-white"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-1.5 mb-3">
+        {ROUTEMODE_METHOD_OPTIONS.map((opt) => {
+          const on = method === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setMethod(opt.value)}
+              className={cn(
+                "py-2 rounded-xl text-[11.5px] font-semibold transition-colors border",
+                on
+                  ? "border-green-400 bg-green-500/25 text-white"
+                  : "border-white/15 bg-white/5 text-white/85 hover:bg-white/10",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-2 mb-3">
+        <div className="flex-1">
+          <label className="block text-[10.5px] font-semibold uppercase tracking-[0.4px] text-white/60 mb-1">
+            Amount
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 text-[14px]">
+              $
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full pl-7 pr-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-[14px] font-semibold focus:outline-none focus:border-green-400/60"
+            />
+          </div>
+        </div>
+        {method === "check" && (
+          <div className="flex-1">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.4px] text-white/60 mb-1">
+              Check #
+            </label>
+            <input
+              type="text"
+              value={checkNumber}
+              onChange={(e) => setCheckNumber(e.target.value)}
+              placeholder="optional"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-[14px] font-semibold placeholder:text-white/40 focus:outline-none focus:border-green-400/60"
+            />
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-2 px-2.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-[11.5px] font-semibold">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="button"
+        disabled={submitting}
+        onClick={submit}
+        className="w-full py-2.5 rounded-xl bg-green-600 text-white text-[13px] font-bold inline-flex items-center justify-center gap-1.5 hover:bg-green-700 transition-colors disabled:opacity-60"
+      >
+        {submitting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Check className="h-4 w-4" strokeWidth={2.4} />
+        )}
+        Save payment & mark done
+      </button>
+    </div>
+  );
 }

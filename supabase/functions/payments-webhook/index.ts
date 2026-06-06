@@ -2,13 +2,28 @@
 //
 // Stripe → TurfPro webhook handler. Validates the signature, deduplicates
 // against `processed_stripe_events` (idempotency), and routes to one of
-// two destinations based on the subscription's metadata.kind:
+// three destinations:
 //
-//   * App-level SaaS subscriptions (the default) → upsert into
+//   * CONNECT events (event.account is set) — operator-customer charges
+//     and invoices that landed on a Connect account. Recorded into the
+//     `application_fees` cache table so Reports can surface "TurfPro fees
+//     this month" without round-tripping to Stripe. Dunning logic for
+//     plan failures still runs via the existing platform-event path
+//     (Stripe also re-fires invoice.payment_failed on the connected
+//     subscription's parent flow), so we deliberately don't double-fire
+//     it here.
+//   * Platform PLAN events (metadata.kind === 'maintenance_plan') →
+//     delegate to the `sync-plan-status` edge function which mutates
+//     the `maintenance_plans` row.
+//   * Platform APP-subscription events (the default) → upsert into
 //     `public.subscriptions` keyed on stripe_subscription_id.
-//   * Maintenance-plan subscriptions (metadata.kind === 'maintenance_plan')
-//     → delegate to the `sync-plan-status` edge function which mutates the
-//     `maintenance_plans` row instead.
+//
+// For v1 we keep ONE webhook endpoint that handles both platform and
+// Connect events. Stripe sends Connect events with `account: 'acct_xxx'`
+// on the top-level event object — platform events don't have that field.
+// A separate webhook endpoint registered specifically as a Connect
+// webhook would also work and may be preferable long-term, but the
+// single-endpoint pattern keeps deployment simple.
 //
 // Handled event types:
 //   - checkout.session.completed
@@ -16,6 +31,7 @@
 //   - customer.subscription.paused / resumed
 //   - invoice.payment_succeeded
 //   - invoice.payment_failed
+//   - charge.succeeded (Connect only — application_fees cache)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
@@ -26,6 +42,141 @@ import {
 } from "../_shared/stripe.ts";
 
 const UNIQUE_VIOLATION = "23505";
+
+// ---------------------------------------------------------------------------
+// Connect event handler
+//
+// Called for any Stripe event whose top-level `event.account` is set —
+// meaning the event originated from a connected (operator) account, not
+// TurfPro's platform account.
+//
+// What we do:
+//   - charge.succeeded / invoice.payment_succeeded: write a row into
+//     `application_fees` so Reports can compute "TurfPro fees this month"
+//     and the Pro upgrade callout without round-tripping to Stripe.
+//   - charge.failed: deliberately a no-op. The dunning push already fires
+//     from the platform-side invoice.payment_failed handler via the
+//     subscription's parent flow — duplicating it here would double-notify
+//     the operator on every recurring decline.
+//
+// The webhook is the AUTHORITATIVE source for fee data — the local table
+// is a cache used by the Reports UI.
+// ---------------------------------------------------------------------------
+async function handleConnectEvent(
+  event: Stripe.Event,
+  acctId: string,
+  env: "live" | "sandbox",
+  stripe: Stripe,
+  supabase: ReturnType<typeof createClient>,
+): Promise<void> {
+  // Resolve the operator (user_id) from profiles.stripe_account_id. Without
+  // this we can't link the fee back to a TurfPro user for Reports.
+  let userId: string | null = null;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("stripe_account_id", acctId)
+      .maybeSingle();
+    userId = data?.id ?? null;
+  } catch (e) {
+    console.warn("Connect: profile lookup failed", e);
+  }
+  if (!userId) {
+    console.warn(`Connect event for unknown acct ${acctId}; skipping cache.`);
+    return;
+  }
+
+  if (event.type === "charge.succeeded") {
+    const charge = event.data.object as Stripe.Charge;
+    // application_fee_amount is set on the charge when transfer_data was
+    // applied at PI/sub create time. If it's null/0 the charge wasn't
+    // fee-bearing (paid tier with no fee) and we can skip — but we still
+    // record a 0 row so reports can show "0 fees on $X in revenue".
+    const feeAmount = (charge as any).application_fee_amount ?? 0;
+    const chargeAmount = charge.amount ?? 0;
+    const meta = charge.metadata ?? {};
+    const tier = (meta.tier_at_capture as string) ?? "payg";
+    const feePercent = Number(meta.fee_percent ?? (chargeAmount > 0 ? (feeAmount / chargeAmount) * 100 : 0));
+
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      stripe_charge_id: charge.id,
+      stripe_invoice_id: (charge as any).invoice as string | null ?? null,
+      stripe_payment_intent_id:
+        typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : null,
+      plan_id: (meta.plan_id as string) ?? null,
+      quote_id: (meta.quote_id as string) ?? null,
+      customer_id: (meta.customer_id as string) ?? null,
+      charge_amount_cents: chargeAmount,
+      fee_amount_cents: feeAmount,
+      fee_percent: Number.isFinite(feePercent) ? Number(feePercent.toFixed(2)) : 0,
+      tier_at_capture: tier,
+      collected_at: new Date(((charge.created ?? Math.floor(Date.now() / 1000))) * 1000).toISOString(),
+    };
+    const { error } = await supabase.from("application_fees").insert(row as never);
+    if (error) {
+      // Don't fail the webhook — a duplicate insert (Stripe retry) is fine
+      // since we already deduped on event.id at the top of the handler.
+      console.error("application_fees insert failed:", error);
+    }
+    return;
+  }
+
+  if (event.type === "invoice.payment_succeeded") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const feeAmount = (invoice as any).application_fee_amount ?? 0;
+    const chargeAmount = invoice.amount_paid ?? 0;
+    // Recurring subscription invoices: pull tier/plan metadata off the
+    // parent subscription. Invoices don't carry sub-metadata directly.
+    let tier = "payg";
+    let feePercent = chargeAmount > 0 ? (feeAmount / chargeAmount) * 100 : 0;
+    let planId: string | null = null;
+    const subId = (invoice as any).subscription as string | null;
+    if (subId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subId, {
+          stripeAccount: acctId,
+        });
+        tier = (sub.metadata?.tier_at_capture as string) ?? tier;
+        feePercent = Number(sub.metadata?.fee_percent ?? feePercent);
+        planId = (sub.metadata?.plan_id as string) ?? null;
+      } catch (e) {
+        console.warn("Connect invoice → sub retrieve failed", e);
+      }
+    }
+
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      stripe_charge_id: (invoice as any).charge as string | null ?? null,
+      stripe_invoice_id: invoice.id,
+      stripe_payment_intent_id: null,
+      plan_id: planId,
+      charge_amount_cents: chargeAmount,
+      fee_amount_cents: feeAmount,
+      fee_percent: Number.isFinite(feePercent) ? Number(feePercent.toFixed(2)) : 0,
+      tier_at_capture: tier,
+      collected_at: new Date(((invoice.created ?? Math.floor(Date.now() / 1000))) * 1000).toISOString(),
+    };
+    const { error } = await supabase.from("application_fees").insert(row as never);
+    if (error) console.error("application_fees insert failed:", error);
+    return;
+  }
+
+  if (event.type === "charge.failed") {
+    // Intentional no-op. Dunning already triggers from the platform-side
+    // invoice.payment_failed handler — duplicating it here would notify
+    // the operator twice for every retry.
+    console.log("Connect charge.failed — skipping (dunning runs from platform path)", acctId);
+    return;
+  }
+
+  // Unhandled Connect event types: we acknowledge the event but don't do
+  // anything. Stripe still considers them delivered.
+  console.log("Unhandled Connect event type:", event.type);
+}
 
 Deno.serve(async (req) => {
   try {
@@ -84,6 +235,26 @@ Deno.serve(async (req) => {
     console.log("Processing event", event.type, "env:", env);
 
     // ----------------------------------------------------------------
+    // Connect event router
+    //   Stripe stamps `event.account` (an `acct_xxx`) on the top-level
+    //   event when the event originated from a connected account. We
+    //   route those into handleConnectEvent which writes into the
+    //   `application_fees` cache. Platform events (no `account` field)
+    //   continue through the existing routers below.
+    // ----------------------------------------------------------------
+    if ((event as any).account) {
+      try {
+        await handleConnectEvent(event, (event as any).account as string, env, stripe, supabase);
+      } catch (e) {
+        console.error("Connect event handler failed:", e);
+      }
+      return new Response(
+        JSON.stringify({ received: true, route: "connect" }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // ----------------------------------------------------------------
     // Plan-subscription router
     //   Subscriptions created by create-plan-subscription carry
     //   metadata.kind='maintenance_plan' and a plan_id. We forward those
@@ -107,6 +278,40 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         console.error("sync-plan-status invoke failed", e);
+      }
+    };
+
+    // Fire-and-forget native push to the operator when a plan's card fails.
+    // ONE-line addition per the Tier-2 spec — we deliberately don't touch
+    // the idempotency / sync flow above. send-push is robust to "no tokens
+    // registered" (it returns ok:true, sent:0) so this is safe to call
+    // even before the operator has installed the native app.
+    const dispatchPushOnPlanFailure = async (
+      userId: string,
+      planId: string | null,
+    ) => {
+      const url = `${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-push`;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            title: "Card declined on a plan",
+            body: "Tap to send a retry link to the customer.",
+            data: planId
+              ? { kind: "dunning", plan_id: planId, route: `/plans/${planId}` }
+              : { kind: "dunning" },
+          }),
+        });
+        if (!res.ok) {
+          console.error("send-push returned", res.status, await res.text());
+        }
+      } catch (e) {
+        console.error("send-push invoke failed", e);
       }
     };
 
@@ -240,6 +445,20 @@ Deno.serve(async (req) => {
             card_last4: cardLast4,
           },
         });
+
+        // Dunning push: notify the operator on their phone that a plan
+        // payment failed. Fire-and-forget — failing to push must not roll
+        // back the sync above. We only fire on invoice.payment_failed (not
+        // succeeded) to avoid notification spam on routine renewals.
+        if (event.type === "invoice.payment_failed") {
+          const operatorUserId = sub.metadata?.user_id ?? sub.metadata?.userId;
+          if (operatorUserId) {
+            await dispatchPushOnPlanFailure(
+              operatorUserId,
+              sub.metadata?.plan_id ?? null,
+            );
+          }
+        }
         return true;
       }
 

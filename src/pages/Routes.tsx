@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -28,7 +28,13 @@ import { cn } from "@/lib/utils";
 import { useForecast, useUserZip, type ForecastDay } from "@/lib/weather";
 import { geocodeAddress } from "@/lib/geocode";
 import { fetchDriveMatrix, type DriveStop } from "@/lib/drive-matrix";
+import { nearestNeighborOrder } from "@/lib/route-optimize";
 import type { Route, RouteStop, SkipReason, StopStatus } from "@/components/routes/types";
+import {
+  SortableList,
+  SortableStop,
+  computeReorderedSortOrders,
+} from "@/components/routes/SortableStops";
 import WinterRoutesBanner from "@/components/season/WinterRoutesBanner";
 import { useSeason } from "@/lib/season";
 
@@ -115,6 +121,31 @@ export default function RoutesPage() {
   const [skipForStopId, setSkipForStopId] = useState<string | null>(null);
 
   // -----------------------------------------------------------------
+  // Crew filter — page-local state. "All" surfaces every route; a
+  // selected crew narrows the week strip counts, day summary, and stop
+  // list to routes whose crew_id matches. The Start-route mutation also
+  // uses this selection when no explicit picker is shown.
+  // -----------------------------------------------------------------
+  const [selectedCrewId, setSelectedCrewId] = useState<string | "all">("all");
+  const [crewPickerOpen, setCrewPickerOpen] = useState(false);
+
+  const crewsQuery = useQuery({
+    queryKey: ["crews", user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<Array<{ id: string; name: string; color: string }>> => {
+      if (!user) return [];
+      const { data, error } = await (supabase as any)
+        .from("crews")
+        .select("id, name, color")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string; color: string }>;
+    },
+  });
+  const crews = crewsQuery.data ?? [];
+
+  // -----------------------------------------------------------------
   // Live weather — drives the week-strip indicators. ZIP comes from the
   // profile; if unset the forecast hook returns null (no error UI, the
   // strip simply hides icons).
@@ -148,11 +179,22 @@ export default function RoutesPage() {
     },
   });
 
+  // The week query returns every route the operator owns. When a crew
+  // chip is active we narrow to routes whose crew_id matches; "all"
+  // surfaces everything. Multiple routes per date are possible once
+  // multi-crew is in use, but the day-summary still shows one — we pick
+  // the filter-matched route (or the first one for "all").
   const routesByDate = useMemo(() => {
     const m = new Map<string, Route>();
-    for (const r of weekRoutesQuery.data ?? []) m.set(r.date, r);
+    for (const r of weekRoutesQuery.data ?? []) {
+      if (selectedCrewId !== "all" && r.crew_id !== selectedCrewId) continue;
+      // First match wins. If the operator runs two crews on the same
+      // day under "all" we still only render one — they should crew-
+      // filter to see the second. Documented gap, not a v1 blocker.
+      if (!m.has(r.date)) m.set(r.date, r);
+    }
     return m;
-  }, [weekRoutesQuery.data]);
+  }, [weekRoutesQuery.data, selectedCrewId]);
 
   // Count per visible day = stops on that day's route (0 if no route).
   const dayCounts = weekDays.map((d) => {
@@ -161,10 +203,19 @@ export default function RoutesPage() {
   });
 
   const selectedRoute = routesByDate.get(ymd(selectedDate));
-  const stops = useMemo(() => {
+  const serverStops = useMemo(() => {
     const s = selectedRoute?.route_stops ?? [];
     return [...s].sort((a, b) => a.sort_order - b.sort_order);
   }, [selectedRoute]);
+
+  // Local mirror of the stop list so drag-to-reorder can update the UI
+  // optimistically before the bulk sort_order write completes. We
+  // resync from the server snapshot whenever the route changes or the
+  // server returns a new ordering.
+  const [stops, setStops] = useState<RouteStop[]>(serverStops);
+  useEffect(() => {
+    setStops(serverStops);
+  }, [serverStops]);
 
   const counts = useMemo(() => {
     const c = { done: 0, in_progress: 0, pending: 0, skipped: 0 };
@@ -219,17 +270,66 @@ export default function RoutesPage() {
     },
   });
 
+  // Bulk-renumber pending stops' sort_order to consecutive multiples of
+  // 10 (10, 20, 30...). Pinned stops (done / in_progress / skipped)
+  // keep their existing sort_order — the operator can't re-sequence
+  // history. The drive-time legs cached on each row are NOT recomputed
+  // here; they'll refresh from Mapbox on the next Start-route call.
+  const reorderStopsMutation = useMutation({
+    mutationFn: async (next: RouteStop[]) => {
+      const newOrders = computeReorderedSortOrders(next);
+      if (newOrders.size === 0) return;
+      // One UPDATE per pending stop. Lawn-care routes are 8-15 stops,
+      // so the round-trip count is tiny; we keep this simple instead
+      // of a server-side bulk RPC.
+      const writes = Array.from(newOrders.entries()).map(([id, sort_order]) =>
+        (supabase as any)
+          .from("route_stops")
+          .update({ sort_order })
+          .eq("id", id),
+      );
+      const results = await Promise.all(writes);
+      const failed = results.find((r: any) => r?.error);
+      if (failed?.error) throw failed.error;
+    },
+    onError: (err) => {
+      console.error("[Routes] reorder failed; reverting", err);
+      // Snap back to the server snapshot.
+      setStops(serverStops);
+      invalidate();
+    },
+    onSuccess: invalidate,
+  });
+
+  // Called when dnd-kit produces a new visual order. We optimistically
+  // update local state (with the same 10/20/30... numbering we'll
+  // persist) then fire the bulk update.
+  function handleReorder(next: RouteStop[]) {
+    const newOrders = computeReorderedSortOrders(next);
+    const merged = next.map((s) =>
+      newOrders.has(s.id) ? { ...s, sort_order: newOrders.get(s.id)! } : s,
+    );
+    setStops(merged);
+    reorderStopsMutation.mutate(next);
+  }
+
+  // Tracks the most recently freshly-created route id, so we can show the
+  // "Optimized for drive time" pill only on a route that *we* just built.
+  // Routes that existed before this page load (planned / resumed) don't
+  // get the pill, since their ordering may already reflect operator drags.
+  const [justOptimizedRouteId, setJustOptimizedRouteId] = useState<string | null>(null);
+
   // Start / Resume: creates the route + stops if needed; otherwise flips status
   // and navigates into route-mode.
   const startRouteMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (input?: { crewId?: string | null }): Promise<{ id: string; freshlyCreated: boolean }> => {
       if (!user) throw new Error("Not signed in");
       const existing = selectedRoute;
       const dateStr = ymd(selectedDate);
 
       // Already in_progress / complete -> just navigate.
       if (existing && existing.status === "in_progress") {
-        return existing.id;
+        return { id: existing.id, freshlyCreated: false };
       }
 
       // Planned -> flip to in_progress.
@@ -239,10 +339,27 @@ export default function RoutesPage() {
           .update({ status: "in_progress", started_at: new Date().toISOString() })
           .eq("id", existing.id);
         if (error) throw error;
-        return existing.id;
+        return { id: existing.id, freshlyCreated: false };
       }
 
+      // Resolve which crew owns this freshly-created route, in priority order:
+      //   1. explicit picker selection passed in via input.crewId
+      //   2. the page's active crew filter (if not "all")
+      //   3. the operator's only crew (if they have exactly one)
+      //   4. null (legacy / single-operator mode)
+      const crewId: string | null =
+        input?.crewId !== undefined
+          ? input.crewId
+          : selectedCrewId !== "all"
+            ? selectedCrewId
+            : crews.length === 1
+              ? crews[0].id
+              : null;
+
       // No route yet -> build one from active plans for this weekday.
+      // TODO(per-property crew assignment): once `properties.crew_id` lands,
+      // narrow this query by crew. v1 seeds ALL active plans regardless of
+      // crew — the operator can drag stops between crews later.
       const sqlDow = monIdxToSqlDow(selectedIdx);
       const { data: plans, error: plansErr } = await (supabase as any)
         .from("maintenance_plans")
@@ -256,6 +373,7 @@ export default function RoutesPage() {
         .from("routes")
         .insert({
           user_id: user.id,
+          crew_id: crewId,
           date: dateStr,
           status: "in_progress",
           started_at: new Date().toISOString(),
@@ -316,10 +434,61 @@ export default function RoutesPage() {
           }
         }
 
+        // -------------------------------------------------------------
+        // Nearest-neighbor optimization. We reorder the plans array
+        // BEFORE building the drive matrix so the matrix is computed
+        // against the optimized sequence (Mapbox-cached by hash, so the
+        // optimized order also seeds the cache for any later edits).
+        //
+        // Operator start point: ideally `profiles.lat/lng` would seed
+        // the algorithm, but that column doesn't exist yet — see TODO
+        // below. For now we fall back to the centroid-seed path in
+        // nearestNeighborOrder, which is fine for clustered customer
+        // bases.
+        //
+        // Skip optimization entirely if fewer than 3 stops have coords:
+        // 2 stops is a single leg (nothing to reorder), 1 stop is
+        // trivially solved, and 0 means no coords at all.
+        // -------------------------------------------------------------
+        // TODO(profiles.lat/lng): once profiles store the operator's
+        // home/shop coordinates, plumb them in here as startLat/startLng.
+        const operatorHomeLat: number | undefined = undefined;
+        const operatorHomeLng: number | undefined = undefined;
+
+        const optimizeInput = plans.map((p: any) => {
+          const prop = p.property_id ? propsById.get(p.property_id) : null;
+          return {
+            id: p.id as string,
+            lat: prop?.lat ?? null,
+            lng: prop?.lng ?? null,
+          };
+        });
+        const coordCount = optimizeInput.filter((s) => s.lat != null && s.lng != null).length;
+        let orderedPlans: any[] = plans;
+        if (coordCount >= 3) {
+          const optimizedIds = nearestNeighborOrder(
+            optimizeInput,
+            operatorHomeLat,
+            operatorHomeLng,
+          );
+          const planById = new Map<string, any>(plans.map((p: any) => [p.id, p]));
+          const reordered: any[] = [];
+          for (const id of optimizedIds) {
+            const p = planById.get(id);
+            if (p) reordered.push(p);
+          }
+          // Defensive: if the optimizer dropped any plans, append them.
+          if (reordered.length !== plans.length) {
+            const seen = new Set(reordered.map((p) => p.id));
+            for (const p of plans) if (!seen.has(p.id)) reordered.push(p);
+          }
+          orderedPlans = reordered;
+        }
+
         // Drive matrix — one Mapbox call covers the whole ordered sequence.
         // We only call it when at least 2 stops have coords; otherwise legs
         // stay null and the UI shows "–" for drive time.
-        const orderedCoords: Array<{ idx: number; lat: number; lng: number } | null> = plans.map(
+        const orderedCoords: Array<{ idx: number; lat: number; lng: number } | null> = orderedPlans.map(
           (p: any, i: number) => {
             const prop = p.property_id ? propsById.get(p.property_id) : null;
             if (prop?.lat != null && prop?.lng != null) {
@@ -328,11 +497,12 @@ export default function RoutesPage() {
             return null;
           },
         );
-        // legMinutes/Miles are aligned to the *plans* array index: entry i is
-        // the drive FROM plans[i-1] TO plans[i]. Entry 0 is always null
-        // because there's no "previous" stop on the first visit.
-        const legMinutes = new Array<number | null>(plans.length).fill(null);
-        const legMiles = new Array<number | null>(plans.length).fill(null);
+        // legMinutes/Miles are aligned to the *orderedPlans* array index:
+        // entry i is the drive FROM orderedPlans[i-1] TO orderedPlans[i].
+        // Entry 0 is always null because there's no "previous" stop on
+        // the first visit.
+        const legMinutes = new Array<number | null>(orderedPlans.length).fill(null);
+        const legMiles = new Array<number | null>(orderedPlans.length).fill(null);
 
         const coordStops: DriveStop[] = orderedCoords
           .filter((c): c is { idx: number; lat: number; lng: number } => c !== null)
@@ -357,7 +527,11 @@ export default function RoutesPage() {
           }
         }
 
-        const stopRows = plans.map((p: any, i: number) => ({
+        // Persist with sort_order in gaps of 10 (10, 20, 30...). The
+        // gaps give us room to drop a stop between two others without
+        // a bulk renumber — matches the convention in
+        // computeReorderedSortOrders.
+        const stopRows = orderedPlans.map((p: any, i: number) => ({
           user_id: user.id,
           route_id: routeId,
           plan_id: p.id,
@@ -368,7 +542,7 @@ export default function RoutesPage() {
           services: p.services ?? [],
           // amount on maintenance_plans is dollars (NUMERIC); convert to cents.
           fee_cents: p.amount != null ? Math.round(Number(p.amount) * 100) : null,
-          sort_order: i + 1,
+          sort_order: (i + 1) * 10,
           status: "pending",
           drive_minutes_from_prev: legMinutes[i],
           drive_miles_from_prev: legMiles[i],
@@ -378,11 +552,69 @@ export default function RoutesPage() {
           .insert(stopRows);
         if (stopsErr) throw stopsErr;
       }
-      return routeId;
+      return { id: routeId, freshlyCreated: true };
     },
-    onSuccess: (routeId) => {
+    onSuccess: ({ id, freshlyCreated }) => {
+      if (freshlyCreated) setJustOptimizedRouteId(id);
       invalidate();
-      navigate(`/routes/run/${routeId}`);
+      navigate(`/routes/run/${id}`);
+    },
+  });
+
+  // -----------------------------------------------------------------
+  // Re-optimize remaining (pending) stops on an in-flight route.
+  // Done / skipped / in_progress stops stay pinned at their existing
+  // sort_order — we only rewrite the tail. After re-ordering we leave
+  // the drive-matrix legs alone (they'll refresh on the next Start
+  // call, matching the reorder mutation's behavior).
+  // -----------------------------------------------------------------
+  const reoptimizeMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedRoute) throw new Error("No route");
+      const pending = stops.filter((s) => s.status === "pending");
+      // Need property coords to optimize — pull from properties.
+      const propertyIds = pending
+        .map((s) => s.property_id)
+        .filter((id): id is string => !!id);
+      const propsById = new Map<string, { lat: number | null; lng: number | null }>();
+      if (propertyIds.length > 0) {
+        const { data: props } = await (supabase as any)
+          .from("properties")
+          .select("id, lat, lng")
+          .in("id", propertyIds);
+        for (const p of (props ?? []) as Array<{ id: string; lat: number | null; lng: number | null }>) {
+          propsById.set(p.id, { lat: p.lat, lng: p.lng });
+        }
+      }
+      const optimizeInput = pending.map((s) => ({
+        id: s.id,
+        lat: s.property_id ? propsById.get(s.property_id)?.lat ?? null : null,
+        lng: s.property_id ? propsById.get(s.property_id)?.lng ?? null : null,
+      }));
+      const coordCount = optimizeInput.filter((s) => s.lat != null && s.lng != null).length;
+      if (coordCount < 3) return; // Not worth re-running; matches start-route gate.
+      const orderedIds = nearestNeighborOrder(optimizeInput);
+
+      // Re-number ONLY the pending stops. The highest non-pending
+      // sort_order is our floor; we rewrite pending sort_orders to
+      // start above that in gaps of 10.
+      const nonPendingMax = stops
+        .filter((s) => s.status !== "pending")
+        .reduce((max, s) => Math.max(max, s.sort_order), 0);
+      const writes = orderedIds.map((id, i) =>
+        (supabase as any)
+          .from("route_stops")
+          .update({ sort_order: nonPendingMax + (i + 1) * 10 })
+          .eq("id", id),
+      );
+      const results = await Promise.all(writes);
+      const failed = results.find((r: any) => r?.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: () => {
+      // Treat the selected route as freshly optimized so the pill returns.
+      if (selectedRoute) setJustOptimizedRouteId(selectedRoute.id);
+      invalidate();
     },
   });
 
@@ -436,6 +668,51 @@ export default function RoutesPage() {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         />
+      )}
+
+      {/* Crew filter chips — only render when the operator has at least
+          one crew configured. Selection is page-local; "All" surfaces
+          every route. Active chip uses green-800 to match the day-strip
+          selection color. */}
+      {crews.length > 0 && (
+        <div className="px-4 pb-2.5">
+          <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1">
+            <button
+              type="button"
+              onClick={() => setSelectedCrewId("all")}
+              className={cn(
+                "shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold border transition-colors",
+                selectedCrewId === "all"
+                  ? "bg-green-800 text-white border-green-800"
+                  : "bg-card text-ink-700 border-ink-200 hover:bg-ink-100",
+              )}
+            >
+              All crews
+            </button>
+            {crews.map((c) => {
+              const on = selectedCrewId === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedCrewId(c.id)}
+                  className={cn(
+                    "shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold border transition-colors inline-flex items-center gap-1.5",
+                    on
+                      ? "bg-green-800 text-white border-green-800"
+                      : "bg-card text-ink-700 border-ink-200 hover:bg-ink-100",
+                  )}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Week strip */}
@@ -501,6 +778,18 @@ export default function RoutesPage() {
 
       {/* Day summary + start CTA */}
       <div className="px-4 pb-4">
+        {/* "Optimized for drive time" pill — surfaces only when this
+            specific route was freshly created (or re-optimized) in this
+            session. We don't show it on resume/return visits because
+            the order may already reflect operator drag adjustments. */}
+        {selectedRoute && selectedRoute.id === justOptimizedRouteId && stops.length >= 3 && (
+          <div className="mb-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-[10.5px] font-semibold text-green-800 border border-green-100">
+              <Truck className="h-2.5 w-2.5" strokeWidth={2} />
+              Optimized for drive time
+            </span>
+          </div>
+        )}
         <div className="flex items-end justify-between mb-2.5">
           <div>
             <div className="tp-display text-[18px] font-bold text-ink-900">
@@ -525,7 +814,14 @@ export default function RoutesPage() {
                 navigate(`/routes/run/${selectedRoute.id}`);
                 return;
               }
-              startRouteMutation.mutate();
+              // Multi-crew accounts with no active filter need to pick a crew
+              // before we build the route. Otherwise we have a sensible
+              // default (filter selection or only-crew); fire immediately.
+              if (!selectedRoute && crews.length > 1 && selectedCrewId === "all") {
+                setCrewPickerOpen(true);
+                return;
+              }
+              startRouteMutation.mutate({});
             }}
             className="px-3.5 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-bold inline-flex items-center gap-1.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-60"
           >
@@ -583,7 +879,7 @@ export default function RoutesPage() {
 
         {/* Top metrics row */}
         {stops.length > 0 && (
-          <div className="mt-3 flex gap-4 px-1 text-[11px] text-ink-500">
+          <div className="mt-3 flex gap-4 px-1 text-[11px] text-ink-500 items-center flex-wrap">
             <span>
               <span className="tp-num text-ink-900 font-semibold">{totalMiles.toFixed(1)}</span> mi
             </span>
@@ -598,6 +894,32 @@ export default function RoutesPage() {
             <span>
               <span className="tp-num text-ink-900 font-semibold">{stops.length}</span> stops
             </span>
+            {/* Re-optimize remaining — only useful mid-route when there
+                are pending stops to actually shuffle. Confirms before
+                rewriting sort_order. */}
+            {selectedRoute &&
+              (selectedRoute.status === "planned" || selectedRoute.status === "in_progress") &&
+              counts.pending >= 3 && (
+                <>
+                  <span className="text-ink-300">·</span>
+                  <button
+                    type="button"
+                    disabled={reoptimizeMutation.isPending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Re-optimize the remaining pending stops by nearest neighbor? Done and active stops stay put.",
+                        )
+                      ) {
+                        reoptimizeMutation.mutate();
+                      }
+                    }}
+                    className="text-green-800 font-semibold hover:underline disabled:opacity-60"
+                  >
+                    {reoptimizeMutation.isPending ? "Re-optimizing…" : "Re-optimize remaining"}
+                  </button>
+                </>
+              )}
           </div>
         )}
       </div>
@@ -617,44 +939,109 @@ export default function RoutesPage() {
           />
         )}
 
-        {stops.map((s, i) => (
-          <div key={s.id}>
-            {i > 0 && (
-              <div className="flex items-center gap-1.5 py-1 pl-[34px] text-ink-400 text-[10.5px]">
-                <Truck className="h-2.5 w-2.5" strokeWidth={1.8} />
-                <span>
-                  {s.drive_minutes_from_prev != null
-                    ? `${s.drive_minutes_from_prev} min`
-                    : "–"}
-                  {s.drive_miles_from_prev != null
-                    ? ` · ${Number(s.drive_miles_from_prev).toFixed(1)} mi`
-                    : ""}
-                </span>
-              </div>
-            )}
-            <StopCard
-              stop={s}
-              skipOpen={skipForStopId === s.id}
-              onMarkDone={() => markDoneMutation.mutate(s.id)}
-              onOpenSkip={() => setSkipForStopId(s.id)}
-              onCloseSkip={() => setSkipForStopId(null)}
-              onPickReason={(reason) => skipStopMutation.mutate({ stopId: s.id, reason })}
-              skipping={
-                skipStopMutation.isPending && skipStopMutation.variables?.stopId === s.id
-              }
-              marking={markDoneMutation.isPending && markDoneMutation.variables === s.id}
-            />
-          </div>
-        ))}
+        <SortableList stops={stops} onReorder={handleReorder}>
+          {stops.map((s, i) => (
+            <SortableStop key={s.id} stop={s}>
+              {(handle) => (
+                <div>
+                  {i > 0 && (
+                    <div className="flex items-center gap-1.5 py-1 pl-[34px] text-ink-400 text-[10.5px]">
+                      <Truck className="h-2.5 w-2.5" strokeWidth={1.8} />
+                      <span>
+                        {s.drive_minutes_from_prev != null
+                          ? `${s.drive_minutes_from_prev} min`
+                          : "–"}
+                        {s.drive_miles_from_prev != null
+                          ? ` · ${Number(s.drive_miles_from_prev).toFixed(1)} mi`
+                          : ""}
+                      </span>
+                    </div>
+                  )}
+                  <StopCard
+                    stop={s}
+                    skipOpen={skipForStopId === s.id}
+                    onMarkDone={() => markDoneMutation.mutate(s.id)}
+                    onOpenSkip={() => setSkipForStopId(s.id)}
+                    onCloseSkip={() => setSkipForStopId(null)}
+                    onPickReason={(reason) => skipStopMutation.mutate({ stopId: s.id, reason })}
+                    skipping={
+                      skipStopMutation.isPending && skipStopMutation.variables?.stopId === s.id
+                    }
+                    marking={markDoneMutation.isPending && markDoneMutation.variables === s.id}
+                    dragHandle={handle}
+                  />
+                </div>
+              )}
+            </SortableStop>
+          ))}
+        </SortableList>
 
+        {/* Reorders invalidate the cached drive matrix until the next
+            Start-route call — drive_minutes_from_prev / _miles_from_prev
+            on each row remain stale until then. */}
         {stops.length > 0 && (
           <div className="pt-3.5 pb-1 text-center text-xs text-ink-400">
             {counts.pending + counts.in_progress > 0
               ? `${counts.pending + counts.in_progress} stops left`
               : "All stops handled"}
+            {reorderStopsMutation.isPending && (
+              <span className="block mt-0.5 text-[10.5px] text-ink-300">
+                Saving new order…
+              </span>
+            )}
           </div>
         )}
       </div>
+
+      {/* Multi-crew picker — opens when an operator with 2+ crews taps
+          Start route while filtered to "All". One tap picks the crew
+          AND fires the mutation, no extra confirm step. */}
+      {crewPickerOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-ink-900/40 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setCrewPickerOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-card rounded-[16px] p-4 shadow-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[15px] font-bold text-ink-900 mb-1">
+              Which crew runs this?
+            </div>
+            <p className="text-[11.5px] text-ink-500 mb-3">
+              Pick the crew that will own today's stops. You can re-assign later.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {crews.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setCrewPickerOpen(false);
+                    startRouteMutation.mutate({ crewId: c.id });
+                  }}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-ink-200 hover:bg-ink-100 text-left transition-colors"
+                >
+                  <span
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  <span className="text-[13.5px] font-semibold text-ink-900">
+                    {c.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCrewPickerOpen(false)}
+              className="mt-3 w-full text-center text-[12px] font-medium text-ink-500 hover:text-ink-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -672,6 +1059,13 @@ interface StopCardProps {
   onOpenSkip: () => void;
   onCloseSkip: () => void;
   onPickReason: (r: SkipReason) => void;
+  /** dnd-kit handle props from SortableStop. Falsy props for pinned stops. */
+  dragHandle?: {
+    attributes: Record<string, unknown>;
+    listeners: Record<string, unknown>;
+    setActivatorNodeRef: (node: HTMLElement | null) => void;
+    isDragging: boolean;
+  };
 }
 
 function StopCard({
@@ -683,6 +1077,7 @@ function StopCard({
   onOpenSkip,
   onCloseSkip,
   onPickReason,
+  dragHandle,
 }: StopCardProps) {
   const isActive = stop.status === "in_progress";
   const isDone = stop.status === "done";
@@ -700,19 +1095,23 @@ function StopCard({
         isSkipped && "opacity-75",
       )}
     >
-      {/* Drag handle — render markup only, real D&D library deferred. */}
+      {/* Drag handle — wired to dnd-kit when SortableStop has loaded the
+          modules. For pinned (non-pending) stops the handle stays hidden
+          since the operator can't re-sequence a stop that already
+          happened. The {...attributes}/{...listeners} spread comes from
+          useSortable; setActivatorNodeRef binds the activator so only the
+          grip (not the whole card) starts a drag. */}
       <button
+        ref={(node) => dragHandle?.setActivatorNodeRef(node)}
         type="button"
         aria-label="Drag to reorder"
-        // Wired to a no-op so the handle is keyboard-focusable but doesn't
-        // misleadingly trigger anything until D&D lands.
-        onPointerDown={() => {
-          if (isPending) console.debug("[Routes] drag start placeholder", stop.id);
-        }}
         className={cn(
           "-ml-1 p-0.5 text-ink-300 touch-none",
           !isPending && "invisible",
+          dragHandle?.isDragging && "text-bronze-500",
         )}
+        {...(dragHandle?.attributes ?? {})}
+        {...(dragHandle?.listeners ?? {})}
       >
         <GripVertical className="h-4 w-4" strokeWidth={1.8} />
       </button>

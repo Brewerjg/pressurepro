@@ -36,6 +36,7 @@ import {
   Stripe,
 } from "../_shared/stripe.ts";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
+import { loadOperatorConnect } from "../_shared/fees.ts";
 
 // Stripe rejects subscription unit_amount values below 50 cents. We mirror
 // that check up-front so the operator sees a clear error before bouncing.
@@ -200,6 +201,36 @@ Deno.serve(async (req) => {
       environment: env,
     };
 
+    // ----- Stripe Connect routing -----
+    // Look up the operator's stripe_account_id + connect_ready, plus their
+    // current tier (PAYG vs Solo/Pro/Crew) to derive the application-fee
+    // percentage. `shouldRoute` is true only when:
+    //   STRIPE_CONNECT_ENABLED is truthy (dev escape hatch)
+    //   AND profiles.connect_ready is true
+    //   AND profiles.stripe_account_id is set
+    //
+    // V1 transition: if Connect is NOT ready we fall back to the current
+    // behavior — charge on the platform account. This unblocks operators
+    // who haven't done Connect onboarding yet. The long-term path is to
+    // REQUIRE Connect before allowing card-on-file plan billing (so funds
+    // settle to the operator, not TurfPro), but we can't enforce that
+    // until every operator has completed Express onboarding.
+    const operator = await loadOperatorConnect(admin, userId);
+    baseMetadata.tier_at_capture = operator.tier;
+    baseMetadata.fee_percent = String(operator.feePercent);
+
+    // application_fee_percent on subscriptions is IMMUTABLE once set, and
+    // transfer_data.destination is also pinned at create. Decide once here.
+    // For fee==0 paid tiers we still set transfer_data so the operator gets
+    // 100% routed to their Connect account.
+    const transferData = operator.shouldRoute
+      ? { destination: operator.stripeAccountId! }
+      : undefined;
+    const applicationFeePercent =
+      operator.shouldRoute && operator.feePercent > 0
+        ? operator.feePercent
+        : undefined;
+
     // ----- Branch: existing customer with card on file vs new -----
     if (existingCustomerId) {
       // Direct server-side subscription. Confirm the customer has a usable
@@ -223,6 +254,14 @@ Deno.serve(async (req) => {
         try {
           // Build the recurring price inline as price_data on the sub
           // item — same approach as PressurePro.
+          //
+          // Connect routing: when shouldRoute is true we set
+          // transfer_data.destination at create time (it is immutable
+          // afterwards). For PAYG (fee > 0) we also set
+          // application_fee_percent so Stripe deducts our cut on each
+          // recurring invoice. For paid tiers (fee == 0) we set
+          // transfer_data but NOT application_fee_percent — the operator
+          // keeps 100%.
           const sub = await stripe.subscriptions.create({
             customer: existingCustomerId,
             items: [
@@ -243,6 +282,10 @@ Deno.serve(async (req) => {
             // Surface the same metadata on the invoice so any out-of-band
             // tooling can route them too.
             payment_behavior: "allow_incomplete",
+            ...(transferData ? { transfer_data: transferData } : {}),
+            ...(applicationFeePercent !== undefined
+              ? { application_fee_percent: applicationFeePercent }
+              : {}),
           });
 
           await admin
@@ -302,6 +345,14 @@ Deno.serve(async (req) => {
         metadata: baseMetadata,
         subscription_data: {
           metadata: baseMetadata,
+          // For Checkout-created subscriptions the only way to attach
+          // Connect routing is via subscription_data — transfer_data and
+          // application_fee_percent get copied onto the resulting sub
+          // and are immutable thereafter.
+          ...(transferData ? { transfer_data: transferData } : {}),
+          ...(applicationFeePercent !== undefined
+            ? { application_fee_percent: applicationFeePercent }
+            : {}),
         },
       });
 

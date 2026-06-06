@@ -23,7 +23,16 @@ export type SmsKind =
   | "on_the_way"
   | "completed"
   | "review_request"
-  | "plan_confirmation";
+  | "plan_confirmation"
+  // quote_send = operator hit "Send" on a draft quote and the customer
+  // has a phone on file. Body is a short link to /accept/{quote_id}.
+  | "quote_send"
+  // freeform = operator typed a custom reply from the Inbox. We render
+  // it as-is, only appending the mandatory STOP suffix if missing.
+  | "freeform"
+  // payment_retry = the plan's card-on-file declined. Short body with the
+  // portal link so the customer can update their card and resume the plan.
+  | "payment_retry";
 
 export interface RenderedSms {
   body: string;
@@ -61,6 +70,34 @@ export interface SmsPlanConfirmationContext {
   firstVisitDate?: string | null;
   /** Self-service portal URL: `/plans/portal/{token}`. */
   portalUrl: string;
+}
+
+export interface SmsQuoteSendContext {
+  firstName?: string;
+  /** Public accept link: `${origin}/accept/{quote_id}`. */
+  acceptUrl: string;
+}
+
+export interface SmsPaymentRetryContext {
+  firstName?: string;
+  /** Self-service portal URL: `/plans/portal/{token}`. */
+  portalUrl: string;
+}
+
+export interface SmsFreeformContext {
+  /** Operator-typed body, verbatim. We don't interpolate variables. */
+  body: string;
+}
+
+/** Extra info returned with a freeform render so the UI can warn. */
+export interface RenderedFreeformSms extends RenderedSms {
+  /**
+   * Twilio bills per segment (~160 GSM-7 chars or 70 UCS-2 chars). If the
+   * rendered body exceeds 160 chars we set `segments` so the caller can
+   * surface a confirmation. We don't truncate — a half-sent reply is
+   * worse than two billed segments.
+   */
+  segments: number;
 }
 
 // =====================================================================
@@ -142,6 +179,20 @@ export function renderReviewRequestSms(
   };
 }
 
+export function renderQuoteSendSms(
+  business: SmsBusinessInfo,
+  ctx: SmsQuoteSendContext,
+): RenderedSms {
+  const biz = business.name || "your lawn crew";
+  const name = firstNameOrFallback(ctx.firstName);
+  // Worst case: "Hi {first_name}, here's your quote from {long_biz}:
+  // https://app.turfpro.test/accept/{uuid} — Reply STOP to opt out."
+  // ~140-150 chars with a short business name; one segment in most cases.
+  return {
+    body: `Hi ${name}, here's your quote from ${biz}: ${ctx.acceptUrl} — ${STOP_SUFFIX}`,
+  };
+}
+
 export function renderPlanConfirmationSms(
   business: SmsBusinessInfo,
   ctx: SmsPlanConfirmationContext,
@@ -155,6 +206,46 @@ export function renderPlanConfirmationSms(
   return {
     body: `Hi ${name}, your ${cadence} TurfPro plan is set.${visit} Manage: ${ctx.portalUrl}. — ${biz}. ${STOP_SUFFIX}`,
   };
+}
+
+export function renderPaymentRetrySms(
+  business: SmsBusinessInfo,
+  ctx: SmsPaymentRetryContext,
+): RenderedSms {
+  const biz = business.name || "your lawn crew";
+  const name = firstNameOrFallback(ctx.firstName);
+  // Worst case: "Hi {long_name}, your card for your {long_biz} plan was
+  // declined. Update it here: {portalUrl}. Reply STOP to opt out."
+  return {
+    body: `Hi ${name}, your card for your ${biz} plan was declined. Update it: ${ctx.portalUrl}. ${STOP_SUFFIX}`,
+  };
+}
+
+/**
+ * Operator-typed freeform reply. The renderer's only jobs:
+ *   1. Append the mandatory "Reply STOP to opt out." footer if the
+ *      operator didn't already include it (case-insensitive check).
+ *   2. Compute the segment count so the caller can warn at > 1 segment.
+ *
+ * We never truncate — operators occasionally need to send long replies
+ * (directions, an apology, a service question) and a clipped message is
+ * worse than billing for two segments.
+ */
+export function renderFreeformSms(
+  _business: SmsBusinessInfo,
+  ctx: SmsFreeformContext,
+): RenderedFreeformSms {
+  const typed = ctx.body.trim();
+  // Case-insensitive substring match — operator might write "reply stop
+  // to opt out" or "Reply STOP" or some other variant. Anything that
+  // mentions both "STOP" and "opt" we trust to satisfy the requirement.
+  const hasStopFooter = /stop/i.test(typed) && /opt/i.test(typed);
+  const body = hasStopFooter ? typed : `${typed} ${STOP_SUFFIX}`;
+  // GSM-7 segment math is more involved than this (concat headers eat
+  // 7 chars per segment past the first, UCS-2 is 70 chars/segment) but
+  // for a warn-the-operator threshold the simple length / 160 is fine.
+  const segments = Math.max(1, Math.ceil(body.length / 160));
+  return { body, segments };
 }
 
 // =====================================================================

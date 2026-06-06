@@ -83,6 +83,11 @@ function validateName(input: string): { ok: boolean; value: string; reason: stri
   return { ok: true, value: collapsed, reason: "" };
 }
 
+// Sentinel that QuoteDetail keys off to flag "customer wants recurring".
+// We piggyback on the notes column to avoid a new schema migration; the
+// operator's original notes are preserved verbatim after the sentinel.
+const RECURRING_REQUESTED_SENTINEL = "[recurring_requested]";
+
 const Accept = () => {
   const { id } = useParams();
   const [q, setQ] = useState<PublicQuote | null>(null);
@@ -92,6 +97,11 @@ const Accept = () => {
   const [signedName, setSignedName] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [payLoading, setPayLoading] = useState(false);
+  // Customer's opt-in for recurring service. Surfaces after the quote is
+  // accepted — the operator sees the request on QuoteDetail and uses the
+  // Convert-to-plan CTA to actually mint the maintenance_plans row.
+  const [recurringRequested, setRecurringRequested] = useState(false);
+  const [recurringSaving, setRecurringSaving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -206,6 +216,49 @@ const Accept = () => {
       }
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // Toggle the "make this recurring" opt-in. We rewrite quotes.notes with
+  // a `[recurring_requested]` sentinel prefix so QuoteDetail's CTA can
+  // highlight it without a schema migration. Checking + unchecking is a
+  // local-state flip and a single notes-column UPDATE — no rollback path
+  // beyond surfacing the error to the customer.
+  const toggleRecurring = async (next: boolean) => {
+    if (!q) return;
+    setRecurringSaving(true);
+    setErrorMsg(null);
+    try {
+      // Strip any prior sentinel from notes before adding/removing it, so
+      // double-clicks don't accumulate.
+      const baseNotes = (
+        await (async () => {
+          const { data } = await supabase
+            .from("quotes")
+            .select("notes")
+            .eq("id", q.id)
+            .maybeSingle();
+          const current = (data?.notes as string | null) ?? "";
+          return current.replace(/\[recurring_requested\]\s*/g, "").trim();
+        })()
+      );
+      const newNotes = next
+        ? `${RECURRING_REQUESTED_SENTINEL} ${baseNotes}`.trim()
+        : baseNotes || null;
+      const { error } = await supabase
+        .from("quotes")
+        .update({ notes: newNotes } as never)
+        .eq("id", q.id);
+      if (error) throw error;
+      setRecurringRequested(next);
+    } catch (e) {
+      setErrorMsg(
+        e instanceof Error
+          ? `Couldn't save your preference: ${e.message}`
+          : "Couldn't save your preference.",
+      );
+    } finally {
+      setRecurringSaving(false);
     }
   };
 
@@ -439,6 +492,33 @@ const Accept = () => {
                 <ShieldCheck className="h-4 w-4" /> Deposit received — you're on the route.
               </section>
             )}
+
+            {/* Recurring opt-in — surfaced after acceptance so it doesn't
+                clutter the approval CTA. The operator sees the request on
+                QuoteDetail and uses Convert-to-Plan to actually wire it up.
+                We store the flag as a sentinel prefix in quote.notes; see
+                toggleRecurring above. */}
+            <section className="tp-card p-3.5 mt-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={recurringRequested}
+                  onChange={(e) => toggleRecurring(e.target.checked)}
+                  disabled={recurringSaving}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-green-800"
+                />
+                <span className="text-sm">
+                  <span className="flex items-center gap-1.5 font-bold text-ink-900">
+                    <Repeat className="h-3.5 w-3.5 text-green-800" />
+                    Make this a recurring service
+                  </span>
+                  <span className="block text-[11.5px] text-muted-foreground mt-0.5 leading-snug">
+                    We'll be in touch to set up a regular schedule at the same
+                    rates. You can cancel any time.
+                  </span>
+                </span>
+              </label>
+            </section>
 
             <div className="mt-4 text-center">
               <Link

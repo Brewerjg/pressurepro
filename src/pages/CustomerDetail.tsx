@@ -18,7 +18,9 @@ import {
   Trash2,
   AlertTriangle,
   Plus,
+  Activity,
 } from "lucide-react";
+import { NotesTimeline } from "@/components/customers/NotesTimeline";
 
 // Ported from pressure-pro-quoter/src/pages/CustomerDetail.tsx with two key
 // TurfPro changes:
@@ -523,6 +525,17 @@ export default function CustomerDetail() {
               ))}
             </div>
           ))}
+      </section>
+
+      {/* ── ACTIVITY (unified notes timeline) ───────────────────────────── */}
+      <section className="mx-4 mb-4">
+        <div className="flex items-center justify-between px-1 pb-2">
+          <h2 className="tp-display text-[15px] font-bold text-ink-700 inline-flex items-center gap-1.5">
+            <Activity className="h-4 w-4 text-green-800" strokeWidth={2.2} />
+            Activity
+          </h2>
+        </div>
+        <NotesTimeline customer_id={customer.id} />
       </section>
 
       <button

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, CreditCard, LogOut, Mail, Megaphone, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { Banknote, Check, ChevronRight, CreditCard, Loader2, LogOut, Mail, Megaphone, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,11 @@ import CatalogEditor from "@/components/settings/CatalogEditor";
 import CrewEditor from "@/components/settings/CrewEditor";
 import MessagingPreferences from "@/components/settings/MessagingPreferences";
 import SeasonToggle from "@/components/season/SeasonToggle";
+import {
+  isConnectComplete,
+  startConnectOnboarding,
+  type ConnectableProfile,
+} from "@/lib/connect-onboarding";
 
 // Settings — full mobile-first surface. Composed of three editor components
 // (Profile / Catalog / Crews) plus a read-only Billing card and an Account
@@ -40,6 +46,23 @@ export default function Settings() {
     },
   });
 
+  // Connect status — pulled straight off the profile row so the section
+  // reflects whatever the last `refresh_status` call wrote. We only need
+  // two columns; the rest is loaded by BusinessProfile separately.
+  const { data: connectProfile } = useQuery({
+    queryKey: ["profile-connect", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("stripe_account_id, connect_ready")
+        .or(`id.eq.${user!.id},user_id.eq.${user!.id}`)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as ConnectableProfile | null;
+    },
+  });
+
   return (
     <div className="pt-3 pb-8">
       {/* Header — matches Home.tsx px-[22px] */}
@@ -60,6 +83,17 @@ export default function Settings() {
       {/* Profile */}
       <Section icon={<SettingsIcon className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Profile">
         <BusinessProfile />
+      </Section>
+
+      {/* Stripe payouts — Connect Express onboarding state. Three states:
+          1) ready (connect_ready=true) → green "Connected ✓"
+          2) incomplete (stripe_account_id set but connect_ready=false) →
+             bronze "finish setup" CTA, same edge fn re-mints an
+             AccountLink that picks up where Stripe left off
+          3) never started (no stripe_account_id) → bronze "set up
+             payouts" CTA, mints a brand-new Express account */}
+      <Section icon={<Banknote className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Stripe payouts">
+        <StripePayoutsCard profile={connectProfile ?? null} />
       </Section>
 
       {/* Season — winter mode pauses recurring mow plans and pivots the
@@ -193,5 +227,88 @@ function Section({
       </h2>
       {children}
     </section>
+  );
+}
+
+// Stripe Connect Express status card. Three rendering branches based on
+// the two profile columns; the bronze button calls the same edge fn in
+// every case (the edge fn knows whether to mint vs reuse the account).
+function StripePayoutsCard({ profile }: { profile: ConnectableProfile | null }) {
+  const [starting, setStarting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const ready = isConnectComplete(profile);
+  const startedButIncomplete =
+    !ready && !!profile?.stripe_account_id && !profile?.connect_ready;
+
+  const onClick = async () => {
+    setErr(null);
+    setStarting(true);
+    try {
+      await startConnectOnboarding();
+    } catch (e) {
+      setStarting(false);
+      setErr(e instanceof Error ? e.message : "Could not start Stripe Connect");
+    }
+  };
+
+  if (ready) {
+    return (
+      <div className="tp-card p-4 flex items-center gap-3">
+        <span className="h-9 w-9 rounded-lg bg-green-100 text-green-800 grid place-items-center shrink-0">
+          <Check className="h-4 w-4" strokeWidth={2.6} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13.5px] font-semibold text-green-800">
+            Connected ✓
+          </div>
+          <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+            Customer payments deposit into your Stripe account.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tp-card p-4 space-y-2.5">
+      <div className="flex items-start gap-3">
+        <span className="h-9 w-9 rounded-lg bg-bronze-100 text-bronze-700 grid place-items-center shrink-0">
+          <CreditCard className="h-4 w-4" strokeWidth={2.2} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13.5px] font-semibold text-ink-900">
+            {startedButIncomplete
+              ? "Onboarding incomplete"
+              : "Not connected"}
+          </div>
+          <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+            {startedButIncomplete
+              ? "Stripe still needs a few details before payouts can start."
+              : "Connect Stripe to accept customer payments and have them deposited in your bank account."}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={starting}
+        className="w-full h-10 rounded-xl bg-bronze-500 hover:bg-bronze-600 text-white font-semibold text-sm shadow-bronze disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        {starting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <CreditCard className="h-4 w-4" strokeWidth={2.2} />
+            {startedButIncomplete
+              ? "Finish setup"
+              : "Set up payouts"}
+          </>
+        )}
+      </button>
+      {err && (
+        <p className="text-[11px] font-semibold text-destructive">{err}</p>
+      )}
+    </div>
   );
 }

@@ -2,13 +2,18 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
+  Check,
+  CheckCircle2,
   CreditCard,
+  DollarSign,
   Loader2,
   Pause,
   Play,
   Repeat,
+  Send,
   Trash2,
   XCircle,
   Edit3,
@@ -18,6 +23,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { mutatePlanSubscription, type PlanAction } from "@/lib/plan-stripe";
+import {
+  recordPayment,
+  type ManualPaymentMethod,
+  METHOD_LABEL,
+} from "@/lib/manual-payments";
+import { sendPaymentRetryLink } from "@/lib/customer-email";
+import { sendPaymentRetryLinkSms } from "@/lib/customer-sms";
 
 // PlanDetail. Mirrors PressurePro's PlanDetail but reads lawn-care extras
 // (day_of_week, frequency, season_pause, plan_kind) added in
@@ -90,6 +102,21 @@ export default function PlanDetail() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  // Inline manual-payment form (cash / check / Venmo intake against this
+  // plan). Closed by default; toggle via the "Record payment" button.
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  // Dunning banner state — surfaces the most recent failed charge from the
+  // plan's charge_history. The banner offers two actions: "Send retry link"
+  // (fires the payment_retry email + SMS) and "Mark as resolved" (operator
+  // override that prepends a {status:'resolved'} entry to charge_history so
+  // the banner clears).
+  const [dunningStatus, setDunningStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "sent" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
 
   const {
     data: plan,
@@ -141,6 +168,108 @@ export default function PlanDetail() {
       navigate("/plans");
     },
   });
+
+  // Record an off-cycle manual payment against this plan. After insert we
+  // append a synthetic { date, amount, status: 'manual:<method>' } entry to
+  // the plan's charge_history JSONB so the existing "Recent charges" list
+  // surfaces it without needing a separate UI. We deliberately do NOT touch
+  // next_charge_date — moving the next-charge window is a separate decision
+  // the operator makes via the Edit form.
+  const recordPaymentMutation = useMutation({
+    mutationFn: async (args: {
+      method: ManualPaymentMethod;
+      amountCents: number;
+      checkNumber: string | null;
+    }) => {
+      if (!plan || !id) throw new Error("Missing plan");
+      await recordPayment({
+        plan_id: id,
+        customer_id: plan.customer_id ?? null,
+        method: args.method,
+        amount_cents: args.amountCents,
+        check_number: args.checkNumber,
+      });
+      // Append to charge_history. JSONB column — read current, prepend the
+      // new entry, write back. We prepend so the "Recent charges" card
+      // (which slices the first 5) shows the freshest first.
+      const existing = Array.isArray(plan.charge_history)
+        ? (plan.charge_history as unknown as ChargeEntry[])
+        : [];
+      const next = [
+        {
+          date: new Date().toISOString(),
+          amount: args.amountCents / 100,
+          status: `manual:${args.method}`,
+        },
+        ...existing,
+      ];
+      const { error } = await supabase
+        .from("maintenance_plans")
+        .update({ charge_history: next as unknown as Json })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setPaymentFormOpen(false);
+      setPaymentError(null);
+      queryClient.invalidateQueries({ queryKey: ["plan", id] });
+      queryClient.invalidateQueries({ queryKey: ["plans"] });
+    },
+    onError: (e) => {
+      setPaymentError(e instanceof Error ? e.message : "Couldn't save payment");
+    },
+  });
+
+  // "Mark as resolved" override. The webhook will keep prepending failed
+  // entries on subsequent retries — operator marks the CURRENT failure as
+  // resolved by prepending a synthetic {status:'resolved'} entry. Because
+  // the banner check inspects history[0], a single resolved entry hides
+  // the alert until Stripe fires another invoice.payment_failed (which the
+  // webhook will then prepend back on top, re-surfacing the banner).
+  const markResolvedMutation = useMutation({
+    mutationFn: async () => {
+      if (!plan || !id) throw new Error("Missing plan");
+      const existing = Array.isArray(plan.charge_history)
+        ? (plan.charge_history as unknown as ChargeEntry[])
+        : [];
+      const next = [
+        {
+          date: new Date().toISOString(),
+          status: "resolved",
+        },
+        ...existing,
+      ];
+      const { error } = await supabase
+        .from("maintenance_plans")
+        .update({ charge_history: next as unknown as Json })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan", id] });
+      queryClient.invalidateQueries({ queryKey: ["plans"] });
+    },
+  });
+
+  const sendRetryLink = async () => {
+    if (!id) return;
+    setDunningStatus({ kind: "sending" });
+    // Fire email + SMS in parallel — both transports are fire-and-forget;
+    // we surface "sent" if at least one path succeeded so the operator
+    // gets a useful signal even on partial failure (common when only one
+    // contact channel is on file).
+    const [emailRes, smsRes] = await Promise.all([
+      sendPaymentRetryLink(id),
+      sendPaymentRetryLinkSms(id),
+    ]);
+    if (emailRes.ok || smsRes.ok) {
+      setDunningStatus({ kind: "sent" });
+      return;
+    }
+    const message =
+      emailRes.error || smsRes.error || "Couldn't reach customer";
+    setDunningStatus({ kind: "error", message });
+  };
 
   if (isLoading) {
     return (
@@ -199,6 +328,21 @@ export default function PlanDetail() {
     deletePlan.mutate();
   };
 
+  // Surface the dunning banner ONLY when the most recent charge_history
+  // entry is a failure. The webhook prepends fresh entries (newest-first),
+  // so history[0] is the source of truth. Marking as resolved prepends a
+  // 'resolved' entry which causes this check to flip false; if Stripe
+  // retries and fails again the webhook will re-prepend a 'failed' entry
+  // and the banner returns.
+  const history = Array.isArray(plan.charge_history)
+    ? (plan.charge_history as unknown as ChargeEntry[])
+    : [];
+  const latestCharge = history[0];
+  const lastChargeFailed =
+    !!latestCharge &&
+    (latestCharge.status === "failed" ||
+      latestCharge.status === "payment_failed");
+
   return (
     <div className="pt-3">
       <PageBackHeader
@@ -209,6 +353,29 @@ export default function PlanDetail() {
       />
 
       <div className="mx-4 space-y-3 pb-6">
+        {/* Dunning banner — surfaces only when the most recent charge entry
+            is a failure. Renders at the TOP of the content area so the
+            operator sees it before the plan summary. */}
+        {lastChargeFailed && (
+          <DunningBanner
+            failedOnIso={latestCharge?.date}
+            status={dunningStatus}
+            isMarkingResolved={markResolvedMutation.isPending}
+            onSendRetry={() => void sendRetryLink()}
+            onMarkResolved={() => {
+              if (
+                !window.confirm(
+                  "Mark this failure as resolved? Stripe will keep retrying — this just hides the alert in TurfPro.",
+                )
+              ) {
+                return;
+              }
+              setDunningStatus({ kind: "idle" });
+              markResolvedMutation.mutate();
+            }}
+          />
+        )}
+
         {/* Hero summary */}
         <div className="rounded-[18px] bg-gradient-hero-deep text-white p-[18px] relative overflow-hidden">
           <div className="flex items-start justify-between">
@@ -296,6 +463,40 @@ export default function PlanDetail() {
           <div className="rounded-xl bg-[hsl(var(--destructive-bg))] text-destructive text-[12.5px] font-semibold p-3">
             {stripeError}
           </div>
+        )}
+
+        {/* Record payment — manual cash/check intake against this plan.
+            Sits beside Pause/Resume/Cancel as a peer action because the
+            operator's mental model is "this plan got paid out-of-band, log
+            it". Bronze-outline so it reads as a secondary CTA. */}
+        <button
+          type="button"
+          onClick={() => {
+            setPaymentError(null);
+            setPaymentFormOpen((v) => !v);
+          }}
+          className={cn(
+            "w-full rounded-xl border font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 transition-colors",
+            paymentFormOpen
+              ? "bg-bronze-100 border-bronze-400 text-bronze-700"
+              : "bg-card border-bronze-400 text-bronze-700 hover:bg-bronze-50",
+          )}
+        >
+          <DollarSign className="h-3.5 w-3.5" />
+          {paymentFormOpen ? "Close" : "Record payment"}
+        </button>
+
+        {paymentFormOpen && (
+          <PlanManualPaymentForm
+            defaultAmount={Number(plan.amount ?? 0)}
+            submitting={recordPaymentMutation.isPending}
+            error={paymentError}
+            onCancel={() => {
+              setPaymentFormOpen(false);
+              setPaymentError(null);
+            }}
+            onSubmit={(values) => recordPaymentMutation.mutate(values)}
+          />
         )}
 
         {/* Charge history */}
@@ -713,15 +914,119 @@ function ChargeHistoryCard({ chargeHistory }: { chargeHistory: Json }) {
                     ? "bg-green-100 text-green-800"
                     : c.status === "failed"
                       ? "bg-[hsl(var(--destructive-bg))] text-destructive"
-                      : "bg-ink-100 text-ink-700",
+                      : typeof c.status === "string" && c.status.startsWith("manual:")
+                        ? "bg-bronze-100 text-bronze-700"
+                        : "bg-ink-100 text-ink-700",
                 )}
               >
-                {c.status ?? "—"}
+                {typeof c.status === "string" && c.status.startsWith("manual:")
+                  ? c.status.replace("manual:", "") + " (manual)"
+                  : c.status ?? "—"}
               </span>
             </li>
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+// =====================================================================
+// DunningBanner — destructive-tinted alert that surfaces a failed charge.
+//
+// Renders two CTAs:
+//   • "Send retry link" → fires payment_retry email + SMS in parallel via
+//     sendPaymentRetryLink / sendPaymentRetryLinkSms. The customer lands
+//     on /plans/portal/{token} which routes them into the Stripe Billing
+//     Portal for the actual card update.
+//   • "Mark as resolved" → operator override that prepends a synthetic
+//     {status:'resolved'} entry to charge_history so the banner clears.
+//     Important: this does NOT pause/cancel the Stripe subscription. If
+//     Stripe retries and fails again, the webhook will prepend a fresh
+//     'failed' entry on top of the resolved one and the banner returns.
+//
+// Why two actions instead of one auto-resolve:
+//   Operators sometimes know out-of-band that the card was already
+//   updated (customer texted them), and sometimes they want to escalate
+//   directly to the customer. The action set covers both.
+// =====================================================================
+function DunningBanner({
+  failedOnIso,
+  status,
+  isMarkingResolved,
+  onSendRetry,
+  onMarkResolved,
+}: {
+  failedOnIso: string | undefined;
+  status:
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "sent" }
+    | { kind: "error"; message: string };
+  isMarkingResolved: boolean;
+  onSendRetry: () => void;
+  onMarkResolved: () => void;
+}) {
+  const dateLabel = failedOnIso ? fmtDateLong(failedOnIso) : "recently";
+  return (
+    <section className="rounded-[18px] bg-[hsl(var(--destructive-bg))] border border-destructive/30 p-4">
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle
+          className="h-5 w-5 text-destructive shrink-0 mt-0.5"
+          strokeWidth={2}
+        />
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[14px] font-bold text-destructive">
+            Last charge failed on {dateLabel}
+          </h2>
+          <p className="text-[12.5px] text-destructive/85 mt-0.5">
+            Stripe will keep retrying. You can send the customer a quick link
+            to update their card, or mark this as resolved if you already
+            handled it.
+          </p>
+
+          {status.kind === "sent" && (
+            <div className="mt-2.5 flex items-center gap-1.5 text-[12px] font-semibold text-destructive">
+              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+              Retry link sent.
+            </div>
+          )}
+          {status.kind === "error" && (
+            <div className="mt-2.5 text-[12px] font-semibold text-destructive">
+              {status.message}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onSendRetry}
+              disabled={status.kind === "sending"}
+              className="rounded-xl bg-destructive text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {status.kind === "sending" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" strokeWidth={2.2} />
+              )}
+              {status.kind === "sending" ? "Sending…" : "Send retry link"}
+            </button>
+            <button
+              type="button"
+              onClick={onMarkResolved}
+              disabled={isMarkingResolved}
+              className="rounded-xl bg-card border border-destructive/40 text-destructive font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:bg-destructive/5 transition-colors disabled:opacity-60"
+            >
+              {isMarkingResolved ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" strokeWidth={2.2} />
+              )}
+              Mark as resolved
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -741,5 +1046,141 @@ function StatusPill({ status }: { status: PlanStatus }) {
     >
       {status}
     </span>
+  );
+}
+
+// =====================================================================
+// PlanManualPaymentForm — inline cash/check intake against the plan.
+// Light-theme variant of the form (RouteMode has its own dark-theme one).
+// =====================================================================
+const PLAN_METHODS: ManualPaymentMethod[] = [
+  "cash",
+  "check",
+  "venmo",
+  "cashapp",
+  "zelle",
+  "other",
+];
+
+function PlanManualPaymentForm({
+  defaultAmount,
+  submitting,
+  error,
+  onCancel,
+  onSubmit,
+}: {
+  defaultAmount: number;
+  submitting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSubmit: (args: {
+    method: ManualPaymentMethod;
+    amountCents: number;
+    checkNumber: string | null;
+  }) => void;
+}) {
+  const [method, setMethod] = useState<ManualPaymentMethod>("cash");
+  const [amount, setAmount] = useState<string>(
+    defaultAmount > 0 ? String(defaultAmount) : "",
+  );
+  const [checkNumber, setCheckNumber] = useState<string>("");
+
+  const submit = () => {
+    const amountNum = Number(amount);
+    if (!amountNum || amountNum <= 0) {
+      window.alert("Enter a valid amount");
+      return;
+    }
+    onSubmit({
+      method,
+      amountCents: Math.round(amountNum * 100),
+      checkNumber: method === "check" ? (checkNumber.trim() || null) : null,
+    });
+  };
+
+  return (
+    <section className="tp-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-semibold text-ink-900">Record payment</h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-[12px] font-semibold text-ink-500 hover:text-ink-700"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <div>
+        <FieldLabel>Method</FieldLabel>
+        <div className="grid grid-cols-3 gap-1.5">
+          {PLAN_METHODS.map((m) => {
+            const on = method === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMethod(m)}
+                className={cn(
+                  "py-2 rounded-xl text-[12px] font-semibold transition-colors border",
+                  on
+                    ? "border-bronze-500 bg-bronze-500 text-white"
+                    : "border-ink-200 bg-card text-ink-700 hover:border-bronze-400",
+                )}
+              >
+                {METHOD_LABEL[m]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <FieldLabel>Amount</FieldLabel>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="tp-input"
+          />
+        </div>
+        {method === "check" && (
+          <div>
+            <FieldLabel>Check #</FieldLabel>
+            <input
+              type="text"
+              value={checkNumber}
+              onChange={(e) => setCheckNumber(e.target.value)}
+              className="tp-input"
+              placeholder="optional"
+            />
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="rounded-xl bg-[hsl(var(--destructive-bg))] text-destructive text-[12.5px] font-semibold p-3">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={submit}
+        disabled={submitting}
+        className="w-full rounded-full bg-bronze-500 text-white font-bold text-[14px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        {submitting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Check className="h-4 w-4" />
+        )}
+        Save payment
+      </button>
+    </section>
   );
 }

@@ -1,13 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo \"To fix the database, run this SQL in your Supabase dashboard:\nhttps://supabase.com/dashboard/project/dkksryutecjbyuscpxdb/sql\n\nThen paste this query:\")"
+      "Bash(echo \"To fix the database, run this SQL in your Supabase dashboard:\nhttps://supabase.com/dashboard/project/dkksryutecjbyuscpxdb/sql\n\nThen paste this query:\")",
+      "PowerShell(npm install 2>&1)",
+      "PowerShell(npm run build 2>&1)"
     ],
+    "deny": [],
+    "ask": [],
     "defaultMode": "auto",
     "additionalDirectories": [
       "C:\\Users\\Jason\\Desktop\\pressure-pro-quoter\\src\\integrations\\supabase"
-    ],
-    "deny": [],
-    "ask": []
+    ]
   }
 }

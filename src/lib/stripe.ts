@@ -46,7 +46,7 @@ export function getStripeEnvironment(): StripeEnv {
   return environment;
 }
 
-export type TierId = "solo" | "pro" | "crew";
+export type TierId = "payg" | "solo" | "pro" | "crew";
 export type Cycle = "monthly" | "yearly";
 
 export interface Tier {
@@ -59,6 +59,13 @@ export interface Tier {
   highlights: string[];
   /** Seat count surfaced in the card subtitle. */
   seats: number;
+  /**
+   * Stripe Connect application fee percentage applied to every customer-facing
+   * charge that flows through the operator's Stripe account (plan billing,
+   * quote deposits, per-visit charges). Pay-as-you-go pays 2.0%; paid tiers
+   * pay 0%. See feeForTier() for the runtime resolver.
+   */
+  applicationFeePercent: number;
 }
 
 // IMPORTANT — placeholder price IDs.
@@ -68,6 +75,21 @@ export interface Tier {
 // `stripe.prices.list({ lookup_keys: [priceId] })`, so they should be set
 // as the price's lookup_key in Stripe — not the `price_xxx` ID.
 export const TIERS: Tier[] = [
+  {
+    id: "payg",
+    name: "Pay as you go",
+    tagline: "No monthly fee — pay only when you earn",
+    monthly: { priceId: "turfpro_payg_monthly", price: 0 },
+    yearly: { priceId: "turfpro_payg_yearly", price: 0, saveLabel: "" },
+    seats: 1,
+    highlights: [
+      "$0 monthly",
+      "2% on processed payments",
+      "All operator features",
+      "Best for trials + cash-heavy ops",
+    ],
+    applicationFeePercent: 2.0,
+  },
   {
     id: "solo",
     name: "Solo",
@@ -81,6 +103,7 @@ export const TIERS: Tier[] = [
       "Customer & property records",
       "Photo before/after, chemical log",
     ],
+    applicationFeePercent: 0,
   },
   {
     id: "pro",
@@ -96,6 +119,7 @@ export const TIERS: Tier[] = [
       "QuickBooks sync",
       "Recurring billing + maintenance plans",
     ],
+    applicationFeePercent: 0,
   },
   {
     id: "crew",
@@ -111,6 +135,7 @@ export const TIERS: Tier[] = [
       "Reporting export",
       "Everything in Pro",
     ],
+    applicationFeePercent: 0,
   },
 ];
 
@@ -118,6 +143,8 @@ export const TIERS: Tier[] = [
 // SubscriptionGate to identify the user's current tier from the
 // subscriptions row.
 const PRICE_TO_TIER: Record<string, TierId> = {
+  turfpro_payg_monthly: "payg",
+  turfpro_payg_yearly: "payg",
   turfpro_solo_monthly: "solo",
   turfpro_solo_yearly: "solo",
   turfpro_pro_monthly: "pro",
@@ -125,6 +152,23 @@ const PRICE_TO_TIER: Record<string, TierId> = {
   turfpro_crew_monthly: "crew",
   turfpro_crew_yearly: "crew",
 };
+
+/**
+ * Resolve the application-fee percentage for a given tier id. Used by:
+ *   - create-plan-subscription / create-checkout-session edge fns when
+ *     setting `application_fee_amount` on Stripe Connect charges
+ *   - Reports page when computing "TurfPro fees this month" + Pro upgrade
+ *     callout math
+ *
+ * Operators with no `subscriptions` row at all are treated as PAYG (2%).
+ * This matches the post-trial state where the trial expired and they
+ * never picked a tier — the fee model becomes their default.
+ */
+export function feeForTier(tierId: TierId | null | undefined): number {
+  if (!tierId) return 2.0;
+  const tier = TIERS.find((t) => t.id === tierId);
+  return tier?.applicationFeePercent ?? 2.0;
+}
 
 export function tierFromPriceId(priceId: string | null | undefined): TierId | null {
   if (!priceId) return null;
