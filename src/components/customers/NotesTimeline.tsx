@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_ID } from "@/lib/app-context";
 import {
   MapPin,
   Beaker,
@@ -157,6 +158,7 @@ export function NotesTimeline({ customer_id }: NotesTimelineProps) {
           .from("quotes")
           .select("id, status, total, created_at, notes")
           .eq("customer_id", customer_id)
+          .eq("app", APP_ID)
           .order("created_at", { ascending: false })
           .limit(50),
         sb
@@ -182,7 +184,8 @@ export function NotesTimeline({ customer_id }: NotesTimelineProps) {
         sb
           .from("maintenance_plans")
           .select("id, charge_history")
-          .eq("customer_id", customer_id),
+          .eq("customer_id", customer_id)
+          .eq("app", APP_ID),
       ]);
 
       const events: TimelineEvent[] = [];

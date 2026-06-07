@@ -21,6 +21,10 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import { corsHeaders } from "../_shared/cors.ts";
+
+// Mirrors APP_ID in src/lib/app-context.ts. Keep in sync.
+const APP_ID = "turfpro";
+
 import {
   isValidEmail,
   renderCompleted,
@@ -224,6 +228,7 @@ Deno.serve(async (req) => {
             .from("photo_pairs")
             .select("id")
             .eq("property_id", payload.context.property_id)
+            .eq("app", APP_ID)
             .limit(1);
           if (pairs && pairs.length > 0) {
             galleryUrl = `${origin}/g/${payload.context.property_id}`;
@@ -261,6 +266,7 @@ Deno.serve(async (req) => {
           )
           .eq("id", payload.context.quote_id)
           .eq("user_id", userData.user.id)
+          .eq("app", APP_ID)
           .maybeSingle();
         if (qErr || !quote) return json({ error: "Quote not found" }, 404);
 
@@ -354,6 +360,7 @@ Deno.serve(async (req) => {
           )
           .eq("id", payload.context.plan_id)
           .eq("user_id", userData.user.id)
+          .eq("app", APP_ID)
           .maybeSingle();
         if (pErr || !plan) return json({ error: "Plan not found" }, 404);
 
@@ -425,6 +432,7 @@ Deno.serve(async (req) => {
           )
           .eq("id", payload.context.plan_id)
           .eq("user_id", userData.user.id)
+          .eq("app", APP_ID)
           .maybeSingle();
         if (pErr || !plan) return json({ error: "Plan not found" }, 404);
         rendered = renderPlanConfirmation(business, {

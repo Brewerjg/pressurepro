@@ -9,6 +9,8 @@ import QuoteForm, { type QuoteFormValues } from "@/components/quotes/QuoteForm";
 import { quoteTotal } from "@/components/quotes/types";
 import { sendQuote } from "@/lib/customer-email";
 import { sendQuoteSms } from "@/lib/customer-sms";
+import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import { APP_ID } from "@/lib/app-context";
 
 // NewQuote — the operator-side "author a quote" page. Routed at /quotes/new.
 // Accepts ?customer=<id> so CustomerDetail can deep-link with a prefilled
@@ -48,7 +50,9 @@ export default function NewQuote() {
       const status: Database["public"]["Enums"]["quote_status"] =
         action === "send" ? "sent" : "draft";
 
-      const insert: QuoteInsert = {
+      // `app` field added in migration 0022; generated types may not include
+      // it yet — cast through Insert via a widened object.
+      const insert = {
         user_id: user.id,
         customer_id: values.customer_id || null,
         property_id: values.property_id || null,
@@ -65,7 +69,8 @@ export default function NewQuote() {
           : null,
         status,
         emailed_at: action === "send" ? new Date().toISOString() : null,
-      };
+        app: APP_ID,
+      } as unknown as QuoteInsert;
 
       const { data, error } = await supabase
         .from("quotes")
@@ -78,11 +83,14 @@ export default function NewQuote() {
       // Fire-and-forget customer comms when the operator picked "Send".
       // We don't roll back the row on a send failure — the status pill
       // reflects what the operator chose to do; an email/SMS hiccup is
-      // logged in email_log/sms_log and surfaced in the inline error.
-      // Email always goes if there's an address on file; SMS only fires
-      // when there's a phone — quiet-hours/Twilio config are handled in
-      // the edge function. This matches the "lean, always-send-if-channel
-      // -available" behavior from the spec.
+      // logged in email_log and surfaced in the inline error.
+      //
+      // SMS no longer auto-fires under the operator-self-sends model.
+      // The operator lands on QuoteDetail (via the onSuccess navigate)
+      // and uses the TextCustomerButton there to send the quote link
+      // from their own Messages app. The legacy Twilio auto-send path
+      // is retained behind TWILIO_ENABLED in case an operator wants to
+      // flip it back on.
       if (action === "send") {
         if (values.customer_email) {
           const r = await sendQuote(quoteId);
@@ -90,7 +98,7 @@ export default function NewQuote() {
             console.warn("sendQuote failed:", r.error);
           }
         }
-        if (values.phone) {
+        if (TWILIO_ENABLED && values.phone) {
           const r = await sendQuoteSms(quoteId);
           if (!r.ok && !r.deferred) {
             console.warn("sendQuoteSms failed:", r.error);

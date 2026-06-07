@@ -16,6 +16,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { APP_ID } from "./app-context";
 
 export type Season = "spring" | "summer" | "fall" | "winter";
 export const ALL_SEASONS: Season[] = ["spring", "summer", "fall", "winter"];
@@ -90,6 +91,7 @@ export async function countAffectedPlans(
       .from("maintenance_plans")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
+      .eq("app", APP_ID)
       .eq("plan_kind", "mow")
       .eq("status", "active")
       .in("frequency", ["weekly", "biweekly", "monthly"]);
@@ -100,6 +102,7 @@ export async function countAffectedPlans(
     .from("maintenance_plans")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
+    .eq("app", APP_ID)
     .eq("pause_reason", "winter_swap");
   if (error) throw error;
   return count ?? 0;
@@ -147,6 +150,7 @@ async function swapSeasonFallback(
       .from("maintenance_plans")
       .update({ status: "paused", pause_reason: "winter_swap" })
       .eq("user_id", userId)
+      .eq("app", APP_ID)
       .eq("plan_kind", "mow")
       .eq("status", "active")
       .in("frequency", ["weekly", "biweekly", "monthly"])
@@ -158,6 +162,7 @@ async function swapSeasonFallback(
       .from("maintenance_plans")
       .update({ status: "active", pause_reason: null })
       .eq("user_id", userId)
+      .eq("app", APP_ID)
       .eq("pause_reason", "winter_swap")
       .select("id");
     if (error) throw error;

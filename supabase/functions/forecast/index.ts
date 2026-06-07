@@ -88,16 +88,29 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid geocode response" }, 502);
     }
 
-    // 3. One Call 3.0 — daily for 7 days, imperial units
+    // 3. One Call 4.0 — daily timeline endpoint, imperial units.
+    //
+    // OpenWeather released v4.0 as a separate product from v3.0 sometime
+    // in 2026. The "One Call by Call" subscription now grants access to
+    // v4.0 only — NOT v3.0 — so this function targets v4.0. Endpoint shape:
+    //
+    //   /data/4.0/onecall/timeline/1day?lat=&lon=&units=imperial&appid=
+    //
+    // Response wraps days in a `data[]` array (vs v3.0's `daily[]`).
+    // Per-day field shape (temp.min/max, weather[], pop, wind_speed) is
+    // unchanged from v3.0, so the mapping below stays the same.
+    // A single call returns up to 10 days; we slice to 7.
     const ocRes = await fetch(
-      `https://api.openweathermap.org/data/3.0/onecall?lat=${geo.lat}&lon=${geo.lon}&exclude=minutely,hourly,alerts,current&units=imperial&appid=${apiKey}`,
+      `https://api.openweathermap.org/data/4.0/onecall/timeline/1day?lat=${geo.lat}&lon=${geo.lon}&units=imperial&appid=${apiKey}`,
     );
     if (!ocRes.ok) {
       const body = await ocRes.text();
       return json({ error: `OneCall failed [${ocRes.status}]: ${body}` }, 502);
     }
-    const oc = await ocRes.json() as { daily?: OpenWeatherDaily[] };
-    const dailyRaw = oc.daily ?? [];
+    const oc = await ocRes.json() as { data?: OpenWeatherDaily[]; daily?: OpenWeatherDaily[] };
+    // Prefer v4.0's `data[]`; fall back to v3.0's `daily[]` in case OpenWeather
+    // ever changes the shape back, or if an older endpoint slips through.
+    const dailyRaw = oc.data ?? oc.daily ?? [];
 
     const daily: DailyForecast[] = dailyRaw.slice(0, 7).map((d) => {
       const date = new Date(d.dt * 1000).toISOString().slice(0, 10);

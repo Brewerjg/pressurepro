@@ -4,6 +4,7 @@ import { Loader2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { APP_ID } from "@/lib/app-context";
 
 // Step 2 of the wizard — operator picks who to blast.
 //
@@ -102,6 +103,7 @@ export default function AudienceStep({ filter, onChange }: Props) {
           .from("maintenance_plans")
           .select("customer_id")
           .eq("user_id", user!.id)
+          .eq("app", APP_ID)
           .eq("status", "active")
           .not("customer_id", "is", null);
         if (error) throw error;
@@ -123,6 +125,7 @@ export default function AudienceStep({ filter, onChange }: Props) {
             .from("maintenance_plans")
             .select("customer_id")
             .eq("user_id", user!.id)
+            .eq("app", APP_ID)
             .eq("status", "active")
             .not("customer_id", "is", null),
         ]);

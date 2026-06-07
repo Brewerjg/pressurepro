@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { QuoteLine } from "./types";
 import { defaultExpiresAt, lineTotal, quoteTotal } from "./types";
+import { APP_ID } from "@/lib/app-context";
 
 // Shared editor used by NewQuote (create) and QuoteDetail (edit). The form
 // shape is identical — only the submit handler and "Cancel" target differ.
@@ -100,6 +101,7 @@ export default function QuoteForm({
       const { data, error } = await supabase
         .from("catalog_items")
         .select("*")
+        .eq("app", APP_ID)
         .eq("kind", "service")
         .eq("archived", false)
         .order("sort_order");

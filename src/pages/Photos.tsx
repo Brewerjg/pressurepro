@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Camera, Plus, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_ID } from "@/lib/app-context";
 
 interface PhotoPairRow {
   id: string;
@@ -58,7 +59,8 @@ export default function Photos() {
         .from("photo_pairs")
         .select(
           "id, property_id, address, before_path, after_path, thumb_before_path, thumb_after_path, created_at",
-        );
+        )
+        .eq("app", APP_ID);
       const filtered = propertyFilter ? base.eq("property_id", propertyFilter) : base;
       const { data, error } = await filtered
         .order("created_at", { ascending: false })

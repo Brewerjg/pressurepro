@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Public lookup by portal_token (unique UUID) — app discriminator intentionally not filtered (see src/lib/app-context.ts)
     const { data: plan, error: pErr } = await supabase
       .from("maintenance_plans")
       .select("id, status, stripe_customer_id")

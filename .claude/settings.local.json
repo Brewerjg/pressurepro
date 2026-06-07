@@ -3,7 +3,9 @@
     "allow": [
       "Bash(echo \"To fix the database, run this SQL in your Supabase dashboard:\nhttps://supabase.com/dashboard/project/dkksryutecjbyuscpxdb/sql\n\nThen paste this query:\")",
       "PowerShell(npm install 2>&1)",
-      "PowerShell(npm run build 2>&1)"
+      "PowerShell(npm run build 2>&1)",
+      "Bash(tail -8 'C:\\\\Users\\\\Jason\\\\Desktop\\\\pressure-pro-quoter\\\\ALIGN_WITH_TURFPRO.md' 2>&1)",
+      "Read(//c/Users/Jason/Desktop/pressure-pro-quoter/**)"
     ],
     "deny": [],
     "ask": [],

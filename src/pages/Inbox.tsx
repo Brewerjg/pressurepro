@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Inbox as InboxIcon, MessageSquare, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ThreadRow from "@/components/inbox/ThreadRow";
 import MessageBubble from "@/components/inbox/MessageBubble";
 import ReplyBox from "@/components/inbox/ReplyBox";
+import { TWILIO_ENABLED } from "@/lib/feature-flags";
 import type {
   InboundRow,
   OutboundRow,
@@ -73,6 +74,14 @@ function normalizePhone(s: string | null | undefined): string | null {
 export default function Inbox() {
   const { customerId } = useParams<{ customerId?: string }>();
   const { user } = useAuth();
+
+  // Two-way Inbox is meaningful only when the Twilio dispatcher is on.
+  // Under the operator-self-sends model there's no inbound webhook
+  // routing replies into sms_inbound, so the inbox would always be
+  // empty. Redirect home to avoid confusion.
+  if (!TWILIO_ENABLED) {
+    return <Navigate to="/" replace />;
+  }
 
   if (customerId) {
     return <ThreadView customerId={customerId} userId={user?.id ?? null} />;

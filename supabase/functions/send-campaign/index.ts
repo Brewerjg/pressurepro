@@ -27,6 +27,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
+// Mirrors APP_ID in src/lib/app-context.ts. Keep in sync.
+const APP_ID = "turfpro";
+
 // ---------------------------------------------------------------------
 // Inbound request shape
 // ---------------------------------------------------------------------
@@ -108,6 +111,7 @@ Deno.serve(async (req) => {
       )
       .eq("id", payload.campaign_id)
       .eq("user_id", userData.user.id)
+      .eq("app", APP_ID)
       .maybeSingle();
     if (cErr || !campaign) return json({ error: "Campaign not found" }, 404);
 
@@ -336,6 +340,7 @@ async function resolveAudience(
       .from("maintenance_plans")
       .select("customer_id")
       .eq("user_id", userId)
+      .eq("app", APP_ID)
       .eq("status", "active")
       .not("customer_id", "is", null);
     if (pErr) throw pErr;
@@ -355,6 +360,7 @@ async function resolveAudience(
       .from("maintenance_plans")
       .select("customer_id")
       .eq("user_id", userId)
+      .eq("app", APP_ID)
       .eq("status", "active")
       .not("customer_id", "is", null);
     if (pErr) throw pErr;

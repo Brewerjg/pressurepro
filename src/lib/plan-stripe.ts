@@ -19,6 +19,8 @@ export interface NewPlanInput {
   address: string;
   services: string[];
   amount: number;
+  /** Per-visit rate. Optional — legacy callers may not supply this. */
+  per_visit_rate?: number | null;
   interval_months: number;
   start_date: string;
   next_charge_date: string;

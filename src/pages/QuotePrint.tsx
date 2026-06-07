@@ -82,6 +82,7 @@ const QuotePrint = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
       const { data } = await supabase
         .from("quotes")
         .select(

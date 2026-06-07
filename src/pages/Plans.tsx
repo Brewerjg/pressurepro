@@ -5,6 +5,7 @@ import { AlertTriangle, Plus, Repeat, ChevronRight, Calendar } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { APP_ID } from "@/lib/app-context";
 
 // Plans is TurfPro's PRIMARY work surface — recurring is the lawn-care default.
 // We retain PressurePro's maintenance_plans table verbatim and additively read
@@ -84,6 +85,7 @@ export default function Plans() {
       const { data, error } = await supabase
         .from("maintenance_plans")
         .select("*")
+        .eq("app", APP_ID)
         .order("next_charge_date", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as LawnPlan[];

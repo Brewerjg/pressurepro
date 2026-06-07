@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       catalog_items: {
         Row: {
+          app: string
           archived: boolean
           cost_per_unit: number
           cost_unit: string | null
@@ -34,6 +35,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          app?: string
           archived?: boolean
           cost_per_unit?: number
           cost_unit?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          app?: string
           archived?: boolean
           cost_per_unit?: number
           cost_unit?: string | null
@@ -138,6 +141,7 @@ export type Database = {
         Row: {
           address: string
           amount: number
+          app: string
           card_last4: string | null
           charge_history: Json
           created_at: string
@@ -161,6 +165,7 @@ export type Database = {
         Insert: {
           address?: string
           amount: number
+          app?: string
           card_last4?: string | null
           charge_history?: Json
           created_at?: string
@@ -184,6 +189,7 @@ export type Database = {
         Update: {
           address?: string
           amount?: number
+          app?: string
           card_last4?: string | null
           charge_history?: Json
           created_at?: string
@@ -225,6 +231,7 @@ export type Database = {
         Row: {
           address: string | null
           after_path: string | null
+          app: string
           backup_bytes: number | null
           before_path: string | null
           capture_device_id: string | null
@@ -242,6 +249,7 @@ export type Database = {
         Insert: {
           address?: string | null
           after_path?: string | null
+          app?: string
           backup_bytes?: number | null
           before_path?: string | null
           capture_device_id?: string | null
@@ -259,6 +267,7 @@ export type Database = {
         Update: {
           address?: string | null
           after_path?: string | null
+          app?: string
           backup_bytes?: number | null
           before_path?: string | null
           capture_device_id?: string | null
@@ -516,6 +525,7 @@ export type Database = {
       quotes: {
         Row: {
           address: string
+          app: string
           balance_paid_at: string | null
           balance_session_id: string | null
           cost: Json | null
@@ -548,6 +558,7 @@ export type Database = {
         }
         Insert: {
           address?: string
+          app?: string
           balance_paid_at?: string | null
           balance_session_id?: string | null
           cost?: Json | null
@@ -580,6 +591,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          app?: string
           balance_paid_at?: string | null
           balance_session_id?: string | null
           cost?: Json | null

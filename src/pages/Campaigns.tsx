@@ -27,6 +27,7 @@ import {
   type CampaignKind,
   type CampaignTemplate,
 } from "@/components/campaigns/templates";
+import { APP_ID } from "@/lib/app-context";
 
 // Campaigns — the seasonal blast tool. List + wizard live on the same
 // page; "view a draft" routes through the same wizard with prefilled
@@ -98,6 +99,7 @@ export default function Campaigns() {
       const { data, error } = await (supabase as any)
         .from("campaigns")
         .select("*")
+        .eq("app", APP_ID)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as CampaignRow[];
@@ -393,7 +395,7 @@ function CampaignEditor({
       }
       const { data, error } = await (supabase as any)
         .from("campaigns")
-        .insert({ ...payload, status: "draft" })
+        .insert({ ...payload, status: "draft", app: APP_ID })
         .select("id")
         .single();
       if (error) throw error;
@@ -429,7 +431,7 @@ function CampaignEditor({
       } else {
         const { data, error } = await (supabase as any)
           .from("campaigns")
-          .insert(payload)
+          .insert({ ...payload, app: APP_ID })
           .select("id")
           .single();
         if (error) throw error;
@@ -694,6 +696,7 @@ async function previewCount(
       .from("maintenance_plans")
       .select("customer_id")
       .eq("user_id", userId)
+      .eq("app", APP_ID)
       .eq("status", "active")
       .not("customer_id", "is", null);
     const ids = new Set(
@@ -714,6 +717,7 @@ async function previewCount(
         .from("maintenance_plans")
         .select("customer_id")
         .eq("user_id", userId)
+        .eq("app", APP_ID)
         .eq("status", "active")
         .not("customer_id", "is", null),
     ]);

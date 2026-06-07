@@ -38,6 +38,9 @@ import {
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
 import { loadOperatorConnect } from "../_shared/fees.ts";
 
+// Mirrors APP_ID in src/lib/app-context.ts. Keep in sync.
+const APP_ID = "turfpro";
+
 // Stripe rejects subscription unit_amount values below 50 cents. We mirror
 // that check up-front so the operator sees a clear error before bouncing.
 const STRIPE_MIN_CENTS = 50;
@@ -70,7 +73,22 @@ Deno.serve(async (req) => {
 
   try {
     const env: StripeEnv = getStripeEnvFromUrl(req);
-    const stripe = createStripeClient(env);
+    // Stripe may not be configured yet (no STRIPE_*_API_KEY secret). In
+    // that case we fall back to a "standalone" plan — the row is inserted
+    // with status='active' and no Stripe wiring, and the operator can
+    // collect a card later from PlanDetail. This keeps NewPlan usable
+    // BEFORE Stripe is wired up, instead of failing with "plan disappeared".
+    let stripe: Stripe | null = null;
+    let stripeConfigured = false;
+    try {
+      stripe = createStripeClient(env);
+      stripeConfigured = true;
+    } catch (e) {
+      console.warn(
+        "[create-plan-subscription] Stripe not configured — falling back to standalone insert.",
+        e instanceof Error ? e.message : e,
+      );
+    }
 
     // ----- Auth: resolve user from JWT -----
     const authHeader = req.headers.get("Authorization");
@@ -135,6 +153,7 @@ Deno.serve(async (req) => {
         .from("maintenance_plans")
         .select("stripe_customer_id, card_last4")
         .eq("user_id", userId)
+        .eq("app", APP_ID)
         .eq("customer_id", plan.customer_id)
         .not("stripe_customer_id", "is", null)
         .order("created_at", { ascending: false })
@@ -149,6 +168,7 @@ Deno.serve(async (req) => {
         .from("maintenance_plans")
         .select("stripe_customer_id, card_last4")
         .eq("user_id", userId)
+        .eq("app", APP_ID)
         .eq("phone", plan.phone)
         .not("stripe_customer_id", "is", null)
         .order("created_at", { ascending: false })
@@ -167,6 +187,7 @@ Deno.serve(async (req) => {
       stripe_customer_id: existingCustomerId,
       card_last4: existingCardLast4,
       status: "active",
+      app: APP_ID,
     };
     const { data: insertedRows, error: insertErr } = await admin
       .from("maintenance_plans")
@@ -181,6 +202,15 @@ Deno.serve(async (req) => {
       );
     }
     const planId = insertedRows.id as string;
+
+    // ----- Stripe-not-configured short-circuit -----
+    // If we couldn't construct a Stripe client up front (no API key set),
+    // we still inserted the plan row. Return success so the operator's
+    // plan exists in the DB; they can wire Stripe later and collect a
+    // card from PlanDetail. No rollback — the row is fine standalone.
+    if (!stripeConfigured || !stripe) {
+      return jsonResponse({ planId, mode: "standalone_no_stripe" });
+    }
 
     // Local helper — if Stripe blows up we need to remove the orphan plan
     // row so the operator can retry without a half-baked record sitting

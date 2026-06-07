@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { APP_ID } from "@/lib/app-context";
 
 // Canonical lawn-care catalog rows — kept in sync with
 // supabase/migrations/0002_seed_lawn_catalog.sql AND
@@ -53,7 +54,9 @@ export async function seedDefaultLawnCatalog(userId: string): Promise<void> {
   )("seed_default_lawn_catalog", { _user_id: userId });
   if (!rpcResult.error) return;
 
-  const rows: CatalogInsert[] = LAWN_CATALOG_SEED.map((r) => ({
+  // `app` field added in migration 0022; generated types may not include
+  // it yet — widen and cast.
+  const rows = LAWN_CATALOG_SEED.map((r) => ({
     user_id: userId,
     kind: "service" as const,
     name: r.name,
@@ -61,7 +64,8 @@ export async function seedDefaultLawnCatalog(userId: string): Promise<void> {
     default_rate: r.default_rate,
     min_charge: r.min_charge,
     sort_order: r.sort_order,
-  }));
+    app: APP_ID,
+  })) as unknown as CatalogInsert[];
   const { error } = await supabase.from("catalog_items").insert(rows);
   if (error) throw error;
 }

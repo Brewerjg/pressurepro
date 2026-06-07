@@ -39,6 +39,7 @@ const Review = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
       const { data } = await supabase
         .from("quotes")
         .select("id, customer_name, user_id")

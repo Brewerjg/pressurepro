@@ -46,6 +46,7 @@ const Gallery = () => {
           .eq("id", propertyId)
           .maybeSingle(),
         // route_stop_id / notes / public_gallery added in 0010_photo_pairs_lawn.sql
+        // Public lookup by property_id + public_gallery flag — app discriminator intentionally not filtered (see app-context.ts)
         (supabase as any)
           .from("photo_pairs")
           .select(

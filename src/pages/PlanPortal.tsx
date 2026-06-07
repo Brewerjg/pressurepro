@@ -102,6 +102,7 @@ const PlanPortal = () => {
           };
         };
       })
+        // Public lookup by portal_token (unique UUID) — app discriminator intentionally not filtered (see app-context.ts)
         .from("maintenance_plans")
         .select(
           "id, customer_name, address, amount, interval_months, next_charge_date, services, status, card_last4, user_id, portal_token, day_of_week, frequency, start_date",
@@ -172,6 +173,7 @@ const PlanPortal = () => {
     setErrorMsg(null);
     setBusyAction(action);
     try {
+      // Public update by portal_token (unique UUID) — app discriminator intentionally not filtered (see app-context.ts)
       const { error } = await supabase
         .from("maintenance_plans")
         .update({ status: next } as never)
@@ -195,6 +197,7 @@ const PlanPortal = () => {
       const next = new Date(plan.next_charge_date);
       next.setMonth(next.getMonth() + (plan.interval_months || 1));
       const iso = next.toISOString().slice(0, 10);
+      // Public update by portal_token (unique UUID) — app discriminator intentionally not filtered (see app-context.ts)
       const { error } = await supabase
         .from("maintenance_plans")
         .update({ next_charge_date: iso } as never)

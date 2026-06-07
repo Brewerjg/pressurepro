@@ -5,6 +5,7 @@ import { Plus, FileText, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { APP_ID } from "@/lib/app-context";
 
 // Quotes list — TurfPro's one-off jobs surface (spring cleanup, aeration, leaf
 // removal, snow events). Recurring service lives on Plans. We read directly
@@ -55,6 +56,7 @@ export default function Quotes() {
       const { data, error } = await supabase
         .from("quotes")
         .select("*")
+        .eq("app", APP_ID)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as QuoteRow[];

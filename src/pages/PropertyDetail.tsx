@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_ID } from "@/lib/app-context";
 import {
   ArrowLeft,
   MapPin,
@@ -151,7 +152,8 @@ export default function PropertyDetail() {
       const { data: plans } = await (supabase as any)
         .from("maintenance_plans")
         .select("id, status, amount, interval_months, day_of_week, frequency")
-        .eq("property_id", id);
+        .eq("property_id", id)
+        .eq("app", APP_ID);
 
       // chemical_applications isn't in generated types (added in migration 0001).
       const { data: chems } = await (supabase as any)

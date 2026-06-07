@@ -21,6 +21,7 @@ import {
   Activity,
 } from "lucide-react";
 import { NotesTimeline } from "@/components/customers/NotesTimeline";
+import { APP_ID } from "@/lib/app-context";
 
 // Ported from pressure-pro-quoter/src/pages/CustomerDetail.tsx with two key
 // TurfPro changes:
@@ -114,11 +115,13 @@ export default function CustomerDetail() {
         (supabase as any)
           .from("maintenance_plans")
           .select("id, status, amount, interval_months, address, day_of_week, frequency")
-          .eq("customer_id", id),
+          .eq("customer_id", id)
+          .eq("app", APP_ID),
         supabase
           .from("quotes")
           .select("id, status, total, created_at, address")
           .eq("customer_id", id)
+          .eq("app", APP_ID)
           .order("created_at", { ascending: false }),
       ]);
 

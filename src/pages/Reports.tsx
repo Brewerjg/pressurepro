@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { APP_ID } from "@/lib/app-context";
 import type { Route, RouteStop } from "@/components/routes/types";
 import { cn } from "@/lib/utils";
 import {
@@ -172,7 +173,7 @@ async function fetchReportData(): Promise<ReportData> {
     quotesRes,
     feesRes,
   ] = await Promise.all([
-    supabase.from("maintenance_plans").select("*"),
+    supabase.from("maintenance_plans").select("*").eq("app", APP_ID),
     // routes table isn't in generated types — cast via `from` as any-keyed
     // call. Window widened to 52 weeks for the seasonality chart; KPIs that
     // are 30d-scoped (drive-time, crew $/hr) filter further client-side.
@@ -189,6 +190,7 @@ async function fetchReportData(): Promise<ReportData> {
     supabase
       .from("quotes")
       .select("id, status, total, created_at")
+      .eq("app", APP_ID)
       .in("status", ["accepted", "paid"])
       .gte("created_at", ninetyAgo),
     // application_fees — populated by the Stripe Connect webhook (migration

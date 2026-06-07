@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { createPlanSubscription, type NewPlanInput } from "@/lib/plan-stripe";
+import { APP_ID } from "@/lib/app-context";
 
 // NewPlan creates a maintenance_plan with the lawn-care extensions
 // (day_of_week, frequency, season_pause, plan_kind) defined in
@@ -24,7 +25,7 @@ type Property = Database["public"]["Tables"]["properties"]["Row"];
 type CatalogItem = Database["public"]["Tables"]["catalog_items"]["Row"];
 
 type Frequency = "weekly" | "biweekly" | "monthly" | "fert_program";
-type BillingInterval = 3 | 6 | 12;
+type BillingInterval = 1 | 3 | 6 | 12;
 type Season = "winter" | "spring" | "summer" | "fall";
 type PlanKind = "mow" | "fert_program" | "other";
 
@@ -36,10 +37,33 @@ const FREQ_OPTIONS: { key: Frequency; label: string; sub: string }[] = [
 ];
 
 const BILLING_OPTIONS: { months: BillingInterval; label: string }[] = [
-  { months: 3, label: "Quarterly" },
-  { months: 6, label: "Every 6 mo" },
+  { months: 1,  label: "Monthly" },
+  { months: 3,  label: "Quarterly" },
+  { months: 6,  label: "Every 6 mo" },
   { months: 12, label: "Yearly" },
 ];
+
+// Visits per month per service frequency. Uses operator-simplified math
+// (weekly=4, not the calendar-precise 4.33) since that's what operators
+// actually quote — "I do 4 mows a month at $55." Fert program is
+// approximated as 5 visits / 12 months across the year.
+const VISITS_PER_MONTH: Record<Frequency, number> = {
+  weekly: 4,
+  biweekly: 2,
+  monthly: 1,
+  fert_program: 5 / 12,
+};
+
+// Round to 2 decimals — billing amounts shouldn't carry float drift.
+function calcBillingAmount(
+  perVisitRate: number,
+  frequency: Frequency,
+  intervalMonths: number,
+): number {
+  if (!perVisitRate || perVisitRate <= 0) return 0;
+  const raw = perVisitRate * VISITS_PER_MONTH[frequency] * intervalMonths;
+  return Math.round(raw * 100) / 100;
+}
 
 const DAY_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
@@ -59,7 +83,11 @@ export default function NewPlan() {
   const [customerId, setCustomerId] = useState<string>("");
   const [propertyId, setPropertyId] = useState<string>("");
   const [services, setServices] = useState<string[]>([]);
-  const [amount, setAmount] = useState<string>("");
+  const [perVisitRate, setPerVisitRate] = useState<string>("");
+  // Override of the auto-calculated billing total. Empty string = use the
+  // calculated value. Non-empty = use this number instead (custom-priced plan).
+  const [amountOverride, setAmountOverride] = useState<string>("");
+  const [showOverride, setShowOverride] = useState<boolean>(false);
   const [frequency, setFrequency] = useState<Frequency>("weekly");
   const [dayOfWeek, setDayOfWeek] = useState<number>(3); // default Wednesday
   const [intervalMonths, setIntervalMonths] = useState<BillingInterval>(3);
@@ -113,6 +141,7 @@ export default function NewPlan() {
       const { data, error } = await supabase
         .from("catalog_items")
         .select("*")
+        .eq("app", APP_ID)
         .eq("kind", "service")
         .eq("archived", false)
         .order("sort_order");
@@ -160,8 +189,20 @@ export default function NewPlan() {
       if (!selectedCustomer) throw new Error("Pick a customer");
       if (!selectedProperty) throw new Error("Pick a property");
       if (services.length === 0) throw new Error("Pick at least one service");
-      const amountNum = Number(amount);
-      if (!amountNum || amountNum <= 0) throw new Error("Enter a valid amount");
+      const perVisitNum = Number(perVisitRate);
+      if (!perVisitNum || perVisitNum <= 0) {
+        throw new Error("Enter a per-visit rate greater than $0");
+      }
+      // Auto-derive billing amount from per-visit rate × frequency × interval.
+      // Override wins if the operator opened the override field with a value.
+      const calculatedAmount = calcBillingAmount(perVisitNum, frequency, intervalMonths);
+      const overrideNum = showOverride ? Number(amountOverride) : NaN;
+      const amountNum = Number.isFinite(overrideNum) && overrideNum > 0
+        ? overrideNum
+        : calculatedAmount;
+      if (!amountNum || amountNum <= 0) {
+        throw new Error("Couldn't compute a billing amount — check your inputs");
+      }
       if (!startDate) throw new Error("Pick a start date");
 
       const input: NewPlanInput = {
@@ -173,6 +214,10 @@ export default function NewPlan() {
         address: selectedProperty.address,
         services,
         amount: amountNum,
+        // New column added in migration 0021. Stored so PlanDetail's edit
+        // form can show the operator's mental-model number without having
+        // to reverse-engineer from amount + frequency.
+        per_visit_rate: perVisitNum,
         interval_months: intervalMonths,
         start_date: startDate,
         next_charge_date: startDate,
@@ -206,13 +251,22 @@ export default function NewPlan() {
     createPlan.mutate();
   };
 
-  // Reasonable price hint based on frequency — for the inline caption only.
-  const billingHint =
-    frequency === "fert_program"
-      ? "$ per application"
-      : frequency === "monthly"
-        ? "$ per visit"
-        : "$ per visit";
+  // Derived billing math for the live preview cards.
+  const perVisitNum = Number(perVisitRate) || 0;
+  const calculatedAmount = calcBillingAmount(perVisitNum, frequency, intervalMonths);
+  const overrideNum = showOverride ? Number(amountOverride) || 0 : 0;
+  const effectiveAmount = overrideNum > 0 ? overrideNum : calculatedAmount;
+
+  // Human-readable label for the per-visit rate input. "application" for
+  // fert programs reads more naturally than "visit".
+  const perVisitLabel = frequency === "fert_program" ? "Per-application rate" : "Per-visit rate";
+  // Operator-shorthand visit count surfaced in the math caption.
+  const visitsPerMonthLabel: Record<Frequency, string> = {
+    weekly: "4 visits/mo",
+    biweekly: "2 visits/mo",
+    monthly: "1 visit/mo",
+    fert_program: "5 apps/yr",
+  };
 
   return (
     <div className="pt-3">
@@ -390,7 +444,7 @@ export default function NewPlan() {
           title="Pricing & billing"
           subtitle="The card is charged on the billing cadence below — service still runs on the frequency above."
         >
-          <Field label={`Amount (${billingHint})`}>
+          <Field label={perVisitLabel}>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm">
                 $
@@ -400,8 +454,8 @@ export default function NewPlan() {
                 inputMode="decimal"
                 min="0"
                 step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={perVisitRate}
+                onChange={(e) => setPerVisitRate(e.target.value)}
                 placeholder="0.00"
                 className="tp-input pl-7"
                 required
@@ -409,8 +463,59 @@ export default function NewPlan() {
             </div>
           </Field>
 
+          {/* Auto-calculated billing total — shows the math so operators
+              don't have to compute it in their head. The override toggle
+              opens a manual amount input for discounted / custom plans. */}
+          {perVisitNum > 0 && (
+            <div className="rounded-[14px] bg-green-50 border border-green-100 p-3.5 text-[12.5px] text-ink-700">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.5px] text-green-700 mb-0.5">
+                    Billing total
+                  </div>
+                  <div className="tp-num font-bold text-[18px] text-green-900">
+                    ${effectiveAmount.toFixed(2)} every {intervalMonths}mo
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showOverride) {
+                      setAmountOverride("");
+                      setShowOverride(false);
+                    } else {
+                      setAmountOverride(calculatedAmount.toFixed(2));
+                      setShowOverride(true);
+                    }
+                  }}
+                  className="text-[11.5px] font-semibold text-bronze-600 hover:text-bronze-700 underline-offset-2 hover:underline"
+                >
+                  {showOverride ? "Use auto" : "Override"}
+                </button>
+              </div>
+              <div className="text-[11.5px] text-ink-600 mt-1.5 tp-num">
+                ${perVisitNum.toFixed(2)} × {visitsPerMonthLabel[frequency]} × {intervalMonths}{intervalMonths === 1 ? "mo" : "mo"} = ${calculatedAmount.toFixed(2)}
+              </div>
+              {showOverride && (
+                <div className="mt-2 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm">$</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={amountOverride}
+                    onChange={(e) => setAmountOverride(e.target.value)}
+                    placeholder="Custom amount"
+                    className="tp-input pl-7"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <Field label="Billing cadence">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {BILLING_OPTIONS.map((b) => {
                 const on = intervalMonths === b.months;
                 return (
@@ -483,10 +588,10 @@ export default function NewPlan() {
           </div>
           <div className="flex items-baseline gap-2 mt-1.5">
             <div className="tp-display tp-num text-[34px] font-bold leading-none">
-              {amount ? `$${Number(amount).toFixed(0)}` : "$—"}
+              {effectiveAmount > 0 ? `$${effectiveAmount.toFixed(0)}` : "$—"}
             </div>
             <div className="text-bronze-400 font-semibold text-sm">
-              every {intervalMonths}mo
+              every {intervalMonths}{intervalMonths === 1 ? "mo" : "mo"}
             </div>
           </div>
           <div className="flex items-center gap-2 text-white/80 text-[12px] mt-2">

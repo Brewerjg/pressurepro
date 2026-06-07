@@ -106,6 +106,7 @@ const Accept = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
       const { data } = await supabase
         .from("quotes")
         .select(
@@ -129,6 +130,7 @@ const Accept = () => {
         user_agent: navigator.userAgent.slice(0, 500),
         referrer: document.referrer.slice(0, 500) || null,
       } as never);
+      // Public update by UUID — app discriminator intentionally not filtered (see app-context.ts)
       await supabase
         .from("quotes")
         .update({
@@ -200,6 +202,7 @@ const Accept = () => {
             user_agent: navigator.userAgent.slice(0, 500),
           } as never);
         if (insErr) throw insErr;
+        // Public update by UUID — app discriminator intentionally not filtered (see app-context.ts)
         await supabase
           .from("quotes")
           .update({ status: "accepted" } as never)
@@ -233,6 +236,7 @@ const Accept = () => {
       // double-clicks don't accumulate.
       const baseNotes = (
         await (async () => {
+          // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
           const { data } = await supabase
             .from("quotes")
             .select("notes")
@@ -245,6 +249,7 @@ const Accept = () => {
       const newNotes = next
         ? `${RECURRING_REQUESTED_SENTINEL} ${baseNotes}`.trim()
         : baseNotes || null;
+      // Public update by UUID — app discriminator intentionally not filtered (see app-context.ts)
       const { error } = await supabase
         .from("quotes")
         .update({ notes: newNotes } as never)

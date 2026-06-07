@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { APP_ID } from "@/lib/app-context";
 import {
   Plus,
   Users as UsersIcon,
@@ -75,10 +76,12 @@ export default function Customers() {
         supabase
           .from("maintenance_plans")
           .select("customer_id, status")
+          .eq("app", APP_ID)
           .in("customer_id", ids),
         supabase
           .from("quotes")
           .select("customer_id, status")
+          .eq("app", APP_ID)
           .in("customer_id", ids),
       ]);
 
@@ -109,6 +112,7 @@ export default function Customers() {
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Name required");
       if (!user) throw new Error("Not signed in");
+      const trimmedAddress = address.trim();
       const { data, error: insertErr } = await supabase
         .from("customers")
         .insert({
@@ -116,11 +120,31 @@ export default function Customers() {
           name: name.trim(),
           phone: phone.trim() || null,
           email: email.trim() || null,
-          primary_address: address.trim() || null,
+          primary_address: trimmedAddress || null,
         })
         .select()
         .single();
       if (insertErr) throw insertErr;
+
+      // If an address was provided, ALSO create a property row linked to
+      // this customer. Without this row, every downstream page that picks
+      // properties (NewPlan, NewQuote, PropertyDetail, the convert-to-plan
+      // form) sees an empty list — even though primary_address is set on
+      // the customer. The Onboarding wizard does the same thing for the
+      // first-customer step; this brings the inline create flow to parity.
+      if (data && trimmedAddress) {
+        const { error: propErr } = await supabase.from("properties").insert({
+          user_id: user.id,
+          customer_id: data.id,
+          address: trimmedAddress,
+        });
+        // Best-effort: if the property insert fails (RLS, etc.), surface
+        // the error so the operator knows to add the property manually,
+        // but leave the customer row in place — they can still use the
+        // customer record for non-property workflows (plans/quotes can
+        // skip property by leaving the picker empty).
+        if (propErr) throw propErr;
+      }
       return data;
     },
     onSuccess: (data) => {

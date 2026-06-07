@@ -37,6 +37,7 @@ import {
 } from "@/components/routes/SortableStops";
 import WinterRoutesBanner from "@/components/season/WinterRoutesBanner";
 import { useSeason } from "@/lib/season";
+import { APP_ID } from "@/lib/app-context";
 
 // =====================================================================
 // Date utilities — local-time week math. We deliberately avoid date-fns
@@ -365,6 +366,7 @@ export default function RoutesPage() {
         .from("maintenance_plans")
         .select("id, customer_id, property_id, address, customer_name, services, amount, day_of_week, status")
         .eq("user_id", user.id)
+        .eq("app", APP_ID)
         .eq("status", "active")
         .eq("day_of_week", sqlDow);
       if (plansErr) throw plansErr;

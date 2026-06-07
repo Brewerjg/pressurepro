@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { APP_ID } from "@/lib/app-context";
 
 // Catalog editor — edits public.catalog_items rows where kind='service' and
 // archived=false for the current user. Lawn-care services are almost always
@@ -92,6 +93,7 @@ export default function CatalogEditor() {
         .from("catalog_items")
         .select("*")
         .eq("user_id", user!.id)
+        .eq("app", APP_ID)
         .eq("kind", "service")
         .eq("archived", false)
         .order("sort_order", { ascending: true });
@@ -107,7 +109,9 @@ export default function CatalogEditor() {
         (items && items.length > 0
           ? Math.max(...items.map((i) => i.sort_order))
           : 0) + 10;
-      const payload: CatalogInsert = {
+      // `app` field added in migration 0022; generated types may not include
+      // it yet — widen and cast.
+      const payload = {
         user_id: user.id,
         kind: "service",
         name: input.name,
@@ -115,7 +119,8 @@ export default function CatalogEditor() {
         default_rate: input.default_rate,
         min_charge: input.min_charge,
         sort_order: nextSort,
-      };
+        app: APP_ID,
+      } as unknown as CatalogInsert;
       const { error } = await supabase.from("catalog_items").insert(payload);
       if (error) throw error;
     },
@@ -192,7 +197,7 @@ export default function CatalogEditor() {
       if (!rpcResult.error) return;
 
       // Fall back to client-side seed of the canonical rows.
-      const rows: CatalogInsert[] = LAWN_CATALOG_SEED.map((r) => ({
+      const rows = LAWN_CATALOG_SEED.map((r) => ({
         user_id: user.id,
         kind: "service" as const,
         name: r.name,
@@ -200,7 +205,8 @@ export default function CatalogEditor() {
         default_rate: r.default_rate,
         min_charge: r.min_charge,
         sort_order: r.sort_order,
-      }));
+        app: APP_ID,
+      })) as unknown as CatalogInsert[];
       const { error } = await supabase.from("catalog_items").insert(rows);
       if (error) throw error;
     },

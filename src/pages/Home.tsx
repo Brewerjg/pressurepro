@@ -16,6 +16,8 @@ import {
   TrendingUp,
   Users,
   MapPin,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +26,8 @@ import { useForecast, useUserZip, type ForecastDay, type DerivedTone } from "@/l
 import PreEmergentAlert from "@/components/gdd/PreEmergentAlert";
 import WinterHomeCard from "@/components/season/WinterHomeCard";
 import { useSeason } from "@/lib/season";
+import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import { APP_ID } from "@/lib/app-context";
 
 // Ported from design/turf/project/screen-home.jsx. MRR/hero card numbers stay
 // hardcoded until the billing data layer lands; the forecast strip is now live
@@ -89,9 +93,11 @@ function iconFor(d: ForecastDay) {
 }
 
 const quickActions = [
-  { icon: Camera,       label: "Photo pair",    sub: "Before / after",    accent: "text-green-600",  to: "/photos/new" },
-  { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²", accent: "text-bronze-600", to: "/calc" },
-  { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record", accent: "text-green-700",  to: "/chem-log" },
+  { icon: FileText,     label: "Quotes",        sub: "One-off jobs",       accent: "text-bronze-600", to: "/quotes" },
+  { icon: MessageSquare,label: "Inbox",         sub: "Customer texts",     accent: "text-green-700",  to: "/inbox" },
+  { icon: Camera,       label: "Photo pair",    sub: "Before / after",     accent: "text-green-600",  to: "/photos/new" },
+  { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²",  accent: "text-bronze-600", to: "/calc" },
+  { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record",  accent: "text-green-700",  to: "/chem-log" },
   { icon: BarChart3,    label: "Reports",       sub: "MRR · churn · $/hr", accent: "text-ink-700",    to: "/reports" },
 ];
 
@@ -134,7 +140,8 @@ export default function Home() {
       const { count: planCount, error: planError } = await supabase
         .from("maintenance_plans")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", user!.id);
+        .eq("user_id", user!.id)
+        .eq("app", APP_ID);
 
       if (planError) throw planError;
 
@@ -375,7 +382,9 @@ export default function Home() {
       <section className="mx-4 mt-3.5 mb-1">
         <h2 className="text-[13px] font-semibold text-ink-700 px-1 pb-2">Quick actions</h2>
         <div className="grid grid-cols-2 gap-2.5">
-          {quickActions.map(({ icon: Icon, label, sub, accent, to }) => {
+          {quickActions
+            .filter((t) => t.to !== "/inbox" || TWILIO_ENABLED)
+            .map(({ icon: Icon, label, sub, accent, to }) => {
             const inner = (
               <>
                 <div className={`h-[30px] w-[30px] rounded-[9px] bg-ink-100 grid place-items-center mb-2.5 ${accent}`}>

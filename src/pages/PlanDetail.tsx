@@ -30,6 +30,8 @@ import {
 } from "@/lib/manual-payments";
 import { sendPaymentRetryLink } from "@/lib/customer-email";
 import { sendPaymentRetryLinkSms } from "@/lib/customer-sms";
+import TextCustomerButton from "@/components/messaging/TextCustomerButton";
+import { TWILIO_ENABLED } from "@/lib/feature-flags";
 
 // PlanDetail. Mirrors PressurePro's PlanDetail but reads lawn-care extras
 // (day_of_week, frequency, season_pause, plan_kind) added in
@@ -254,20 +256,24 @@ export default function PlanDetail() {
   const sendRetryLink = async () => {
     if (!id) return;
     setDunningStatus({ kind: "sending" });
-    // Fire email + SMS in parallel — both transports are fire-and-forget;
-    // we surface "sent" if at least one path succeeded so the operator
-    // gets a useful signal even on partial failure (common when only one
-    // contact channel is on file).
-    const [emailRes, smsRes] = await Promise.all([
+    // Email auto-sends as before. Legacy Twilio SMS auto-send stays
+    // intact behind TWILIO_ENABLED. The default path is operator-driven
+    // SMS via <TextCustomerButton kind="payment_retry"> rendered inside
+    // the DunningBanner — the operator's own phone is the transport.
+    const transports: Promise<{ ok: boolean; error?: string }>[] = [
       sendPaymentRetryLink(id),
-      sendPaymentRetryLinkSms(id),
-    ]);
-    if (emailRes.ok || smsRes.ok) {
+    ];
+    if (TWILIO_ENABLED) {
+      transports.push(sendPaymentRetryLinkSms(id));
+    }
+    const results = await Promise.all(transports);
+    const [emailRes, smsRes] = results;
+    if (emailRes.ok || (smsRes && smsRes.ok)) {
       setDunningStatus({ kind: "sent" });
       return;
     }
     const message =
-      emailRes.error || smsRes.error || "Couldn't reach customer";
+      emailRes.error || smsRes?.error || "Couldn't reach customer";
     setDunningStatus({ kind: "error", message });
   };
 
@@ -356,8 +362,9 @@ export default function PlanDetail() {
         {/* Dunning banner — surfaces only when the most recent charge entry
             is a failure. Renders at the TOP of the content area so the
             operator sees it before the plan summary. */}
-        {lastChargeFailed && (
+        {lastChargeFailed && id && (
           <DunningBanner
+            planId={id}
             failedOnIso={latestCharge?.date}
             status={dunningStatus}
             isMarkingResolved={markResolvedMutation.isPending}
@@ -951,12 +958,14 @@ function ChargeHistoryCard({ chargeHistory }: { chargeHistory: Json }) {
 //   directly to the customer. The action set covers both.
 // =====================================================================
 function DunningBanner({
+  planId,
   failedOnIso,
   status,
   isMarkingResolved,
   onSendRetry,
   onMarkResolved,
 }: {
+  planId: string;
   failedOnIso: string | undefined;
   status:
     | { kind: "idle" }
@@ -1009,7 +1018,7 @@ function DunningBanner({
               ) : (
                 <Send className="h-3.5 w-3.5" strokeWidth={2.2} />
               )}
-              {status.kind === "sending" ? "Sending…" : "Send retry link"}
+              {status.kind === "sending" ? "Sending…" : "Email retry link"}
             </button>
             <button
               type="button"
@@ -1025,6 +1034,22 @@ function DunningBanner({
               Mark as resolved
             </button>
           </div>
+
+          {/* Operator-driven SMS — they send the portal link from their
+              own Messages app instead of routing through Twilio. */}
+          {!TWILIO_ENABLED && (
+            <div className="mt-3 flex flex-col gap-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-destructive/80">
+                Also text them
+              </div>
+              <TextCustomerButton
+                kind="payment_retry"
+                planId={planId}
+                variant="secondary"
+                label="Text card-update link"
+              />
+            </div>
+          )}
         </div>
       </div>
     </section>

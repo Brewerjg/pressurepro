@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, AlertCircle } from "lucide-react";
+import { Send, Loader2, AlertCircle, MessageSquare } from "lucide-react";
 import { sendFreeformSms } from "@/lib/customer-sms";
+import { TWILIO_ENABLED } from "@/lib/feature-flags";
 
 // Reply box for the thread view. Sticky at the bottom of the thread on
 // desktop; sits inline below the messages on mobile (the page handles
@@ -101,6 +102,26 @@ export default function ReplyBox({
       setSending(false);
     }
   };
+
+  // Under the operator-self-sends model the freeform Twilio reply path
+  // isn't available — we can't auto-dispatch from this surface. Surface
+  // an explanatory empty state directing the operator to their own
+  // Messages app for the reply.
+  if (!TWILIO_ENABLED) {
+    return (
+      <div className="tp-card p-3 flex items-start gap-2 text-[12px] text-ink-700">
+        <MessageSquare
+          className="h-4 w-4 shrink-0 text-ink-500"
+          strokeWidth={2}
+        />
+        <span>
+          Open your Messages app to reply
+          {recipientPhone ? ` to ${recipientPhone}` : ""}.
+          Two-way inbox is disabled in this build.
+        </span>
+      </div>
+    );
+  }
 
   if (noPhone) {
     return (

@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { capturePhoto } from "@/lib/devicePhoto";
 import { compressImage, makeThumb, stripExif } from "@/lib/photo";
 import { PhotoSlot } from "@/components/photos/PhotoSlot";
+import { APP_ID } from "@/lib/app-context";
 
 interface PropertyOption {
   id: string;
@@ -183,6 +184,7 @@ export default function NewPhotoPair() {
           thumb_after_path,
           route_stop_id: routeStopId,
           notes: notes.trim() || null,
+          app: APP_ID,
         })
         .select("id")
         .single();

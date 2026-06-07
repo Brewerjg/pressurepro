@@ -23,6 +23,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
 
+// Mirrors APP_ID in src/lib/app-context.ts. Keep in sync.
+const APP_ID = "turfpro";
+
 type Season = "spring" | "summer" | "fall" | "winter";
 
 function isSeason(x: unknown): x is Season {
@@ -108,6 +111,7 @@ Deno.serve(async (req) => {
         .from("maintenance_plans")
         .update({ status: "paused", pause_reason: "winter_swap" })
         .eq("user_id", userId)
+        .eq("app", APP_ID)
         .eq("plan_kind", "mow")
         .eq("status", "active")
         .in("frequency", ["weekly", "biweekly", "monthly"])
@@ -121,6 +125,7 @@ Deno.serve(async (req) => {
         .from("maintenance_plans")
         .update({ status: "active", pause_reason: null })
         .eq("user_id", userId)
+        .eq("app", APP_ID)
         .eq("pause_reason", "winter_swap")
         .select("id");
       if (error) {

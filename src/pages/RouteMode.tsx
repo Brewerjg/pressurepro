@@ -32,6 +32,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { sendCompleted, sendOnTheWay } from "@/lib/customer-email";
 import { sendCompletedSms, sendOnTheWaySms } from "@/lib/customer-sms";
+import TextCustomerButton from "@/components/messaging/TextCustomerButton";
+import { TWILIO_ENABLED } from "@/lib/feature-flags";
 import { openExternalUrl } from "@/lib/native-maps";
 import {
   recordPayment,
@@ -274,6 +276,14 @@ export default function RouteMode() {
     null | { kind: "success" | "error" | "sending"; message: string }
   >(null);
 
+  // After Mark-done lands, surface an inline "text the customer the
+  // wrap-up?" banner anchored to the stop that was just completed. We
+  // store the snapshot (not just the id) because the active-stop swap
+  // happens before the operator interacts with the banner; without the
+  // snapshot the banner has nothing to render against.
+  const [lastCompletedStop, setLastCompletedStop] =
+    useState<RouteStopWithProperty | null>(null);
+
   // Inline manual-payment form for the active stop card. When open we
   // render a small mini-form below the action row. Closed (default) state
   // shows just the "+ Payment" pill.
@@ -432,11 +442,13 @@ export default function RouteMode() {
     onSuccess: async (stopId) => {
       setSkipOpen(false);
       // Fire completed-channel side-effects AFTER the DB write succeeds
-      // (or queues). Intentionally non-blocking on BOTH channels — we
-      // don't await either so the operator can move to the next stop
-      // while Resend and/or Twilio are still in-flight. Errors are
-      // logged but never surfaced; they keep moving. If both email AND
-      // SMS toggles are on, BOTH fire (duplex by design).
+      // (or queues). Email still auto-fires (operator opted-in via
+      // user_settings) — but SMS does NOT auto-fire under the new
+      // operator-self-sends model. Instead we surface an inline banner
+      // anchored to this stop so the operator can opt-in via
+      // <TextCustomerButton>. The legacy Twilio auto-send path is still
+      // gated by smsToggles.completed AND TWILIO_ENABLED in case an
+      // operator flips the flag back on.
       const snapshot = stops.find((s) => s.id === stopId);
       if (snapshot) {
         if (emailToggles.completed) {
@@ -444,11 +456,14 @@ export default function RouteMode() {
             if (!res.ok) console.warn("sendCompleted failed:", res.error);
           });
         }
-        if (smsToggles.completed) {
+        if (TWILIO_ENABLED && smsToggles.completed) {
           void sendCompletedSms(snapshot).then((res) => {
             if (!res.ok) console.warn("sendCompletedSms failed:", res.error);
           });
         }
+        // Always remember the just-completed stop so the post-mark-done
+        // "text customer" banner has a route_stop_id to compose against.
+        setLastCompletedStop(snapshot);
       }
       await qc.invalidateQueries({ queryKey: ["route-mode", routeId] });
       scrollToTop();
@@ -878,37 +893,32 @@ export default function RouteMode() {
               <Navigation className="h-[18px] w-[18px]" strokeWidth={2} />
               Navigate
             </button>
-            {(emailToggles.onTheWay || smsToggles.onTheWay) && (
+            {/* Email-only on-the-way button. When TWILIO_ENABLED is true we
+                also fire the legacy Twilio SMS in parallel; otherwise the
+                operator uses the TextCustomerButton below to send via
+                their own Messages app. */}
+            {emailToggles.onTheWay && (
               <button
                 type="button"
                 onClick={async () => {
-                  // Fire both channels in parallel when both are on.
-                  // Copy stays "On the way" — operator doesn't have to
-                  // think about which channel, they just hit the button.
                   setOnTheWayStatus({ kind: "sending", message: "Sending…" });
                   const results = await Promise.all([
-                    emailToggles.onTheWay
-                      ? sendOnTheWay(activeStop)
-                      : Promise.resolve({ ok: true } as const),
-                    smsToggles.onTheWay
+                    sendOnTheWay(activeStop),
+                    TWILIO_ENABLED && smsToggles.onTheWay
                       ? sendOnTheWaySms(activeStop)
                       : Promise.resolve({ ok: true } as const),
                   ]);
                   const [emailRes, smsRes] = results;
                   const failures = results.filter((r) => !r.ok);
                   if (failures.length === 0) {
-                    // Success message reflects what actually fired.
-                    const channels: string[] = [];
-                    if (emailToggles.onTheWay) channels.push("email");
-                    if (smsToggles.onTheWay) channels.push("SMS");
+                    const channels: string[] = ["email"];
+                    if (TWILIO_ENABLED && smsToggles.onTheWay)
+                      channels.push("SMS");
                     setOnTheWayStatus({
                       kind: "success",
                       message: `On-the-way ${channels.join(" + ")} sent`,
                     });
                   } else {
-                    // Surface whichever error we hit — prefer the more
-                    // actionable one (SMS deferred-for-quiet-hours, then
-                    // any explicit error message).
                     const firstErr =
                       ("error" in smsRes && smsRes.error) ||
                       ("error" in emailRes && emailRes.error) ||
@@ -928,10 +938,55 @@ export default function RouteMode() {
                 ) : (
                   <Mail className="h-[18px] w-[18px]" strokeWidth={2} />
                 )}
-                On the way
+                On the way (email)
               </button>
             )}
           </div>
+
+          {/* Operator-driven SMS via the sms: deep-link model — replaces
+              the Twilio on-the-way auto-send when TWILIO_ENABLED is off.
+              The button composes the body server-side and surfaces an
+              "Open Messages" handoff plus a Copy button. */}
+          {!TWILIO_ENABLED && (
+            <div className="mb-3.5">
+              <TextCustomerButton
+                kind="on_the_way"
+                routeStopId={activeStop.id}
+                variant="secondary"
+                label="Text 'on the way'"
+              />
+            </div>
+          )}
+
+          {/* Post-mark-done "text the wrap-up?" banner. Sticks around for
+              the operator to opt-in once. We hide it whenever the active
+              stop changes id (i.e. a new stop is now active) so it doesn't
+              chase them down the route. */}
+          {!TWILIO_ENABLED &&
+            lastCompletedStop &&
+            lastCompletedStop.id !== activeStop.id && (
+              <div className="mb-3.5 rounded-2xl border border-green-500/40 bg-green-600/15 px-3.5 py-3 flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-[12.5px] font-semibold text-green-100">
+                    Marked done — text the customer the wrap-up?
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLastCompletedStop(null)}
+                    aria-label="Dismiss"
+                    className="text-[11px] font-medium text-white/60 hover:text-white"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                <TextCustomerButton
+                  kind="completed"
+                  routeStopId={lastCompletedStop.id}
+                  variant="secondary"
+                  label="Text customer the wrap-up"
+                />
+              </div>
+            )}
 
           {/* Capture before/after for this stop — route_stop_id links the
               pair back to the stop for later reports. The "+ Payment" pill
