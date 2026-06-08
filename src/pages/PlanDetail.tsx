@@ -30,8 +30,8 @@ import {
 } from "@/lib/manual-payments";
 import { sendPaymentRetryLink } from "@/lib/customer-email";
 import { sendPaymentRetryLinkSms } from "@/lib/customer-sms";
-import TextCustomerButton from "@/components/messaging/TextCustomerButton";
-import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import MessageCustomerButton from "@/components/messaging/MessageCustomerButton";
+import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
 
 // PlanDetail. Mirrors PressurePro's PlanDetail but reads lawn-care extras
 // (day_of_week, frequency, season_pause, plan_kind) added in
@@ -256,24 +256,32 @@ export default function PlanDetail() {
   const sendRetryLink = async () => {
     if (!id) return;
     setDunningStatus({ kind: "sending" });
-    // Email auto-sends as before. Legacy Twilio SMS auto-send stays
-    // intact behind TWILIO_ENABLED. The default path is operator-driven
-    // SMS via <TextCustomerButton kind="payment_retry"> rendered inside
-    // the DunningBanner — the operator's own phone is the transport.
-    const transports: Promise<{ ok: boolean; error?: string }>[] = [
-      sendPaymentRetryLink(id),
-    ];
+    // Both email (Resend) and SMS (Twilio) auto-sends are now gated
+    // behind their respective feature flags. The default path is
+    // operator-driven send via <MessageCustomerButton kind="payment_retry">
+    // rendered inside the DunningBanner — the operator's own phone +
+    // mail app are the transports. When neither flag is on we no-op
+    // and immediately resolve to "sent" so the inline banner clears.
+    const transports: Promise<{ ok: boolean; error?: string }>[] = [];
+    if (RESEND_ENABLED) {
+      transports.push(sendPaymentRetryLink(id));
+    }
     if (TWILIO_ENABLED) {
       transports.push(sendPaymentRetryLinkSms(id));
     }
+    if (transports.length === 0) {
+      // Nothing to auto-fire — operator handles via MessageCustomerButton.
+      setDunningStatus({ kind: "sent" });
+      return;
+    }
     const results = await Promise.all(transports);
-    const [emailRes, smsRes] = results;
-    if (emailRes.ok || (smsRes && smsRes.ok)) {
+    const anyOk = results.some((r) => r.ok);
+    if (anyOk) {
       setDunningStatus({ kind: "sent" });
       return;
     }
     const message =
-      emailRes.error || smsRes?.error || "Couldn't reach customer";
+      results.find((r) => r.error)?.error || "Couldn't reach customer";
     setDunningStatus({ kind: "error", message });
   };
 
@@ -1006,20 +1014,30 @@ function DunningBanner({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            <button
-              type="button"
-              onClick={onSendRetry}
-              disabled={status.kind === "sending"}
-              className="rounded-xl bg-destructive text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-60"
-            >
-              {status.kind === "sending" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" strokeWidth={2.2} />
-              )}
-              {status.kind === "sending" ? "Sending…" : "Email retry link"}
-            </button>
+          <div
+            className={cn(
+              "grid gap-2 mt-3",
+              RESEND_ENABLED ? "grid-cols-2" : "grid-cols-1",
+            )}
+          >
+            {/* Auto-send button only renders when the Resend pipe is on.
+                Otherwise the operator uses the <MessageCustomerButton>
+                below to send via their own apps. */}
+            {RESEND_ENABLED && (
+              <button
+                type="button"
+                onClick={onSendRetry}
+                disabled={status.kind === "sending"}
+                className="rounded-xl bg-destructive text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                {status.kind === "sending" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" strokeWidth={2.2} />
+                )}
+                {status.kind === "sending" ? "Sending…" : "Email retry link"}
+              </button>
+            )}
             <button
               type="button"
               onClick={onMarkResolved}
@@ -1035,18 +1053,20 @@ function DunningBanner({
             </button>
           </div>
 
-          {/* Operator-driven SMS — they send the portal link from their
-              own Messages app instead of routing through Twilio. */}
-          {!TWILIO_ENABLED && (
+          {/* Operator-driven send — they send the portal link from their
+              own Messages or Mail app instead of routing through
+              Twilio/Resend. Surfaces text/email/copy actions based on
+              which contact channels the customer has on file. */}
+          {(!TWILIO_ENABLED || !RESEND_ENABLED) && (
             <div className="mt-3 flex flex-col gap-1.5">
               <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-destructive/80">
-                Also text them
+                Also message them
               </div>
-              <TextCustomerButton
+              <MessageCustomerButton
                 kind="payment_retry"
                 planId={planId}
                 variant="secondary"
-                label="Text card-update link"
+                label="Message card-update link"
               />
             </div>
           )}

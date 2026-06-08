@@ -4,7 +4,7 @@ import { AlertCircle, Info, Loader2, Mail, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
 
 // MessagingPreferences — operator-facing toggles for the customer email +
 // SMS comms layer. The columns live on public.user_settings (email in
@@ -204,67 +204,90 @@ export default function MessagingPreferences() {
         </div>
       ) : (
         <>
-          <p className="text-[12.5px] text-ink-700 leading-relaxed">
-            Pick which automatic customer messages go out and on which
-            channel. Email is great for longer copy.
-            {TWILIO_ENABLED
-              ? " SMS is great for short, time-sensitive nudges like 'on the way.'"
-              : ""}
-          </p>
+          {(RESEND_ENABLED || TWILIO_ENABLED) && (
+            <p className="text-[12.5px] text-ink-700 leading-relaxed">
+              Pick which automatic customer messages go out and on which
+              channel.
+              {RESEND_ENABLED ? " Email is great for longer copy." : ""}
+              {TWILIO_ENABLED
+                ? " SMS is great for short, time-sensitive nudges like 'on the way.'"
+                : ""}
+            </p>
+          )}
 
-          {/* Column headers. We always show the Email column; the SMS
-              column is hidden under the new operator-self-sends model
-              because customer texts come from the operator's own phone
-              via the Messages app (no per-kind toggle to flip). */}
-          <div
-            className={cn(
-              "grid gap-3 items-center pt-1 pb-1 border-b border-ink-100",
-              TWILIO_ENABLED
-                ? "grid-cols-[1fr_auto_auto]"
-                : "grid-cols-[1fr_auto]",
-            )}
-          >
-            <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">
-              Message
-            </div>
-            <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
-              <Mail className="h-3 w-3" strokeWidth={2.2} />
-              Email
-            </div>
-            {TWILIO_ENABLED && (
-              <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
-                <MessageSquare className="h-3 w-3" strokeWidth={2.2} />
-                SMS
+          {/* Column headers + per-kind toggle rows. The email column is
+              hidden behind RESEND_ENABLED and the SMS column is hidden
+              behind TWILIO_ENABLED — under the default flags both are
+              off and the operator sends from their own apps via
+              <MessageCustomerButton>. We render the whole grid only
+              when at least one auto-send pipe is on. */}
+          {(RESEND_ENABLED || TWILIO_ENABLED) && (
+            <>
+              <div
+                className={cn(
+                  "grid gap-3 items-center pt-1 pb-1 border-b border-ink-100",
+                  RESEND_ENABLED && TWILIO_ENABLED
+                    ? "grid-cols-[1fr_auto_auto]"
+                    : "grid-cols-[1fr_auto]",
+                )}
+              >
+                <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">
+                  Message
+                </div>
+                {RESEND_ENABLED && (
+                  <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
+                    <Mail className="h-3 w-3" strokeWidth={2.2} />
+                    Email
+                  </div>
+                )}
+                {TWILIO_ENABLED && (
+                  <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
+                    <MessageSquare className="h-3 w-3" strokeWidth={2.2} />
+                    SMS
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="space-y-1">
-            {ROWS.map((row) => (
-              <ChannelRow
-                key={row.kind}
-                label={row.label}
-                blurb={row.blurb}
-                emailOn={Boolean(draft[row.emailKey])}
-                smsOn={Boolean(draft[row.smsKey])}
-                onToggleEmail={() => toggleEmail(row.emailKey)}
-                onToggleSms={() => toggleSms(row.smsKey)}
-                disabled={saveMutation.isPending}
-                showSms={TWILIO_ENABLED}
-              />
-            ))}
-          </div>
+              <div className="space-y-1">
+                {ROWS.map((row) => (
+                  <ChannelRow
+                    key={row.kind}
+                    label={row.label}
+                    blurb={row.blurb}
+                    emailOn={Boolean(draft[row.emailKey])}
+                    smsOn={Boolean(draft[row.smsKey])}
+                    onToggleEmail={() => toggleEmail(row.emailKey)}
+                    onToggleSms={() => toggleSms(row.smsKey)}
+                    disabled={saveMutation.isPending}
+                    showEmail={RESEND_ENABLED}
+                    showSms={TWILIO_ENABLED}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
-          {/* Under the sms: deep-link model, customer texts come from the
-              operator's own Messages app — there's no Twilio dispatcher
-              to configure, no quiet-hours gate to set, no provider
-              secrets to wire. */}
-          {!TWILIO_ENABLED && (
+          {/* Under the mailto: deep-link model, customer emails come
+              from the operator's own mail app — no Resend setup, no
+              API keys to configure. Campaigns are the exception (they
+              stay on Resend for fan-out scale). */}
+          {!RESEND_ENABLED && (
             <div className="mt-3 px-3 py-2.5 rounded-xl bg-green-50 border border-green-100 text-[11.5px] text-ink-700 leading-snug">
+              Customer emails are sent from your own mail app — no setup
+              required. Use the "Message customer" buttons inside each
+              stop, quote, or plan to compose a pre-filled email and
+              tap Send.
+            </div>
+          )}
+
+          {/* Same story for SMS — operator's own phone is the transport,
+              no Twilio dispatcher, no quiet-hours, no per-message cost. */}
+          {!TWILIO_ENABLED && (
+            <div className="mt-2 px-3 py-2.5 rounded-xl bg-green-50 border border-green-100 text-[11.5px] text-ink-700 leading-snug">
               Customer texts are sent from your own phone via your
-              Messages app — no setup required. Use the "Text customer"
-              buttons inside each stop, quote, or plan to compose a
-              pre-filled message and tap Send.
+              Messages app — no setup required. Use the "Message
+              customer" buttons inside each stop, quote, or plan to
+              compose a pre-filled text and tap Send.
             </div>
           )}
 
@@ -351,6 +374,7 @@ function ChannelRow({
   onToggleEmail,
   onToggleSms,
   disabled,
+  showEmail = true,
   showSms = true,
 }: {
   label: string;
@@ -360,25 +384,30 @@ function ChannelRow({
   onToggleEmail: () => void;
   onToggleSms: () => void;
   disabled?: boolean;
+  showEmail?: boolean;
   showSms?: boolean;
 }) {
   return (
     <div
       className={cn(
         "grid gap-3 items-center py-2 border-t border-ink-100 first:border-t-0",
-        showSms ? "grid-cols-[1fr_auto_auto]" : "grid-cols-[1fr_auto]",
+        showEmail && showSms
+          ? "grid-cols-[1fr_auto_auto]"
+          : "grid-cols-[1fr_auto]",
       )}
     >
       <div className="min-w-0">
         <div className="text-[13.5px] font-semibold text-ink-900">{label}</div>
         <div className="text-[11.5px] text-ink-500 leading-snug">{blurb}</div>
       </div>
-      <MiniSwitch
-        ariaLabel={`${label} email`}
-        value={emailOn}
-        onChange={onToggleEmail}
-        disabled={disabled}
-      />
+      {showEmail && (
+        <MiniSwitch
+          ariaLabel={`${label} email`}
+          value={emailOn}
+          onChange={onToggleEmail}
+          disabled={disabled}
+        />
+      )}
       {showSms && (
         <MiniSwitch
           ariaLabel={`${label} SMS`}

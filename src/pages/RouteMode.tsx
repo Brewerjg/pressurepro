@@ -32,8 +32,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { sendCompleted, sendOnTheWay } from "@/lib/customer-email";
 import { sendCompletedSms, sendOnTheWaySms } from "@/lib/customer-sms";
-import TextCustomerButton from "@/components/messaging/TextCustomerButton";
-import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import MessageCustomerButton from "@/components/messaging/MessageCustomerButton";
+import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
 import { openExternalUrl } from "@/lib/native-maps";
 import {
   recordPayment,
@@ -442,16 +442,13 @@ export default function RouteMode() {
     onSuccess: async (stopId) => {
       setSkipOpen(false);
       // Fire completed-channel side-effects AFTER the DB write succeeds
-      // (or queues). Email still auto-fires (operator opted-in via
-      // user_settings) — but SMS does NOT auto-fire under the new
-      // operator-self-sends model. Instead we surface an inline banner
-      // anchored to this stop so the operator can opt-in via
-      // <TextCustomerButton>. The legacy Twilio auto-send path is still
-      // gated by smsToggles.completed AND TWILIO_ENABLED in case an
-      // operator flips the flag back on.
+      // (or queues). Both email AND SMS auto-fires are now gated behind
+      // their respective feature flags. The default operator-self-sends
+      // model surfaces an inline banner anchored to this stop so the
+      // operator can opt-in per-customer via <MessageCustomerButton>.
       const snapshot = stops.find((s) => s.id === stopId);
       if (snapshot) {
-        if (emailToggles.completed) {
+        if (RESEND_ENABLED && emailToggles.completed) {
           void sendCompleted(snapshot).then((res) => {
             if (!res.ok) console.warn("sendCompleted failed:", res.error);
           });
@@ -893,11 +890,14 @@ export default function RouteMode() {
               <Navigation className="h-[18px] w-[18px]" strokeWidth={2} />
               Navigate
             </button>
-            {/* Email-only on-the-way button. When TWILIO_ENABLED is true we
-                also fire the legacy Twilio SMS in parallel; otherwise the
-                operator uses the TextCustomerButton below to send via
-                their own Messages app. */}
-            {emailToggles.onTheWay && (
+            {/* Legacy email auto-send button. Only renders when
+                RESEND_ENABLED is on AND the operator's user_settings
+                opt-in for on_the_way email is true. When TWILIO_ENABLED
+                is also on, we fire the legacy Twilio SMS in parallel.
+                The default operator-self-sends path is the
+                <MessageCustomerButton> below — it handles both email
+                (mailto:) and SMS (sms:) deep-linking. */}
+            {RESEND_ENABLED && emailToggles.onTheWay && (
               <button
                 type="button"
                 onClick={async () => {
@@ -943,32 +943,34 @@ export default function RouteMode() {
             )}
           </div>
 
-          {/* Operator-driven SMS via the sms: deep-link model — replaces
-              the Twilio on-the-way auto-send when TWILIO_ENABLED is off.
-              The button composes the body server-side and surfaces an
-              "Open Messages" handoff plus a Copy button. */}
-          {!TWILIO_ENABLED && (
+          {/* Operator-driven SMS + email via the sms:/mailto: deep-link
+              model — replaces the Twilio + Resend auto-sends when the
+              corresponding feature flags are off. The button composes
+              the body server-side and surfaces Text / Email / Copy
+              actions side-by-side, intelligently enabled based on which
+              contact channels the customer has on file. */}
+          {(!TWILIO_ENABLED || !RESEND_ENABLED) && (
             <div className="mb-3.5">
-              <TextCustomerButton
+              <MessageCustomerButton
                 kind="on_the_way"
                 routeStopId={activeStop.id}
                 variant="secondary"
-                label="Text 'on the way'"
+                label="Message 'on the way'"
               />
             </div>
           )}
 
-          {/* Post-mark-done "text the wrap-up?" banner. Sticks around for
-              the operator to opt-in once. We hide it whenever the active
-              stop changes id (i.e. a new stop is now active) so it doesn't
-              chase them down the route. */}
-          {!TWILIO_ENABLED &&
+          {/* Post-mark-done "message the wrap-up?" banner. Sticks around
+              for the operator to opt-in once. We hide it whenever the
+              active stop changes id (i.e. a new stop is now active) so
+              it doesn't chase them down the route. */}
+          {(!TWILIO_ENABLED || !RESEND_ENABLED) &&
             lastCompletedStop &&
             lastCompletedStop.id !== activeStop.id && (
               <div className="mb-3.5 rounded-2xl border border-green-500/40 bg-green-600/15 px-3.5 py-3 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="text-[12.5px] font-semibold text-green-100">
-                    Marked done — text the customer the wrap-up?
+                    Marked done — message the customer the wrap-up?
                   </div>
                   <button
                     type="button"
@@ -979,11 +981,11 @@ export default function RouteMode() {
                     Dismiss
                   </button>
                 </div>
-                <TextCustomerButton
+                <MessageCustomerButton
                   kind="completed"
                   routeStopId={lastCompletedStop.id}
                   variant="secondary"
-                  label="Text customer the wrap-up"
+                  label="Message customer the wrap-up"
                 />
               </div>
             )}

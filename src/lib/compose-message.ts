@@ -24,16 +24,22 @@ export interface ComposeRequest {
 export interface ComposeResult {
   ok: boolean;
   phone: string | null;
+  email: string | null;
+  subject: string | null;
   body: string;
   sms_url: string | null;
+  mailto_url: string | null;
   error?: string;
 }
 
 const EMPTY_RESULT: ComposeResult = {
   ok: false,
   phone: null,
+  email: null,
+  subject: null,
   body: "",
   sms_url: null,
+  mailto_url: null,
 };
 
 export async function composeCustomerMessage(
@@ -58,8 +64,11 @@ export async function composeCustomerMessage(
     const payload = (data ?? {}) as {
       ok?: boolean;
       phone?: string | null;
+      email?: string | null;
+      subject?: string | null;
       body?: string;
       sms_url?: string | null;
+      mailto_url?: string | null;
       error?: string;
     };
     if (payload.ok === false || payload.error) {
@@ -71,8 +80,11 @@ export async function composeCustomerMessage(
     return {
       ok: true,
       phone: payload.phone ?? null,
+      email: payload.email ?? null,
+      subject: payload.subject ?? null,
       body: payload.body ?? "",
       sms_url: payload.sms_url ?? null,
+      mailto_url: payload.mailto_url ?? null,
     };
   } catch (e) {
     return {

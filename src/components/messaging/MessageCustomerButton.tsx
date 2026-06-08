@@ -4,6 +4,7 @@ import {
   Check,
   Copy,
   Loader2,
+  Mail,
   MessageSquare,
   Phone,
 } from "lucide-react";
@@ -13,21 +14,23 @@ import {
 } from "@/lib/compose-message";
 import { cn } from "@/lib/utils";
 
-// TextCustomerButton — the operator-side affordance for the "sms: deep-link
-// copy/paste" model. The flow:
+// MessageCustomerButton — the unified operator-side affordance for the
+// "deep-link copy/paste" model across SMS + email. The flow:
 //
-//   1) Operator taps the labeled button (e.g. "Text customer 'on the way'").
+//   1) Operator taps the labeled button (e.g. "Message customer 'on the way'").
 //   2) We POST the kind + source row id to compose-customer-message, which
-//      returns { phone, body, sms_url }.
-//   3) The button transitions into a small Ready state that exposes two
-//      actions side-by-side:
-//        a. "Open Messages" — an <a href={sms_url}> with a phone icon.
-//           Only rendered on mobile (sms: URLs don't open native Messages
-//           on most desktops).
-//        b. "Copy text" — copies body to clipboard via the Web Clipboard
-//           API. Shows a "Copied" flash for 2 sec.
+//      returns { phone, email, subject, body, sms_url, mailto_url }.
+//   3) The button transitions into a small Ready state that exposes up to
+//      three actions side-by-side:
+//        a. "Text" — an <a href={sms_url}> with a phone icon. Mobile-only
+//           (sms: URLs don't open native Messages on most desktops).
+//        b. "Email" — an <a href={mailto_url}>. Works on both mobile and
+//           desktop because every platform has a default mail handler.
+//        c. "Copy" — copies body to clipboard via the Web Clipboard API.
+//           Always available as the universal fallback.
 //
-// We never auto-fire the send. The operator's own phone is the transport.
+// We never auto-fire the send. The operator's own phone/mail app is the
+// transport.
 
 // ---------------------------------------------------------------------
 // Mobile detection. Two signals: (a) ontouchstart on window (every iOS
@@ -48,44 +51,87 @@ function detectMobile(): boolean {
   return hasTouch || mobileUa;
 }
 
-// Default labels per kind. Caller can override via the `label` prop.
-const DEFAULT_LABEL: Record<ComposeKind, string> = {
-  on_the_way: "Text customer 'on the way'",
-  completed: "Text customer the wrap-up",
-  review_request: "Text customer for a review",
-  plan_confirmation: "Text customer the plan link",
-  quote_send: "Text customer the quote link",
-  payment_retry: "Text customer to update card",
+// Default labels per kind. Caller can override via the per-channel props.
+const DEFAULT_TEXT_LABEL: Record<ComposeKind, string> = {
+  on_the_way: "Text 'on the way'",
+  completed: "Text the wrap-up",
+  review_request: "Text for a review",
+  plan_confirmation: "Text the plan link",
+  quote_send: "Text the quote link",
+  payment_retry: "Text card-update link",
 };
 
-export type TextCustomerButtonVariant = "primary" | "secondary" | "inline";
+const DEFAULT_EMAIL_LABEL: Record<ComposeKind, string> = {
+  on_the_way: "Email 'on the way'",
+  completed: "Email the wrap-up",
+  review_request: "Email for a review",
+  plan_confirmation: "Email the plan link",
+  quote_send: "Email the quote link",
+  payment_retry: "Email card-update link",
+};
 
-export interface TextCustomerButtonProps {
+// Idle headline shown when the operator hasn't tapped Compose yet. We
+// frame it as "Message" because once we hit Compose we don't yet know
+// which channel(s) will be available.
+const DEFAULT_IDLE_LABEL: Record<ComposeKind, string> = {
+  on_the_way: "Message customer 'on the way'",
+  completed: "Message customer the wrap-up",
+  review_request: "Message customer for a review",
+  plan_confirmation: "Message customer the plan link",
+  quote_send: "Message customer the quote link",
+  payment_retry: "Message customer to update card",
+};
+
+export type MessageCustomerButtonVariant = "primary" | "secondary" | "inline";
+
+export type MessageChannel = "text" | "email" | "copy";
+
+export interface MessageCustomerButtonProps {
   kind: ComposeKind;
   routeStopId?: string;
   quoteId?: string;
   planId?: string;
-  variant?: TextCustomerButtonVariant;
+  variant?: MessageCustomerButtonVariant;
+  /** Overrides the idle-state headline. */
   label?: string;
+  /** Per-channel label overrides for the Ready state. */
+  textLabel?: string;
+  emailLabel?: string;
+  /**
+   * Which channels to surface. Defaults to all three. Pass a narrower
+   * list when a call site is channel-specific (e.g. ['email','copy'] on
+   * a Resend-only surface).
+   */
+  channels?: MessageChannel[];
 }
 
 type UiState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "ready"; body: string; sms_url: string | null; phone: string | null }
+  | {
+      kind: "ready";
+      body: string;
+      sms_url: string | null;
+      mailto_url: string | null;
+      phone: string | null;
+      email: string | null;
+    }
   | { kind: "error"; message: string };
 
 // =====================================================================
 // Component
 // =====================================================================
-export default function TextCustomerButton({
+export default function MessageCustomerButton({
   kind,
   routeStopId,
   quoteId,
   planId,
   variant = "primary",
   label,
-}: TextCustomerButtonProps) {
+  textLabel,
+  emailLabel,
+  channels = ["text", "email", "copy"],
+}: MessageCustomerButtonProps) {
   const [state, setState] = useState<UiState>({ kind: "idle" });
   const [copied, setCopied] = useState(false);
   const isMobile = useMemo(() => detectMobile(), []);
@@ -98,7 +144,13 @@ export default function TextCustomerButton({
     return () => window.clearTimeout(id);
   }, [copied]);
 
-  const buttonLabel = label ?? DEFAULT_LABEL[kind];
+  const idleLabel = label ?? DEFAULT_IDLE_LABEL[kind];
+  const resolvedTextLabel = textLabel ?? DEFAULT_TEXT_LABEL[kind];
+  const resolvedEmailLabel = emailLabel ?? DEFAULT_EMAIL_LABEL[kind];
+
+  const wantsText = channels.includes("text");
+  const wantsEmail = channels.includes("email");
+  const wantsCopy = channels.includes("copy");
 
   const handleCompose = async () => {
     setState({ kind: "loading" });
@@ -119,7 +171,9 @@ export default function TextCustomerButton({
       kind: "ready",
       body: res.body,
       sms_url: res.sms_url,
+      mailto_url: res.mailto_url,
       phone: res.phone,
+      email: res.email,
     });
   };
 
@@ -146,7 +200,7 @@ export default function TextCustomerButton({
         className={cn(IDLE_BUTTON_CLASS[variant])}
       >
         <MessageSquare className="h-4 w-4" strokeWidth={2.2} />
-        {buttonLabel}
+        {idleLabel}
       </button>
     );
   }
@@ -189,49 +243,93 @@ export default function TextCustomerButton({
   }
 
   // -----------------------------------------------------------------
-  // Ready: side-by-side buttons. Open Messages (mobile only) + Copy.
+  // Ready: side-by-side buttons. Text (mobile only when phone present) +
+  // Email (any device when email present) + Copy (always).
+  //
+  // Visibility rules:
+  //   - Text:  channels.includes('text') AND isMobile AND phone AND sms_url
+  //   - Email: channels.includes('email') AND email AND mailto_url
+  //   - Copy:  channels.includes('copy') — always (universal fallback)
+  //
+  // When the customer has neither phone nor email on file, we render
+  // Copy alone with a hint telling the operator to add contact info.
   // -----------------------------------------------------------------
-  const showOpenMessages = isMobile && Boolean(state.sms_url);
+  const showText =
+    wantsText && isMobile && Boolean(state.phone) && Boolean(state.sms_url);
+  const showEmail =
+    wantsEmail && Boolean(state.email) && Boolean(state.mailto_url);
+  const showCopy = wantsCopy;
+
+  const noPhone = wantsText && !state.phone;
+  const noEmail = wantsEmail && !state.email;
+  const noContact = !state.phone && !state.email;
+
   return (
     <div className="flex flex-col gap-1.5 self-start">
       <div className="flex flex-wrap items-center gap-2">
-        {showOpenMessages && state.sms_url && (
+        {showText && state.sms_url && (
           <a
             href={state.sms_url}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-bronze-500 text-white text-[12.5px] font-semibold shadow-bronze hover:bg-bronze-600 transition-colors"
           >
             <Phone className="h-3.5 w-3.5" strokeWidth={2.2} />
-            Open Messages
+            {resolvedTextLabel}
           </a>
         )}
-        <button
-          type="button"
-          onClick={() => handleCopy(state.body)}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[12.5px] font-semibold transition-colors",
-            copied
-              ? "bg-green-100 border-green-300 text-green-800"
-              : "bg-card border-ink-200 text-ink-700 hover:bg-ink-100",
-          )}
-        >
-          {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5" strokeWidth={2.4} />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" strokeWidth={2} />
-              Copy text
-            </>
-          )}
-        </button>
+        {showEmail && state.mailto_url && (
+          <a
+            href={state.mailto_url}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-green-800 text-white text-[12.5px] font-semibold shadow-bronze hover:bg-green-700 transition-colors"
+          >
+            <Mail className="h-3.5 w-3.5" strokeWidth={2.2} />
+            {resolvedEmailLabel}
+          </a>
+        )}
+        {showCopy && (
+          <button
+            type="button"
+            onClick={() => handleCopy(state.body)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[12.5px] font-semibold transition-colors",
+              copied
+                ? "bg-green-100 border-green-300 text-green-800"
+                : "bg-card border-ink-200 text-ink-700 hover:bg-ink-100",
+            )}
+          >
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5" strokeWidth={2.4} />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" strokeWidth={2} />
+                Copy text
+              </>
+            )}
+          </button>
+        )}
       </div>
-      {!state.phone && (
+      {noContact ? (
         <div className="text-[11px] text-ink-500 inline-flex items-center gap-1">
           <AlertCircle className="h-3 w-3" strokeWidth={2} />
-          No phone on file
+          Add phone or email to customer record
         </div>
+      ) : (
+        <>
+          {noPhone && (
+            <div className="text-[11px] text-ink-500 inline-flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" strokeWidth={2} />
+              No phone on file
+            </div>
+          )}
+          {noEmail && (
+            <div className="text-[11px] text-ink-500 inline-flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" strokeWidth={2} />
+              No email on file
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -240,7 +338,7 @@ export default function TextCustomerButton({
 // =====================================================================
 // Visual variants
 // =====================================================================
-const IDLE_BUTTON_CLASS: Record<TextCustomerButtonVariant, string> = {
+const IDLE_BUTTON_CLASS: Record<MessageCustomerButtonVariant, string> = {
   primary:
     "inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-green-800 text-white text-[13.5px] font-semibold shadow-bronze hover:bg-green-700 transition-colors",
   secondary:

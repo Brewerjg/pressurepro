@@ -16,6 +16,7 @@ import {
   Repeat,
   Send,
   Trash2,
+  Files,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,9 +38,9 @@ import {
 } from "@/lib/manual-payments";
 import { sendQuote, sendPlanConfirmation } from "@/lib/customer-email";
 import { sendQuoteSms, sendPlanConfirmationSms } from "@/lib/customer-sms";
-import TextCustomerButton from "@/components/messaging/TextCustomerButton";
+import MessageCustomerButton from "@/components/messaging/MessageCustomerButton";
 import { APP_ID } from "@/lib/app-context";
-import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
 
 // QuoteDetail — read view + edit toggle + lifecycle actions. The operator
 // usually lands here from the list, glances at the status pill, and either
@@ -199,6 +200,75 @@ export default function QuoteDetail() {
       setActionError(err instanceof Error ? err.message : "Delete failed"),
   });
 
+  // Duplicate the current quote into a fresh draft. Carries over customer,
+  // property, lines, total, recurring_months, deposit, notes (with sentinels
+  // stripped) — resets id, status (back to 'draft'), created_at (DB default),
+  // expires_at (14 days from today), portal_token (DB default), plan_id,
+  // emailed_at, and view-counters. The operator lands on the new quote in
+  // its detail view and can edit anything (including the date) before sending.
+  const duplicateQuote = useMutation({
+    mutationFn: async (): Promise<string> => {
+      if (!quote) throw new Error("Missing source quote");
+
+      // Strip sentinels we use on notes for internal state — they shouldn't
+      // bleed into the duplicate. Order matters: longest match first.
+      let cleanedNotes: string | null = quote.notes;
+      if (cleanedNotes) {
+        cleanedNotes = cleanedNotes
+          .replace(/^\s*\[recurring_requested\]\s*/i, "")
+          .replace(/^\s*Canceled:\s*/i, "")
+          .trim();
+        if (!cleanedNotes) cleanedNotes = null;
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 14);
+
+      const insertPayload = {
+        user_id: quote.user_id,
+        app: APP_ID,
+        customer_id: quote.customer_id,
+        property_id: quote.property_id,
+        customer_name: quote.customer_name,
+        phone: quote.phone,
+        customer_email: quote.customer_email,
+        address: quote.address,
+        lines: quote.lines,
+        total: quote.total,
+        deposit_amount: quote.deposit_amount,
+        recurring_months: quote.recurring_months,
+        notes: cleanedNotes,
+        expires_at: expiresAt.toISOString(),
+        status: "draft" as QuoteStatus,
+      };
+
+      const { data, error } = await supabase
+        .from("quotes")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (!data?.id) throw new Error("Insert returned no id");
+      return data.id as string;
+    },
+    onSuccess: (newId) => {
+      setActionError(null);
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      navigate(`/quotes/${newId}`);
+    },
+    onError: (err) =>
+      setActionError(err instanceof Error ? err.message : "Duplicate failed"),
+  });
+
+  const handleDuplicate = () => {
+    if (!quote) return;
+    if (!window.confirm(
+      "Duplicate this quote? A fresh draft will be created with today's date " +
+      "and a 14-day expiry. You'll land on the new quote to edit before sending.",
+    )) return;
+    duplicateQuote.mutate();
+  };
+
   // Manual-payment mutation for the quote. After save we check cumulative
   // recorded payments against the quote's total / deposit_amount and prompt
   // the operator (window.confirm — per spec, no toast lib) to flip status
@@ -315,13 +385,14 @@ export default function QuoteDetail() {
       setConvertError(null);
       queryClient.invalidateQueries({ queryKey: ["plans"] });
       queryClient.invalidateQueries({ queryKey: ["quote", id] });
-      // Fire the "save your card" link in the background — email auto-
-      // sends as before, but SMS is now operator-initiated via the
-      // TextCustomerButton rendered in the success banner below. Legacy
-      // Twilio auto-send is retained behind TWILIO_ENABLED.
+      // Fire the "save your card" link in the background. Both email
+      // (Resend) and SMS (Twilio) auto-sends are now gated behind their
+      // respective feature flags — by default the operator sends both
+      // channels from their own apps via the <MessageCustomerButton>
+      // rendered in the success banner below.
       if (sendCardLink && quote) {
         const recipientName = quote.customer_name ?? undefined;
-        if (quote.customer_email) {
+        if (RESEND_ENABLED && quote.customer_email) {
           void sendPlanConfirmation(
             planId,
             { email: quote.customer_email, name: recipientName },
@@ -386,13 +457,13 @@ export default function QuoteDetail() {
     typeof quote.notes === "string" &&
     quote.notes.includes(RECURRING_REQUESTED_SENTINEL);
 
-  // Send / Resend handler — flips status + emailed_at optimistically and
-  // fires the quote_send email. The legacy Twilio SMS auto-send is gated
-  // behind TWILIO_ENABLED; otherwise the operator sends the link from
-  // their own phone via the <TextCustomerButton> in the actions grid.
-  // Sends are fire-and-forget: a transport failure is logged to
-  // email_log/sms_log and surfaced inline, but we don't roll back the
-  // status flip.
+  // Send / Resend handler — flips status + emailed_at optimistically.
+  // Both the Resend email auto-send and the Twilio SMS auto-send are
+  // gated behind their respective feature flags. By default the operator
+  // sends both channels from their own apps via the
+  // <MessageCustomerButton> in the actions grid below. Sends are
+  // fire-and-forget: a transport failure is logged to email_log/sms_log
+  // and surfaced inline, but we don't roll back the status flip.
   const handleSend = () => {
     setActionError(null);
     if (!quote) return;
@@ -400,7 +471,7 @@ export default function QuoteDetail() {
       { status: "sent", emailed_at: new Date().toISOString() },
       {
         onSuccess: async () => {
-          if (quote.customer_email) {
+          if (RESEND_ENABLED && quote.customer_email) {
             const r = await sendQuote(quote.id);
             if (!r.ok) {
               setActionError(
@@ -665,6 +736,19 @@ export default function QuoteDetail() {
         </button>
         <button
           type="button"
+          onClick={handleDuplicate}
+          disabled={duplicateQuote.isPending}
+          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+        >
+          {duplicateQuote.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Files className="h-3.5 w-3.5" />
+          )}
+          Duplicate
+        </button>
+        <button
+          type="button"
           onClick={handleCancel}
           disabled={update.isPending}
           className="rounded-[14px] border border-ink-200 bg-card text-destructive font-semibold text-[13px] py-3 hover:bg-destructive/5 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
@@ -698,22 +782,24 @@ export default function QuoteDetail() {
         )}
       </section>
 
-      {/* Operator-driven SMS via the sms: deep-link model. Renders
-          alongside the email-based "Send / Resend" CTA so the operator
-          can text the public accept link from their own Messages app
-          without the Twilio overhead. Hidden when TWILIO_ENABLED flips
-          on and the auto-send pipe is doing the work. */}
-      {!TWILIO_ENABLED && quote.phone && (
+      {/* Operator-driven SMS + email via sms:/mailto: deep-links.
+          Renders alongside the "Send / Resend" CTA so the operator can
+          send the public accept link from their own Messages or Mail
+          app without the Twilio + Resend overhead. Hidden only when
+          BOTH auto-send paths are enabled (since then the auto-pipe is
+          doing the work) AND the customer has neither phone nor email
+          (we still render with copy-only otherwise). */}
+      {(!TWILIO_ENABLED || !RESEND_ENABLED) && (
         <section className="mx-4 mb-3">
           <div className="tp-card p-3 flex flex-col gap-2">
             <div className="text-[12px] font-semibold text-ink-700">
-              Text the quote link from your phone
+              Send the quote link from your phone or mail app
             </div>
-            <TextCustomerButton
+            <MessageCustomerButton
               kind="quote_send"
               quoteId={quote.id}
               variant="secondary"
-              label="Text customer the quote link"
+              label="Message customer the quote link"
             />
           </div>
         </section>

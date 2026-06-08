@@ -1,13 +1,17 @@
 // compose-customer-message — server-trusted builder for the operator-self-
-// sends-via-sms: model. We hydrate the recipient + body from the source
-// row (route_stops / quotes / maintenance_plans) and return the rendered
-// SMS body together with a phone number and a pre-built `sms:` URL the
-// client hands to <a href>.
+// sends-via-sms: AND mailto: model. We hydrate the recipient + body from
+// the source row (route_stops / quotes / maintenance_plans) and return the
+// rendered body together with phone/email and pre-built `sms:` / `mailto:`
+// URLs the client hands to <a href>.
 //
-// The existing send-customer-sms function (Twilio path) stays intact and
-// untouched — this function exists alongside it so both modes can co-exist
-// behind a feature flag. The renderer modules in _shared/sms-templates.ts
-// are reused verbatim so the body text is identical between the two paths.
+// The existing send-customer-sms (Twilio) and send-customer-email (Resend)
+// functions stay intact and untouched — this function exists alongside them
+// so all modes can co-exist behind feature flags. The renderer modules in
+// _shared/sms-templates.ts are reused verbatim so the body text is identical
+// between the SMS auto-send and operator-driven paths. We additionally pull
+// subject lines (only) from _shared/email-templates.ts so email subjects
+// match the Resend path — but the body itself is the SMS body, shared
+// between sms: and mailto: for one source of truth.
 //
 // -------------------------------------------------------------------
 // Request:
@@ -29,8 +33,11 @@
 //   {
 //     "ok": true,
 //     "phone": "+15551234567" | null,
+//     "email": "sam@example.com" | null,
+//     "subject": "On the way — your TurfPro crew" | null,
 //     "body": "Hi Sam, ... Reply STOP to opt out.",
-//     "sms_url": "sms:+15551234567?body=Hi%20Sam..." | null
+//     "sms_url": "sms:+15551234567?body=Hi%20Sam..." | null,
+//     "mailto_url": "mailto:sam@example.com?subject=...&body=..." | null
 //   }
 //
 // Failure (4xx/5xx):
@@ -52,6 +59,21 @@ import {
   type RenderedSms,
   type SmsBusinessInfo,
 } from "../_shared/sms-templates.ts";
+
+// Email-template renderers — we only consume `.subject` from these. The
+// HTML / text outputs are discarded so the SMS body remains the single
+// source of truth for both `sms:` and `mailto:` URLs. Calling each
+// renderer with a minimal stub context is fine: subject lines for the
+// six kinds are all static (don't reference ctx fields).
+import {
+  renderCompleted as renderCompletedEmail,
+  renderOnTheWay as renderOnTheWayEmail,
+  renderPaymentRetry as renderPaymentRetryEmail,
+  renderPlanConfirmation as renderPlanConfirmationEmail,
+  renderQuoteSend as renderQuoteSendEmail,
+  renderReviewRequest as renderReviewRequestEmail,
+  type BusinessInfo as EmailBusinessInfo,
+} from "../_shared/email-templates.ts";
 
 // ---------- Types ----------
 
@@ -100,6 +122,61 @@ function buildSmsUrl(phone: string | null, body: string): string | null {
   const clean = cleanPhoneForSmsUrl(phone);
   if (!clean) return null;
   return `sms:${clean}?body=${encodeURIComponent(body)}`;
+}
+
+// Lightweight email validation — same as _shared/email-templates.isValidEmail
+// but inlined to avoid coupling the URL builder to that module's export.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function buildMailtoUrl(
+  email: string | null,
+  subject: string | null,
+  body: string,
+): string | null {
+  if (!email) return null;
+  if (!EMAIL_RE.test(email)) return null;
+  const subjectParam = subject
+    ? `subject=${encodeURIComponent(subject)}&`
+    : "";
+  return `mailto:${email}?${subjectParam}body=${encodeURIComponent(body)}`;
+}
+
+// Resolve the email subject line for a given kind. We feed each renderer
+// a minimal stub context — the subjects for our six kinds don't reference
+// any context fields, so the stub values never appear in the returned
+// subject string. We only consume `.subject`.
+function resolveSubject(
+  kind: ComposeKind,
+  business: EmailBusinessInfo,
+  address: string,
+): string | null {
+  switch (kind) {
+    case "on_the_way":
+      return renderOnTheWayEmail(business, { address }).subject;
+    case "completed":
+      return renderCompletedEmail(business, { address }).subject;
+    case "review_request":
+      return renderReviewRequestEmail(business, { reviewUrl: "" }).subject;
+    case "plan_confirmation":
+      return renderPlanConfirmationEmail(business, {
+        cadence: "monthly",
+        amountCents: 0,
+        portalUrl: "",
+      }).subject;
+    case "quote_send":
+      return renderQuoteSendEmail(business, {
+        lines: [],
+        totalAmount: 0,
+        acceptUrl: "",
+      }).subject;
+    case "payment_retry":
+      return renderPaymentRetryEmail(business, {
+        amountCents: 0,
+        portalUrl: "",
+      }).subject;
+    default:
+      return null;
+  }
 }
 
 // ---------- Handler ----------
@@ -189,6 +266,11 @@ Deno.serve(async (req) => {
 
     // ----- Hydrate per-kind -----
     let phone: string | null = null;
+    let email: string | null = null;
+    // Cached address used for the email subject (the on_the_way / completed
+    // subjects don't actually template it today, but we thread it so future
+    // subject revisions can use it without another schema lookup).
+    let subjectAddress = "";
     let rendered: RenderedSms | null = null;
 
     switch (kind) {
@@ -221,32 +303,36 @@ Deno.serve(async (req) => {
           return errorResponse("Route stop not found", 404);
         }
 
-        // Resolve customer's phone + name (snapshot is fine if no row).
+        // Resolve customer's phone + email + name (snapshot is fine if no row).
         let customerName: string | null =
           ((stop as Record<string, unknown>).customer_name_snapshot as
             | string
             | null) ?? null;
         let customerPhone: string | null = null;
+        let customerEmail: string | null = null;
         const stopCustomerId =
           (stop as Record<string, unknown>).customer_id as string | null;
         if (stopCustomerId) {
           const { data: cust } = await admin
             .from("customers")
-            .select("name, phone")
+            .select("name, phone, email")
             .eq("id", stopCustomerId)
             .maybeSingle();
           if (cust) {
             customerName =
               (cust.name as string | null) || customerName || null;
             customerPhone = (cust.phone as string | null) ?? null;
+            customerEmail = (cust.email as string | null) ?? null;
           }
         }
         phone = customerPhone;
+        email = customerEmail;
         const firstName = customerName?.trim().split(/\s+/)[0] || undefined;
         const address =
           ((stop as Record<string, unknown>).address_snapshot as
             | string
             | null) ?? "";
+        subjectAddress = address;
 
         if (kind === "on_the_way") {
           rendered = renderOnTheWaySms(business, {
@@ -283,6 +369,7 @@ Deno.serve(async (req) => {
         log("route_stop.resolved", {
           kind,
           has_phone: Boolean(phone),
+          has_email: Boolean(email),
         });
         break;
       }
@@ -298,7 +385,7 @@ Deno.serve(async (req) => {
         const { data: quote, error: qErr } = await admin
           .from("quotes")
           .select(
-            "id, user_id, customer_id, customer_name, phone, address",
+            "id, user_id, customer_id, customer_name, customer_email, phone, address",
           )
           .eq("id", raw.quote_id)
           .eq("app", APP_ID)
@@ -315,6 +402,27 @@ Deno.serve(async (req) => {
 
         phone = ((quote as Record<string, unknown>).phone as string | null) ??
           null;
+        email =
+          ((quote as Record<string, unknown>).customer_email as
+            | string
+            | null) ?? null;
+        // Quote rows occasionally lack customer_email but link to a
+        // customers row — fall back to it when the denormalized column
+        // is blank so email-only flows still work.
+        const quoteCustomerId =
+          (quote as Record<string, unknown>).customer_id as string | null;
+        if (!email && quoteCustomerId) {
+          const { data: cust } = await admin
+            .from("customers")
+            .select("email")
+            .eq("id", quoteCustomerId)
+            .maybeSingle();
+          if (cust?.email) {
+            email = cust.email as string;
+          }
+        }
+        subjectAddress =
+          ((quote as Record<string, unknown>).address as string | null) ?? "";
         const firstName =
           (((quote as Record<string, unknown>).customer_name as
             | string
@@ -336,6 +444,7 @@ Deno.serve(async (req) => {
         log("quote.resolved", {
           kind,
           has_phone: Boolean(phone),
+          has_email: Boolean(email),
         });
         break;
       }
@@ -379,15 +488,20 @@ Deno.serve(async (req) => {
             .split(/\s+/)[0] || undefined;
         const planCustomerId =
           (plan as Record<string, unknown>).customer_id as string | null;
-        if ((!candidatePhone || !firstName) && planCustomerId) {
+        // We also pull email here unconditionally — maintenance_plans
+        // doesn't carry a denormalized email column today, so the linked
+        // customers row is the only source.
+        let candidateEmail: string | null = null;
+        if (planCustomerId) {
           const { data: cust } = await admin
             .from("customers")
-            .select("name, phone")
+            .select("name, phone, email")
             .eq("id", planCustomerId)
             .maybeSingle();
           if (cust) {
             candidatePhone =
               candidatePhone || ((cust.phone as string | null) ?? null);
+            candidateEmail = (cust.email as string | null) ?? null;
             firstName =
               firstName ||
               ((cust.name as string | null)?.trim().split(/\s+/)[0] ||
@@ -395,6 +509,7 @@ Deno.serve(async (req) => {
           }
         }
         phone = candidatePhone;
+        email = candidateEmail;
 
         const portalToken =
           ((plan as Record<string, unknown>).portal_token as string | null) ??
@@ -435,6 +550,7 @@ Deno.serve(async (req) => {
         log("plan.resolved", {
           kind,
           has_phone: Boolean(phone),
+          has_email: Boolean(email),
         });
         break;
       }
@@ -451,9 +567,21 @@ Deno.serve(async (req) => {
     const body = rendered.body;
     const sms_url = buildSmsUrl(phone, body);
 
+    // Resolve subject for the mailto: URL. Subject lines come from the
+    // existing email-template renderers so they match what Resend would
+    // send if RESEND_ENABLED were flipped on. The HTML/text outputs are
+    // discarded — the SMS body is the shared source of truth.
+    const subject = resolveSubject(
+      kind,
+      { name: business.name },
+      subjectAddress,
+    );
+    const mailto_url = buildMailtoUrl(email, subject, body);
+
     log("return.success", {
       kind,
       has_phone: Boolean(phone),
+      has_email: Boolean(email),
       body_length: body.length,
     });
 
@@ -461,8 +589,11 @@ Deno.serve(async (req) => {
       {
         ok: true,
         phone: phone ?? null,
+        email: email ?? null,
+        subject: subject ?? null,
         body,
         sms_url,
+        mailto_url,
       },
       { status: 200 },
     );

@@ -5,7 +5,9 @@
       "PowerShell(npm install 2>&1)",
       "PowerShell(npm run build 2>&1)",
       "Bash(tail -8 'C:\\\\Users\\\\Jason\\\\Desktop\\\\pressure-pro-quoter\\\\ALIGN_WITH_TURFPRO.md' 2>&1)",
-      "Read(//c/Users/Jason/Desktop/pressure-pro-quoter/**)"
+      "Read(//c/Users/Jason/Desktop/pressure-pro-quoter/**)",
+      "Bash(npm run *)",
+      "Bash(grep -n \"APP_ID\\\\|useAuth\\\\|user\\\\\\\\?\\\\.id\" src/pages/QuoteDetail.tsx)"
     ],
     "deny": [],
     "ask": [],

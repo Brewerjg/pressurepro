@@ -9,7 +9,7 @@ import QuoteForm, { type QuoteFormValues } from "@/components/quotes/QuoteForm";
 import { quoteTotal } from "@/components/quotes/types";
 import { sendQuote } from "@/lib/customer-email";
 import { sendQuoteSms } from "@/lib/customer-sms";
-import { TWILIO_ENABLED } from "@/lib/feature-flags";
+import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
 import { APP_ID } from "@/lib/app-context";
 
 // NewQuote — the operator-side "author a quote" page. Routed at /quotes/new.
@@ -85,14 +85,13 @@ export default function NewQuote() {
       // reflects what the operator chose to do; an email/SMS hiccup is
       // logged in email_log and surfaced in the inline error.
       //
-      // SMS no longer auto-fires under the operator-self-sends model.
-      // The operator lands on QuoteDetail (via the onSuccess navigate)
-      // and uses the TextCustomerButton there to send the quote link
-      // from their own Messages app. The legacy Twilio auto-send path
-      // is retained behind TWILIO_ENABLED in case an operator wants to
-      // flip it back on.
+      // Both email (Resend) and SMS (Twilio) auto-sends are now gated
+      // behind their respective feature flags. The default flow lands
+      // the operator on QuoteDetail (via the onSuccess navigate) where
+      // <MessageCustomerButton> lets them send via their own Messages
+      // and Mail apps.
       if (action === "send") {
-        if (values.customer_email) {
+        if (RESEND_ENABLED && values.customer_email) {
           const r = await sendQuote(quoteId);
           if (!r.ok) {
             console.warn("sendQuote failed:", r.error);

@@ -1,5 +1,13 @@
 // send-campaign — fan-out blaster for TurfPro's seasonal campaign tool.
 //
+// NOTE: This function is EXEMPT from the RESEND_ENABLED / TWILIO_ENABLED
+// feature flags that gate the per-customer transactional sends. Campaigns
+// intentionally stay on Resend (and Twilio when enabled) because mailto:
+// and sms: deep-links don't scale to a 200-customer blast — the operator
+// can't realistically tap Send 200 times. The operator-self-sends model
+// is for high-touch transactional moments (on-the-way, quote send, etc);
+// campaigns are bulk marketing and need real automation.
+//
 // Given a campaigns row id, this function:
 //   1. Resolves the audience_filter against the operator's customers
 //      (server-side query — never trusts a client-supplied recipient list)
