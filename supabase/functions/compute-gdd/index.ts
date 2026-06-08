@@ -144,16 +144,24 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid geocode response" }, 502);
     }
 
-    // 3. One Call 3.0 — daily for 7 days, imperial units
+    // 3. One Call 4.0 — daily timeline (up to 10 days, imperial units).
+    //    v4.0 has no single `/onecall` endpoint; daily lives at
+    //    `/onecall/timeline/1day`. Response is an envelope wrapping the
+    //    array (key is `list` or `data` depending on docs revision).
     const ocRes = await fetch(
-      `https://api.openweathermap.org/data/3.0/onecall?lat=${geo.lat}&lon=${geo.lon}&exclude=minutely,hourly,alerts,current&units=imperial&appid=${apiKey}`,
+      `https://api.openweathermap.org/data/4.0/onecall/timeline/1day?lat=${geo.lat}&lon=${geo.lon}&units=imperial&appid=${apiKey}`,
     );
     if (!ocRes.ok) {
       const body = await ocRes.text();
-      return json({ error: `OneCall failed [${ocRes.status}]: ${body}` }, 502);
+      return json({ error: `OneCall daily failed [${ocRes.status}]: ${body}` }, 502);
     }
-    const oc = (await ocRes.json()) as { daily?: OpenWeatherDaily[] };
-    const dailyRaw = oc.daily ?? [];
+    const ocJson = await ocRes.json() as {
+      list?: OpenWeatherDaily[];
+      data?: OpenWeatherDaily[];
+    } | OpenWeatherDaily[];
+    const dailyRaw: OpenWeatherDaily[] = Array.isArray(ocJson)
+      ? ocJson
+      : (ocJson.list ?? ocJson.data ?? []);
 
     // 4. Compute today's GDD from forecast index 0 (One Call returns today
     // first in the daily array).

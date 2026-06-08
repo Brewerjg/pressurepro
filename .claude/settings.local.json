@@ -10,7 +10,8 @@
       "Bash(grep -n \"APP_ID\\\\|useAuth\\\\|user\\\\\\\\?\\\\.id\" src/pages/QuoteDetail.tsx)",
       "Bash(curl -s \"https://dkksryutecjbyuscpxdb.supabase.co/functions/v1/forecast?zip=72135\" -H \"apikey: sb_publishable_yJrk3OzDV3xtEOqDcd7l5w_TfPpEexP\" -H \"Authorization: Bearer sb_publishable_yJrk3OzDV3xtEOqDcd7l5w_TfPpEexP\")",
       "Bash(curl -s \"https://dkksryutecjbyuscpxdb.supabase.co/rest/v1/weather_cache?zip=eq.72135&select=zip,country,fetched_at,daily\" -H \"apikey: sb_publishable_yJrk3OzDV3xtEOqDcd7l5w_TfPpEexP\" -H \"Authorization: Bearer sb_publishable_yJrk3OzDV3xtEOqDcd7l5w_TfPpEexP\")",
-      "Bash(curl -s -i -X OPTIONS \"https://dkksryutecjbyuscpxdb.supabase.co/functions/v1/forecast\" -H \"Origin: https://example.com\" -H \"Access-Control-Request-Method: GET\")"
+      "Bash(curl -s -i -X OPTIONS \"https://dkksryutecjbyuscpxdb.supabase.co/functions/v1/forecast\" -H \"Origin: https://example.com\" -H \"Access-Control-Request-Method: GET\")",
+      "WebFetch(domain:openweathermap.org)"
     ],
     "deny": [],
     "ask": [],

@@ -129,10 +129,26 @@ interface ForecastResponse {
 
 // ---------------------------------------------------------------------------
 // OpenWeather OneCall 4.0 raw response shapes (subset of what we consume).
+//
+// v4.0 is split across multiple endpoints — there is NO single `/data/4.0/
+// onecall` that returns current+hourly+daily+alerts the way v3.0 did. We
+// hit three endpoints in parallel:
+//
+//   * /data/4.0/onecall/current        -> { ...current_fields, alerts? }
+//   * /data/4.0/onecall/timeline/1h    -> { lat, lon, ..., list: [hourly...] }
+//   * /data/4.0/onecall/timeline/1day  -> { lat, lon, ..., list: [daily...] }
+//
+// The timeline endpoints return up to 20 (hourly) and 10 (daily) records.
+// Both return an envelope object whose array key has varied across OW
+// documentation versions ("list" / "data" / arrays at the root) — we extract
+// defensively via `extractList()` below.
 // ---------------------------------------------------------------------------
 interface OWWeather { id: number; main: string; description: string; icon: string }
+
+// `/current` — single-record object (NOT wrapped in an array).
 interface OWCurrent {
   dt: number;
+  timezone_offset?: number;
   temp: number;
   feels_like: number;
   pressure: number;
@@ -140,21 +156,30 @@ interface OWCurrent {
   dew_point: number;
   uvi: number;
   clouds: number;
+  visibility?: number;
   wind_speed: number;
   wind_gust?: number;
   wind_deg: number;
   weather: OWWeather[];
+  rain?: { "1h"?: number };
+  snow?: { "1h"?: number };
+  alerts?: Array<string | { id: string }>;
 }
+
+// `/timeline/1h` — per-record. Hourly forecast records carry `pop` (chance of
+// precip) but no min/max because each record is one hour.
 interface OWHourly {
   dt: number;
   temp: number;
   feels_like: number;
   humidity: number;
-  pop: number;
+  pop?: number;
   wind_speed: number;
   wind_gust?: number;
   weather: OWWeather[];
 }
+
+// `/timeline/1day` — per-record. Same per-day shape v3.0 used.
 interface OWDaily {
   dt: number;
   summary?: string;
@@ -168,28 +193,18 @@ interface OWDaily {
   wind_deg: number;
   weather: OWWeather[];
   clouds: number;
-  pop: number;
-  rain?: number;   // mm
-  snow?: number;   // mm
+  pop?: number;
+  rain?: number | { "1h"?: number };   // mm — number on v3.0, sometimes {"1h": n} on v4
+  snow?: number | { "1h"?: number };
   uvi: number;
 }
-interface OWAlert {
-  sender_name: string;
-  event: string;
-  start: number;
-  end: number;
-  description: string;
-  tags?: string[];
-}
-interface OWOneCallResponse {
-  lat: number;
-  lon: number;
-  timezone: string;
-  timezone_offset: number;
-  current?: OWCurrent;
-  hourly?: OWHourly[];
-  daily?: OWDaily[];
-  alerts?: OWAlert[];
+
+// Envelope wrapping a timeline array. Key name has varied across docs
+// revisions; we tolerate "list" / "data" / array-at-root.
+interface OWTimelineEnvelope<T> {
+  timezone_offset?: number;
+  list?: T[];
+  data?: T[];
 }
 
 Deno.serve(async (req) => {
@@ -253,49 +268,80 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid geocode response" }, 502);
     }
 
-    // 3. OneCall 4.0 — full endpoint. Excludes only `minutely`; everything
-    //    else (current + hourly + daily + alerts) is what we want.
+    // 3. OneCall 4.0 — three endpoints in parallel.
     //
-    //    /data/4.0/onecall?lat=&lon=&units=imperial&exclude=minutely&appid=
+    //    There is no single `/data/4.0/onecall` endpoint in v4.0; that path
+    //    returns 404. Instead each granularity is its own endpoint, and we
+    //    aggregate them client-side here.
     //
     //    Units are imperial so temps come back as °F and wind as mph. Rain
     //    and snow stay in mm regardless of units; we convert at parse time.
-    const ocUrl =
-      `https://api.openweathermap.org/data/4.0/onecall` +
-      `?lat=${geo.lat}&lon=${geo.lon}` +
-      `&units=imperial` +
-      `&exclude=minutely` +
-      `&appid=${apiKey}`;
-    const ocRes = await fetch(ocUrl);
-    if (!ocRes.ok) {
-      const body = await ocRes.text();
-      return json({ error: `OneCall failed [${ocRes.status}]: ${body}` }, 502);
+    const base = `https://api.openweathermap.org/data/4.0/onecall`;
+    const common = `lat=${geo.lat}&lon=${geo.lon}&units=imperial&appid=${apiKey}`;
+    const [currentRes, hourlyRes, dailyRes] = await Promise.all([
+      fetch(`${base}/current?${common}`),
+      fetch(`${base}/timeline/1h?${common}`),
+      fetch(`${base}/timeline/1day?${common}`),
+    ]);
+
+    // Daily is the critical path — if it fails we have nothing useful to
+    // show. Current + hourly are nice-to-have; if either fails we degrade
+    // gracefully.
+    if (!dailyRes.ok) {
+      const body = await dailyRes.text();
+      return json(
+        { error: `OneCall daily failed [${dailyRes.status}]: ${body}` },
+        502,
+      );
     }
-    const oc = await ocRes.json() as OWOneCallResponse;
+
+    const dailyJson = (await dailyRes.json()) as OWTimelineEnvelope<OWDaily>;
+    const tzOffset = dailyJson.timezone_offset ?? 0;
+    const dailyRecords = extractList<OWDaily>(dailyJson).slice(0, 7);
+
+    let currentRaw: OWCurrent | null = null;
+    if (currentRes.ok) {
+      try {
+        currentRaw = (await currentRes.json()) as OWCurrent;
+      } catch {
+        currentRaw = null;
+      }
+    } else {
+      console.warn(`OneCall /current failed [${currentRes.status}]`);
+    }
+
+    let hourlyRecords: OWHourly[] = [];
+    if (hourlyRes.ok) {
+      try {
+        const hj = (await hourlyRes.json()) as OWTimelineEnvelope<OWHourly>;
+        hourlyRecords = extractList<OWHourly>(hj).slice(0, 24);
+      } catch {
+        hourlyRecords = [];
+      }
+    } else {
+      console.warn(`OneCall /timeline/1h failed [${hourlyRes.status}]`);
+    }
 
     // 4. Parse current.
-    const current: CurrentObservation | null = oc.current
-      ? mapCurrent(oc.current)
-      : null;
+    const current: CurrentObservation | null = currentRaw ? mapCurrent(currentRaw) : null;
 
-    // 5. Parse hourly — slice to next 24 from the API's 48.
-    const hourly: HourlyForecast[] = (oc.hourly ?? [])
-      .slice(0, 24)
-      .map((h) => mapHourly(h, oc.timezone_offset));
+    // 5. Parse hourly.
+    const hourly: HourlyForecast[] = hourlyRecords.map((h) => mapHourly(h, tzOffset));
 
-    // 6. Parse daily — slice to 7 (OW returns 8). Compute derived_tone and
-    //    workConditions per day. derived_tone needs the full window so we
-    //    map raw -> base shape first, then enrich in a second pass.
-    const dailyRaw = (oc.daily ?? []).slice(0, 7);
-    const dailyBase = dailyRaw.map((d) => mapDailyBase(d, oc.timezone_offset));
+    // 6. Parse daily. Compute derived_tone and workConditions per day.
+    //    derived_tone needs the full window so we map raw -> base shape first,
+    //    then enrich in a second pass.
+    const dailyBase = dailyRecords.map((d) => mapDailyBase(d, tzOffset));
     const daily: DailyForecast[] = dailyBase.map((d, i) => ({
       ...d,
       derived_tone: deriveTone(d, dailyBase, i),
       workConditions: computeWorkConditions(d),
     }));
 
-    // 7. Alerts — empty array when none.
-    const alerts: WeatherAlert[] = (oc.alerts ?? []).map(mapAlert);
+    // 7. Alerts — v4 surfaces alert *IDs* on the /current response. Fetching
+    //    each alert by ID is an extra round-trip we skip for now; the banner
+    //    UI hides itself when alerts[] is empty.
+    const alerts: WeatherAlert[] = [];
 
     const fetched_at = new Date().toISOString();
     const response: ForecastResponse = {
@@ -368,8 +414,10 @@ type DailyBase = Omit<DailyForecast, "derived_tone" | "workConditions">;
 function mapDailyBase(d: OWDaily, tzOffsetSec: number): DailyBase {
   const w = d.weather?.[0];
   const precipChance = Math.round((d.pop ?? 0) * 100);
-  const rainInches = d.rain != null ? round2(d.rain * MM_TO_INCHES) : 0;
-  const snowInches = d.snow != null ? round2(d.snow * MM_TO_INCHES) : 0;
+  const rainMm = typeof d.rain === "number" ? d.rain : (d.rain?.["1h"] ?? 0);
+  const snowMm = typeof d.snow === "number" ? d.snow : (d.snow?.["1h"] ?? 0);
+  const rainInches = round2(rainMm * MM_TO_INCHES);
+  const snowInches = round2(snowMm * MM_TO_INCHES);
   const windDeg = Math.round(d.wind_deg ?? 0);
   return {
     date: formatLocalDate(d.dt, tzOffsetSec),
@@ -398,22 +446,15 @@ function mapDailyBase(d: OWDaily, tzOffsetSec: number): DailyBase {
   };
 }
 
-function mapAlert(a: OWAlert): WeatherAlert {
-  // Tags from NWS look like ["Extreme temperature value", "Wind"] etc.
-  // The event string itself is more useful for severity bucketing.
-  const ev = (a.event ?? "").toLowerCase();
-  let severity: WeatherAlert["severity"] = "statement";
-  if (ev.includes("warning")) severity = "warning";
-  else if (ev.includes("watch")) severity = "watch";
-  else if (ev.includes("advisory")) severity = "advisory";
-  return {
-    sender: a.sender_name ?? "Weather service",
-    event: a.event ?? "Weather alert",
-    start: a.start,
-    end: a.end,
-    description: a.description ?? "",
-    severity,
-  };
+// Extract the timeline array from a v4 envelope. OpenWeather has used
+// different key names ("list" / "data") across doc revisions; a few endpoints
+// also return the array at the root. Tolerate all three so a docs change
+// doesn't silently empty the forecast.
+function extractList<T>(envelope: OWTimelineEnvelope<T> | T[]): T[] {
+  if (Array.isArray(envelope)) return envelope;
+  if (Array.isArray(envelope.list)) return envelope.list;
+  if (Array.isArray(envelope.data)) return envelope.data;
+  return [];
 }
 
 // ---------------------------------------------------------------------------
