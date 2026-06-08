@@ -1,10 +1,16 @@
 // Live weather hook for TurfPro — wraps the `forecast` edge function.
 //
-// The edge function is a thin pass-through over OpenWeather One Call 3.0 +
-// `weather_cache` table; this file is the React-side adapter that decorates
-// each day with a `derived_tone` lawn-care decision flag.
+// The edge function is a thin pass-through over OpenWeather One Call 4.0 +
+// `weather_cache` table; this file is the React-side adapter that:
+//   1. Re-exports the rich ForecastResponse contract for new consumers.
+//   2. Preserves the legacy normalized field names (temp_high, temp_low,
+//      wind_mph, precipitation_pct, conditions_label) so existing pages
+//      (Home, Routes, WinterHomeCard) keep rendering without changes.
+//   3. Tracks `derived_tone` per day for the Home strip color logic.
+//   4. Exposes verdict helpers (`mostSevereVerdict`, `verdictColor`) for
+//      the new work-conditions badge UI.
 //
-// derived_tone is what makes weather actionable for lawn care:
+// derived_tone — operator-facing lawn-care decision flag:
 //   - rain     : skip the day (mowing wet turf rips it up; spray runs off)
 //   - drought  : stretch to biweekly (mowing dormant grass is a waste)
 //   - wind     : cutoff for spray applications (>15 mph = drift risk)
@@ -13,57 +19,150 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// ---------------------------------------------------------------------------
+// Type contracts. Kept in sync with supabase/functions/forecast/index.ts.
+// ---------------------------------------------------------------------------
+
 export type WeatherCondition = "sun" | "cloud" | "rain" | "snow";
 export type DerivedTone = "ok" | "rain" | "drought" | "wind" | "frost";
+export type WorkVerdict = "good" | "caution" | "block";
 
-export interface ForecastDay {
-  date: string;            // YYYY-MM-DD (local-ish; edge function uses UTC slice)
-  temp_high: number;       // °F
-  temp_low: number;        // °F
-  precipitation_pct: number; // 0-100
-  wind_mph: number;        // mph
-  condition: WeatherCondition;
-  conditions_label: string; // human-readable like "Light rain"
-  icon: string;             // OpenWeather icon code, e.g. "10d"
-  derived_tone: DerivedTone;
+export interface WorkWarning {
+  kind: "wind" | "frost" | "heat" | "wet_ground" | "rain_today" | "uv" | "humidity";
+  severity: "info" | "warn" | "block";
+  message: string;
+  affects: Array<"mowing" | "spraying" | "fertilizing">;
 }
 
-interface EdgeDay {
-  date: string;
-  conditions: string;
-  precipChance: number;
+export interface WorkConditions {
+  mowing: WorkVerdict;
+  spraying: WorkVerdict;
+  fertilizing: WorkVerdict;
+  warnings: WorkWarning[];
+}
+
+export interface DailyForecast {
+  date: string;             // YYYY-MM-DD (local TZ)
+
+  // Temperature (°F)
   high: number;
   low: number;
-  rainExpected: boolean;
+  feelsLikeDay: number;
+  feelsLikeMorn: number;
+  feelsLikeNight: number;
+
+  // Conditions
+  conditions: string;       // Capitalized OW description, e.g. "Light rain"
+  summary: string | null;   // OneCall daily.summary (may be null on older data)
+  icon: string;             // OW icon code, e.g. "10d"
+  condition: WeatherCondition;
+
+  // Precipitation
+  precipChance: number;     // 0-100
+  rainExpected: boolean;    // precipChance >= 50
+  rainInches: number;       // 0 if absent
+  snowInches: number;
+
+  // Wind (mph)
+  windMph: number;
+  windGustMph: number;
+  windDeg: number;
+  windDir: string;          // 16-point compass
+
+  // Atmospheric
+  humidity: number;
+  dewPoint: number;
+  pressure: number;
+  cloudCover: number;
+  uvi: number;
+
+  // Lawn-care derivations
+  derived_tone: DerivedTone;
+  workConditions: WorkConditions;
+
+  // ---- Legacy aliases ----
+  // Older callers (Home, Routes, WinterHomeCard) read these names. We mirror
+  // the new fields onto them in `normalize()` below so the rest of the app
+  // doesn't have to change in this wave.
+  temp_high: number;
+  temp_low: number;
+  precipitation_pct: number;
+  wind_mph: number;
+  conditions_label: string;
+}
+
+export interface CurrentObservation {
+  temp: number;
+  feelsLike: number;
+  conditions: string;
   icon: string;
-  windMph?: number;
-  condition?: WeatherCondition;
+  condition: WeatherCondition;
+  windMph: number;
+  windGustMph: number;
+  humidity: number;
+  dewPoint: number;
+  uvi: number;
+  cloudCover: number;
 }
 
-interface EdgeResponse {
-  zip?: string;
-  daily?: EdgeDay[];
-  error?: string;
-  cached?: boolean;
+export interface HourlyForecast {
+  dt: number;
+  hour: string;
+  temp: number;
+  feelsLike: number;
+  condition: WeatherCondition;
+  icon: string;
+  precipChance: number;
+  windMph: number;
 }
 
-// Thresholds — tuned for North American cool/warm-season turf. Keep in this
-// file so an operator-facing settings panel can override them later without
-// touching the hook.
+export interface WeatherAlert {
+  sender: string;
+  event: string;
+  start: number;
+  end: number;
+  description: string;
+  severity: "watch" | "warning" | "advisory" | "statement";
+}
+
+export interface ForecastResponse {
+  zip: string;
+  country: string;
+  lat: number;
+  lng: number;
+  current: CurrentObservation | null;
+  daily: DailyForecast[];
+  hourly: HourlyForecast[];
+  alerts: WeatherAlert[];
+  cached: boolean;
+  fetched_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Back-compat aliases. The old hook exposed a `ForecastDay` type as the
+// per-day shape; the new code uses `DailyForecast`. Re-export the alias so
+// existing imports (`import { type ForecastDay } from "@/lib/weather"`)
+// keep compiling. New code should prefer DailyForecast.
+// ---------------------------------------------------------------------------
+export type ForecastDay = DailyForecast;
+
+// ---------------------------------------------------------------------------
+// Thresholds & deriveTone — kept on the client so the Home strip can recompute
+// if we ever want to override edge-computed values. The edge function ships
+// derived_tone already; this client copy is the same logic, used as a fallback
+// when an older cached payload doesn't carry it.
+// ---------------------------------------------------------------------------
 const RAIN_PCT_THRESHOLD = 60;
 const WIND_MPH_THRESHOLD = 15;
 const FROST_LOW_F = 35;
 
-function deriveTone(d: EdgeDay, allDays: EdgeDay[], i: number): DerivedTone {
+export function deriveTone(d: DailyForecast, allDays: DailyForecast[], i: number): DerivedTone {
   if (d.precipChance >= RAIN_PCT_THRESHOLD || d.condition === "rain") return "rain";
   if (d.low < FROST_LOW_F) return "frost";
   if ((d.windMph ?? 0) > WIND_MPH_THRESHOLD) return "wind";
   // Drought heuristic — OpenWeather One Call gives only ~5 days of history,
   // which the edge fn doesn't currently fetch. Approximation: today + the
-  // next two days have no real rain AND we're past the first index (so we've
-  // seen a "this week so far" stretch already). This is intentionally
-  // conservative; once the edge fn returns the past 5 days of rainfall we'll
-  // wire the true "<0.25in over last 7 days AND none in next 3 days" rule.
+  // next two days have no real rain AND we've seen ≥2 dry days behind us.
   // TODO: replace with real precipitation history once forecast edge fn
   // exposes past-5-days from OpenWeather One Call.
   const lookahead = allDays.slice(i, Math.min(i + 3, allDays.length));
@@ -78,34 +177,153 @@ function deriveTone(d: EdgeDay, allDays: EdgeDay[], i: number): DerivedTone {
   return "ok";
 }
 
-function normalize(daily: EdgeDay[]): ForecastDay[] {
-  return daily.map((d, i) => {
-    // Fall back to deriving condition from the OpenWeather icon if the edge
-    // function didn't ship the condition token (older deployments).
-    let condition: WeatherCondition = d.condition ?? "sun";
-    if (!d.condition) {
-      const icon = d.icon ?? "";
-      if (icon.startsWith("13")) condition = "snow";
-      else if (icon.startsWith("09") || icon.startsWith("10") || icon.startsWith("11")) condition = "rain";
-      else if (icon.startsWith("03") || icon.startsWith("04") || icon.startsWith("02")) condition = "cloud";
-    }
-    const enriched: EdgeDay = { ...d, condition, windMph: d.windMph ?? 0 };
-    return {
-      date: d.date,
-      temp_high: d.high,
-      temp_low: d.low,
-      precipitation_pct: d.precipChance,
-      wind_mph: enriched.windMph ?? 0,
-      condition,
-      conditions_label: d.conditions ?? "",
-      icon: d.icon ?? "01d",
-      derived_tone: deriveTone(enriched, daily, i),
-    };
-  });
+// ---------------------------------------------------------------------------
+// Wire-shape normalization. Old cache rows / older deployments may ship
+// partial payloads — fill in defaults so consumers don't have to guard every
+// field. Also mirrors the new fields onto the legacy aliases.
+// ---------------------------------------------------------------------------
+
+// Anything the edge fn might send for a day. We accept partials so a stale
+// cache row (or a v0 deployment) doesn't crash the client.
+interface EdgeDayPartial {
+  date?: string;
+  high?: number;
+  low?: number;
+  feelsLikeDay?: number;
+  feelsLikeMorn?: number;
+  feelsLikeNight?: number;
+  conditions?: string;
+  summary?: string | null;
+  icon?: string;
+  condition?: WeatherCondition;
+  precipChance?: number;
+  rainExpected?: boolean;
+  rainInches?: number;
+  snowInches?: number;
+  windMph?: number;
+  windGustMph?: number;
+  windDeg?: number;
+  windDir?: string;
+  humidity?: number;
+  dewPoint?: number;
+  pressure?: number;
+  cloudCover?: number;
+  uvi?: number;
+  derived_tone?: DerivedTone;
+  workConditions?: WorkConditions;
 }
 
+interface EdgeResponse {
+  zip?: string;
+  country?: string;
+  lat?: number;
+  lng?: number;
+  current?: CurrentObservation | null;
+  daily?: EdgeDayPartial[];
+  hourly?: HourlyForecast[];
+  alerts?: WeatherAlert[];
+  cached?: boolean;
+  fetched_at?: string;
+  error?: string;
+}
+
+function inferConditionFromIcon(icon: string): WeatherCondition {
+  if (icon.startsWith("13")) return "snow";
+  if (icon.startsWith("09") || icon.startsWith("10") || icon.startsWith("11")) return "rain";
+  if (icon.startsWith("03") || icon.startsWith("04") || icon.startsWith("02")) return "cloud";
+  return "sun";
+}
+
+function emptyWorkConditions(): WorkConditions {
+  return { mowing: "good", spraying: "good", fertilizing: "good", warnings: [] };
+}
+
+function normalizeDay(raw: EdgeDayPartial): DailyForecast {
+  const icon = raw.icon ?? "01d";
+  const condition: WeatherCondition = raw.condition ?? inferConditionFromIcon(icon);
+  const high = raw.high ?? 0;
+  const low = raw.low ?? 0;
+  const precipChance = raw.precipChance ?? 0;
+  const windMph = raw.windMph ?? 0;
+  const conditions = raw.conditions ?? "";
+  return {
+    date: raw.date ?? "",
+    high,
+    low,
+    feelsLikeDay: raw.feelsLikeDay ?? high,
+    feelsLikeMorn: raw.feelsLikeMorn ?? low,
+    feelsLikeNight: raw.feelsLikeNight ?? low,
+    conditions,
+    summary: raw.summary ?? null,
+    icon,
+    condition,
+    precipChance,
+    rainExpected: raw.rainExpected ?? precipChance >= 50,
+    rainInches: raw.rainInches ?? 0,
+    snowInches: raw.snowInches ?? 0,
+    windMph,
+    windGustMph: raw.windGustMph ?? windMph,
+    windDeg: raw.windDeg ?? 0,
+    windDir: raw.windDir ?? "N",
+    humidity: raw.humidity ?? 0,
+    dewPoint: raw.dewPoint ?? 0,
+    pressure: raw.pressure ?? 0,
+    cloudCover: raw.cloudCover ?? 0,
+    uvi: raw.uvi ?? 0,
+    derived_tone: raw.derived_tone ?? "ok",
+    workConditions: raw.workConditions ?? emptyWorkConditions(),
+    // Legacy aliases
+    temp_high: high,
+    temp_low: low,
+    precipitation_pct: precipChance,
+    wind_mph: windMph,
+    conditions_label: conditions,
+  };
+}
+
+function normalizeResponse(r: EdgeResponse): ForecastResponse {
+  // First pass: shallow normalize each day so the deriveTone fallback has
+  // a uniform shape to operate on.
+  const partials = (r.daily ?? []).map(normalizeDay);
+  // Second pass: fill derived_tone if the server didn't supply it (older
+  // cache rows). The server's value wins when present.
+  const daily = partials.map((d, i) => {
+    if (d.derived_tone && d.derived_tone !== "ok") return d;
+    // If server explicitly sent "ok" we still keep it — only recompute when
+    // the field was completely missing and our normalizer defaulted to "ok".
+    // To detect that, look at the raw input:
+    const rawHadTone = (r.daily?.[i] as EdgeDayPartial | undefined)?.derived_tone != null;
+    if (rawHadTone) return d;
+    return { ...d, derived_tone: deriveTone(d, partials, i) };
+  });
+  return {
+    zip: r.zip ?? "",
+    country: r.country ?? "US",
+    lat: r.lat ?? 0,
+    lng: r.lng ?? 0,
+    current: r.current ?? null,
+    daily,
+    hourly: r.hourly ?? [],
+    alerts: r.alerts ?? [],
+    cached: r.cached ?? false,
+    fetched_at: r.fetched_at ?? new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hook. Returns the FULL ForecastResponse so new consumers can read current /
+// hourly / alerts. Existing consumers that only used `data` as a day array
+// still work because `forecast.data` is now the rich object — the small
+// migration is `.data ?? []` -> `.data?.daily ?? []`. The two existing pages
+// (Home, Routes) read `forecast.data` as an array though, so we expose the
+// `daily` array directly via .data for ergonomic back-compat.
+// ---------------------------------------------------------------------------
+
 export interface UseForecastResult {
-  data: ForecastDay[] | null;
+  /** Per-day forecast list — back-compat array of DailyForecast. */
+  data: DailyForecast[] | null;
+  /** Full response (current/hourly/alerts/daily). Use for new surfaces. */
+  full: ForecastResponse | null;
   isLoading: boolean;
   error: string | null;
   hasZip: boolean;
@@ -124,10 +342,8 @@ export function useForecast(zip?: string | null, days = 7): UseForecastResult {
   const q = useQuery({
     queryKey: ["forecast", zip],
     enabled: hasZip,
-    // Forecast horizon is days-long; an in-memory cache of 10 minutes covers
-    // a single session of navigating Home -> Routes -> Home.
     staleTime: 10 * 60 * 1000,
-    queryFn: async (): Promise<ForecastDay[]> => {
+    queryFn: async (): Promise<ForecastResponse> => {
       const { data, error } = await supabase.functions.invoke<EdgeResponse>(
         `forecast?zip=${encodeURIComponent((zip ?? "").trim())}`,
         { method: "GET" },
@@ -135,13 +351,16 @@ export function useForecast(zip?: string | null, days = 7): UseForecastResult {
       if (error) throw new Error(error.message ?? "forecast fetch failed");
       if (!data) throw new Error("Empty forecast response");
       if (data.error) throw new Error(data.error);
-      const list = normalize(data.daily ?? []);
-      return list.slice(0, days);
+      const full = normalizeResponse(data);
+      // Apply caller's `days` cap to the daily array.
+      return { ...full, daily: full.daily.slice(0, days) };
     },
   });
 
+  const full = hasZip ? (q.data ?? null) : null;
   return {
-    data: hasZip ? (q.data ?? null) : null,
+    data: full ? full.daily : null,
+    full,
     isLoading: hasZip && q.isLoading,
     error: q.error instanceof Error ? q.error.message : null,
     hasZip,
@@ -169,4 +388,39 @@ export function useUserZip() {
       return (data?.zip ?? null) || null;
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Work-condition helpers — used by the new badge UI on the forecast strip
+// and (eventually) the day-detail sheet.
+// ---------------------------------------------------------------------------
+
+/**
+ * Reduces a day's three verdicts to the most-severe single one. Used for
+ * a one-glance badge on the strip: block > caution > good.
+ */
+export function mostSevereVerdict(wc: WorkConditions): WorkVerdict {
+  if (wc.mowing === "block" || wc.spraying === "block" || wc.fertilizing === "block") {
+    return "block";
+  }
+  if (wc.mowing === "caution" || wc.spraying === "caution" || wc.fertilizing === "caution") {
+    return "caution";
+  }
+  return "good";
+}
+
+/**
+ * Tailwind class string for a verdict pill. Background + text color combos
+ * match the existing rain/drought/ok palette so the strip stays coherent.
+ */
+export function verdictColor(verdict: WorkVerdict): string {
+  switch (verdict) {
+    case "block":
+      return "bg-[hsl(var(--rain-bg))] text-[hsl(var(--rain))]";
+    case "caution":
+      return "bg-[hsl(var(--drought-bg))] text-[hsl(36_80%_35%)]";
+    case "good":
+    default:
+      return "bg-green-50 text-green-800";
+  }
 }

@@ -15,6 +15,17 @@ import SaveApplicationForm, {
   type ApplicationType,
   type PrefillRate,
 } from "@/components/calc/SaveApplicationForm";
+import { useForecast, useUserZip } from "@/lib/weather";
+import SprayConditionsCard from "@/components/weather/SprayConditionsCard";
+
+// Local-date helper — identical to Home's so the "today" cell in the
+// forecast strip and the spray card here match. Repeated rather than
+// imported to avoid a circular dependency through Home.tsx.
+function isTodayLocal(dateStr: string): boolean {
+  const t = new Date();
+  const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  return today === dateStr;
+}
 
 // Application calculator — three modes (granular / liquid / lime) wired off a
 // segmented control because (a) the existing screen-calc.jsx mockup uses a
@@ -123,6 +134,17 @@ export default function ApplicationCalc() {
 
   const property = propertyQuery.data;
   const propertyTurfSqft = property?.turf_sqft ?? property?.sqft ?? null;
+
+  // Spray-conditions advisory — pull the operator's zip and today's
+  // forecast. We skip rendering entirely if there's no zip (Home already
+  // prompts the user to set one in Settings, no need to duplicate the
+  // prompt here) or if today's forecast isn't in the response yet.
+  const zipQ = useUserZip();
+  const forecast = useForecast(zipQ.data);
+  const fc: any = (forecast as any).full ?? (forecast as any);
+  const days: any[] = (forecast.data ?? []) as any[];
+  const todayForecast = days.find((d) => isTodayLocal(d.date)) ?? null;
+  const hourly: any[] = (fc?.hourly as any[]) ?? [];
 
   // Mode seeds from the query param on mount only (lazy initializer). After
   // mount the user can flip modes freely without the URL forcing a value.
@@ -337,6 +359,14 @@ export default function ApplicationCalc() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Today's spray conditions — pulls today's DailyForecast from the
+          live edge fn. Skips entirely if no zip is set or today's forecast
+          row isn't in the response (e.g. loading, error, or the parallel
+          agent's edge fn hasn't redeployed yet). */}
+      {forecast.hasZip && todayForecast && (
+        <SprayConditionsCard day={todayForecast as any} hourly={hourly as any} />
       )}
 
       {/* Mode toggle */}
