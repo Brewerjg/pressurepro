@@ -408,6 +408,9 @@ export default function Home() {
               ) : forecast.error ? (
                 <div className="flex-1 py-2 text-center text-[12px] text-ink-500">
                   Weather unavailable.
+                  <div className="mt-1 text-[10px] text-ink-400 break-words px-2">
+                    {forecast.error}
+                  </div>
                 </div>
               ) : (
                 (forecast.data ?? []).slice(0, 7).map((day) => {

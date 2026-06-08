@@ -201,6 +201,10 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const zipRaw = (url.searchParams.get("zip") || "").trim();
     const country = (url.searchParams.get("country") || "US").toUpperCase();
+    // `?refresh=1` lets the client force a cache miss without waiting out the
+    // 6-hour TTL. Useful right after an edge-fn deploy when the cached row
+    // was written by an older shape.
+    const forceRefresh = url.searchParams.get("refresh") === "1";
     if (!zipRaw) {
       return json({ error: "zip query param required" }, 400);
     }
@@ -222,24 +226,13 @@ Deno.serve(async (req) => {
       .eq("country", country)
       .maybeSingle();
 
-    const fresh = cached && (Date.now() - new Date(cached.fetched_at).getTime() < CACHE_TTL_MS);
+    const fresh =
+      !forceRefresh &&
+      cached &&
+      Date.now() - new Date(cached.fetched_at).getTime() < CACHE_TTL_MS &&
+      isCurrentShape(cached.daily);
     if (fresh) {
-      const payload = cached.daily as Partial<ForecastResponse> | DailyForecast[];
-      // Back-compat: previous cache rows stored only DailyForecast[]. If we
-      // see an array we wrap it minimally so the client never breaks; the
-      // shape will heal on the next miss.
-      if (Array.isArray(payload)) {
-        return json({
-          zip, country,
-          lat: Number(cached.lat), lng: Number(cached.lng),
-          current: null,
-          daily: payload as DailyForecast[],
-          hourly: [],
-          alerts: [],
-          cached: true,
-          fetched_at: cached.fetched_at,
-        } satisfies ForecastResponse);
-      }
+      const payload = cached.daily as Partial<ForecastResponse>;
       return json({
         ...payload,
         zip, country,
@@ -587,6 +580,24 @@ function severityRank(s: WorkWarning["severity"]): number {
 // ---------------------------------------------------------------------------
 // Tiny utils.
 // ---------------------------------------------------------------------------
+
+// Returns true if a cached jsonb payload matches the current ForecastResponse
+// shape. Anything older (a raw DailyForecast[] array, or an object missing
+// per-day humidity/dewPoint/etc.) is treated as a miss so we refetch the
+// rich shape immediately instead of serving zeros for 6 hours.
+function isCurrentShape(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  if (Array.isArray(payload)) return false;
+  const p = payload as { daily?: unknown };
+  if (!Array.isArray(p.daily) || p.daily.length === 0) return false;
+  const d0 = p.daily[0] as Record<string, unknown>;
+  return (
+    typeof d0.humidity === "number" &&
+    typeof d0.dewPoint === "number" &&
+    typeof d0.cloudCover === "number" &&
+    typeof d0.uvi === "number"
+  );
+}
 
 function bucketCondition(main: string): WeatherCondition {
   const m = main.toLowerCase();

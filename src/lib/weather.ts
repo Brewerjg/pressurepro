@@ -344,8 +344,14 @@ export function useForecast(zip?: string | null, days = 7): UseForecastResult {
     enabled: hasZip,
     staleTime: 10 * 60 * 1000,
     queryFn: async (): Promise<ForecastResponse> => {
+      // `?refresh=1` if URL carries ?refreshWeather=1 — operator-facing
+      // escape hatch right after an edge-fn deploy when a stale-shape cache
+      // row would otherwise serve zeros for 6 hours.
+      const refresh = typeof window !== "undefined"
+        && new URLSearchParams(window.location.search).get("refreshWeather") === "1"
+        ? "&refresh=1" : "";
       const { data, error } = await supabase.functions.invoke<EdgeResponse>(
-        `forecast?zip=${encodeURIComponent((zip ?? "").trim())}`,
+        `forecast?zip=${encodeURIComponent((zip ?? "").trim())}${refresh}`,
         { method: "GET" },
       );
       if (error) throw new Error(error.message ?? "forecast fetch failed");
