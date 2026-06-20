@@ -15,7 +15,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
   createStripeClient,
   getStripeEnvFromUrl,
+  type AppId,
 } from "../_shared/stripe.ts";
+
+const APP_ID: AppId = "turfpro";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
@@ -73,7 +76,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const stripe = createStripeClient(env);
+    const stripe = createStripeClient(env, APP_ID);
     const origin = req.headers.get("origin") || "https://example.com";
     const portal = await stripe.billingPortal.sessions.create({
       customer: plan.stripe_customer_id,

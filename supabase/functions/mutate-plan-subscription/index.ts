@@ -17,8 +17,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
   createStripeClient,
   getStripeEnvFromUrl,
+  type AppId,
   type StripeEnv,
 } from "../_shared/stripe.ts";
+
+const APP_ID: AppId = "turfpro";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
 
 type Action = "pause" | "resume" | "cancel";
@@ -32,7 +35,7 @@ Deno.serve(async (req) => {
 
   try {
     const env: StripeEnv = getStripeEnvFromUrl(req);
-    const stripe = createStripeClient(env);
+    const stripe = createStripeClient(env, APP_ID);
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

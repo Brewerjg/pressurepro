@@ -78,12 +78,12 @@ export const TIERS: Tier[] = [
   {
     id: "payg",
     name: "Pay as you go",
-    tagline: "No monthly fee — pay only when you earn",
-    monthly: { priceId: "turfpro_payg_monthly", price: 0 },
-    yearly: { priceId: "turfpro_payg_yearly", price: 0, saveLabel: "" },
+    tagline: "Low base — pay only when you earn",
+    monthly: { priceId: "turfpro_payg_monthly", price: 5 },
+    yearly: { priceId: "turfpro_payg_yearly", price: 50, saveLabel: "Save $10" },
     seats: 1,
     highlights: [
-      "$0 monthly",
+      "$5 monthly base",
       "2% on processed payments",
       "All operator features",
       "Best for trials + cash-heavy ops",

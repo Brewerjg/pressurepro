@@ -32,11 +32,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
   createStripeClient,
   getStripeEnvFromUrl,
+  type AppId,
   type StripeEnv,
   Stripe,
 } from "../_shared/stripe.ts";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
 import { loadOperatorConnect } from "../_shared/fees.ts";
+
+const APP_ID: AppId = "turfpro";
 
 // Mirrors APP_ID in src/lib/app-context.ts. Keep in sync.
 const APP_ID = "turfpro";
@@ -81,7 +84,7 @@ Deno.serve(async (req) => {
     let stripe: Stripe | null = null;
     let stripeConfigured = false;
     try {
-      stripe = createStripeClient(env);
+      stripe = createStripeClient(env, APP_ID);
       stripeConfigured = true;
     } catch (e) {
       console.warn(

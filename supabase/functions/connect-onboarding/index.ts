@@ -51,9 +51,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
   createStripeClient,
   getStripeEnvFromUrl,
+  type AppId,
   type StripeEnv,
 } from "../_shared/stripe.ts";
 import { handleOptions, jsonResponse } from "../_shared/cors.ts";
+
+const APP_ID: AppId = "turfpro";
 
 type Op = "create_account_link" | "refresh_status";
 
@@ -90,7 +93,7 @@ Deno.serve(async (req) => {
 
   try {
     const env: StripeEnv = getStripeEnvFromUrl(req);
-    const stripe = createStripeClient(env);
+    const stripe = createStripeClient(env, APP_ID);
 
     // ----- Auth: resolve user from JWT (RLS-scoped client) -----
     const authHeader = req.headers.get("Authorization");

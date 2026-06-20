@@ -36,6 +36,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import {
   createStripeClient,
+  getAppFromUrl,
   getStripeEnvFromUrl,
   getWebhookSecret,
   Stripe,
@@ -181,8 +182,9 @@ async function handleConnectEvent(
 Deno.serve(async (req) => {
   try {
     const env = getStripeEnvFromUrl(req);
-    const stripe = createStripeClient(env);
-    const secret = getWebhookSecret(env);
+    const app = getAppFromUrl(req);
+    const stripe = createStripeClient(env, app);
+    const secret = getWebhookSecret(env, app);
 
     const sig = req.headers.get("stripe-signature");
     if (!sig) return new Response("Missing signature", { status: 400 });
@@ -470,6 +472,192 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ received: true, route: "plan" }), {
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // ----------------------------------------------------------------
+    // Deposit router
+    //   Deposits taken from the public Accept page go through
+    //   create-checkout-session (kind:'deposit') as a Connect-routed
+    //   `payment`-mode Checkout Session. The session.completed event fires
+    //   on the PLATFORM (Checkout Sessions live on the platform even with
+    //   transfer_data), so we handle it here rather than in the Connect
+    //   path.
+    //
+    //   The invoice now OWNS deposits. When metadata.invoice_id is present
+    //   we stamp invoices.deposit_paid_at, record a manual_payments row
+    //   linked to the invoice, and recompute the invoice status to 'paid'
+    //   once cumulative non-voided payments reach the invoice total.
+    //
+    //   We keep the legacy quote behavior (quotes.deposit_paid_at +
+    //   quote-linked payment) intact for back-compat with quotes that don't
+    //   yet have an invoice.
+    // ----------------------------------------------------------------
+    const routeIfDeposit = async (): Promise<boolean> => {
+      if (event.type !== "checkout.session.completed") return false;
+      const session = event.data.object as Stripe.Checkout.Session;
+      const meta = session.metadata ?? {};
+      if (meta.kind !== "deposit" && meta.kind !== "balance") return false;
+      // A balance charge pays down the invoice but is NOT a deposit, so it must
+      // not stamp deposit_paid_at — only record the payment + recompute status.
+      const isBalance = meta.kind === "balance";
+
+      // Only act on a fully-paid session. Stripe sends session.completed for
+      // async/processing payments too; we wait for payment_status='paid'.
+      if (session.payment_status && session.payment_status !== "paid") {
+        console.log("Deposit session not paid yet:", session.id, session.payment_status);
+        return true; // consumed — nothing more to do until it settles
+      }
+
+      const quoteId = (meta.quote_id as string) ?? null;
+      const invoiceId = (meta.invoice_id as string) ?? null;
+      const operatorUserId =
+        (meta.userId as string) ?? (meta.operatorUserId as string) ?? null;
+      const customerId = (meta.customer_id as string) ?? null;
+      const amountCents = Number(session.amount_total ?? 0);
+      const paidAt = new Date(
+        (session.created ?? Math.floor(Date.now() / 1000)) * 1000,
+      ).toISOString();
+      // Stable id used to dedupe the recorded payment row across Stripe
+      // retries / the parallel Connect charge.succeeded event.
+      const stripeRef =
+        (typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : null) ?? session.id;
+      const noteTag = `stripe ${meta.kind} ${stripeRef}`;
+
+      // ---- Invoice-owned path (preferred) ----
+      if (invoiceId) {
+        if (!isBalance) {
+          try {
+            await supabase
+              .from("invoices")
+              .update({
+                deposit_paid_at: paidAt,
+                updated_at: new Date().toISOString(),
+              } as never)
+              .eq("id", invoiceId)
+              .is("deposit_paid_at", null);
+          } catch (e) {
+            console.error("invoice deposit_paid_at update failed", e);
+          }
+        }
+
+        // Record the payment against the invoice (idempotent on noteTag).
+        if (operatorUserId && amountCents > 0) {
+          try {
+            const { data: existing } = await supabase
+              .from("manual_payments")
+              .select("id")
+              .eq("invoice_id", invoiceId)
+              .eq("notes", noteTag)
+              .maybeSingle();
+            if (!existing) {
+              await supabase.from("manual_payments").insert({
+                user_id: operatorUserId,
+                invoice_id: invoiceId,
+                quote_id: quoteId,
+                customer_id: customerId,
+                method: "other",
+                amount_cents: amountCents,
+                received_at: paidAt,
+                notes: noteTag,
+              } as never);
+            }
+          } catch (e) {
+            console.error("invoice deposit payment insert failed", e);
+          }
+        }
+
+        // Recompute status: mark 'paid' once cumulative non-voided payments
+        // reach the invoice total.
+        try {
+          const { data: inv } = await supabase
+            .from("invoices")
+            .select("total,status")
+            .eq("id", invoiceId)
+            .maybeSingle();
+          const total = Number((inv as any)?.total ?? 0);
+          const status = (inv as any)?.status as string | undefined;
+          if (inv && status !== "void" && status !== "paid" && total > 0) {
+            const { data: pays } = await supabase
+              .from("manual_payments")
+              .select("amount_cents,status")
+              .eq("invoice_id", invoiceId);
+            const paidCents = (pays ?? [])
+              .filter((p: any) => p.status !== "voided")
+              .reduce((s: number, p: any) => s + Number(p.amount_cents ?? 0), 0);
+            if (paidCents >= Math.round(total * 100)) {
+              await supabase
+                .from("invoices")
+                .update({
+                  status: "paid",
+                  updated_at: new Date().toISOString(),
+                } as never)
+                .eq("id", invoiceId);
+            }
+          }
+        } catch (e) {
+          console.error("invoice status recompute failed", e);
+        }
+      }
+
+      // ---- Legacy quote path (back-compat) ----
+      // Stamp the quote's deposit_paid_at when we have a quote_id so existing
+      // quote-centric UI keeps working — but only for an actual DEPOSIT; a
+      // balance payment isn't a deposit.
+      if (quoteId && !isBalance) {
+        try {
+          await supabase
+            .from("quotes")
+            .update({
+              deposit_paid_at: paidAt,
+              deposit_session_id: session.id,
+              updated_at: new Date().toISOString(),
+            } as never)
+            .eq("id", quoteId)
+            .is("deposit_paid_at", null);
+        } catch (e) {
+          console.error("quote deposit_paid_at update failed", e);
+        }
+
+        // When there is NO invoice yet, record the payment against the quote
+        // so cumulative-paid logic on QuoteDetail still works. If an invoice
+        // exists we already recorded it above (linked to the invoice) and
+        // must not double-count.
+        if (!invoiceId && operatorUserId && amountCents > 0) {
+          try {
+            const { data: existing } = await supabase
+              .from("manual_payments")
+              .select("id")
+              .eq("quote_id", quoteId)
+              .eq("notes", noteTag)
+              .maybeSingle();
+            if (!existing) {
+              await supabase.from("manual_payments").insert({
+                user_id: operatorUserId,
+                quote_id: quoteId,
+                customer_id: customerId,
+                method: "other",
+                amount_cents: amountCents,
+                received_at: paidAt,
+                notes: noteTag,
+              } as never);
+            }
+          } catch (e) {
+            console.error("quote deposit payment insert failed", e);
+          }
+        }
+      }
+
+      return true;
+    };
+
+    const consumedByDepositFlow = await routeIfDeposit();
+    if (consumedByDepositFlow) {
+      return new Response(
+        JSON.stringify({ received: true, route: "deposit" }),
+        { headers: { "Content-Type": "application/json" } },
+      );
     }
 
     // ----------------------------------------------------------------

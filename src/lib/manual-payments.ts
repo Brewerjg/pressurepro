@@ -36,6 +36,7 @@ export interface ManualPayment {
   plan_id: string | null;
   route_stop_id: string | null;
   quote_id: string | null;
+  invoice_id: string | null;
   method: ManualPaymentMethod;
   amount_cents: number;
   check_number: string | null;
@@ -52,6 +53,7 @@ export interface RecordPaymentInput {
   plan_id?: string | null;
   route_stop_id?: string | null;
   quote_id?: string | null;
+  invoice_id?: string | null;
   method: ManualPaymentMethod;
   amount_cents: number;
   check_number?: string | null;
@@ -83,6 +85,7 @@ export async function recordPayment(
     plan_id: input.plan_id ?? null,
     route_stop_id: input.route_stop_id ?? null,
     quote_id: input.quote_id ?? null,
+    invoice_id: input.invoice_id ?? null,
     method: input.method,
     amount_cents: input.amount_cents,
     check_number: input.check_number ?? null,
@@ -168,6 +171,21 @@ export async function listManualPaymentsForQuote(quoteId: string): Promise<Manua
     .from("manual_payments")
     .select("*")
     .eq("quote_id", quoteId)
+    .order("received_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data as ManualPayment[]) ?? [];
+}
+
+/**
+ * Pull manual payments linked to a specific invoice id (for InvoiceDetail to
+ * decide whether cumulative payments meet the total / deposit_amount).
+ */
+export async function listManualPaymentsForInvoice(invoiceId: string): Promise<ManualPayment[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("manual_payments")
+    .select("*")
+    .eq("invoice_id", invoiceId)
     .order("received_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data as ManualPayment[]) ?? [];

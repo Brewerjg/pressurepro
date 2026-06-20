@@ -109,18 +109,32 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background grid place-items-center px-6">
-      <div className="w-full max-w-sm">
+    <div className="relative min-h-screen grid place-items-center px-6 overflow-hidden">
+      {/* Background video */}
+      <video
+        className="absolute inset-0 h-full w-full object-cover"
+        autoPlay
+        muted
+        loop
+        playsInline
+        poster="/videos/login-bg-poster.jpg"
+      >
+        <source src="/videos/login-bg.mp4" type="video/mp4" />
+      </video>
+      {/* Dark gradient overlay for text legibility */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/70" />
+
+      <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="tp-display text-[34px] font-bold text-green-800 tracking-tight">
+          <div className="tp-display text-[34px] font-bold text-white tracking-tight drop-shadow">
             TurfPro
           </div>
-          <p className="text-sm text-ink-500 mt-1">
+          <p className="text-sm text-white/80 mt-1">
             Routes, plans, and recurring lawn-care ops.
           </p>
         </div>
 
-        <form onSubmit={onSubmit} className="tp-card p-5 space-y-4">
+        <form onSubmit={onSubmit} className="tp-card p-5 space-y-4 bg-card/95 backdrop-blur-sm shadow-xl">
           <div>
             <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wide text-ink-500">
               Email
@@ -187,7 +201,7 @@ export default function Auth() {
           </button>
         </div>
 
-        <p className="text-[11px] text-ink-400 text-center mt-4">
+        <p className="text-[11px] text-white/70 text-center mt-4">
           One login works across TurfPro and PressurePro.
         </p>
       </div>

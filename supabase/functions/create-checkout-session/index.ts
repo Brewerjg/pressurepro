@@ -36,15 +36,19 @@
 // without the homeowner being authenticated as the operator.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
-import { createStripeClient, type StripeEnv } from "../_shared/stripe.ts";
+import { createStripeClient, type AppId, type StripeEnv } from "../_shared/stripe.ts";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
 import { loadOperatorConnect } from "../_shared/fees.ts";
+
+const APP_ID: AppId = "turfpro";
 
 type CheckoutKind =
   | "app_subscription"
   | "maintenance_plan"
   | "plan_one_time"
-  | "visit_charge";
+  | "visit_charge"
+  | "deposit"
+  | "balance";
 
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
@@ -67,6 +71,7 @@ Deno.serve(async (req) => {
       amountCents: bodyAmountCents,
       productName: bodyProductName,
       metadata: extraMetadata,
+      quote_id: bodyQuoteId,
     } = body as {
       priceId?: string;
       userId?: string;
@@ -78,20 +83,38 @@ Deno.serve(async (req) => {
       amountCents?: number;
       productName?: string;
       metadata?: Record<string, string>;
+      quote_id?: string;
     };
 
-    if (!returnUrl || !environment) {
+    const checkoutKind: CheckoutKind = kind ?? "app_subscription";
+    const isAppSubscription = checkoutKind === "app_subscription";
+    const isConnectRouted = !isAppSubscription;
+    const isDeposit = checkoutKind === "deposit";
+    const isBalance = checkoutKind === "balance";
+    // Both deposit and balance are customer→operator charges driven off a
+    // quote_id (the public Accept and Invoice pages). They hydrate amount /
+    // operator / customer / returnUrl from the quote + invoice below.
+    const isQuoteCharge = isDeposit || isBalance;
+
+    if (!isQuoteCharge && (!returnUrl || !environment)) {
       return jsonResponse(
         { error: "Missing required fields (returnUrl, environment)" },
         { status: 400 },
       );
     }
+    if (isQuoteCharge && !bodyQuoteId) {
+      return jsonResponse(
+        { error: "quote_id is required for this checkout" },
+        { status: 400 },
+      );
+    }
 
-    const checkoutKind: CheckoutKind = kind ?? "app_subscription";
-    const isAppSubscription = checkoutKind === "app_subscription";
-    const isConnectRouted = !isAppSubscription;
+    // For the deposit flow the client may omit `environment`; default to
+    // sandbox to mirror the webhook's getStripeEnvFromUrl default. All other
+    // flows are guaranteed to have it from the validation above.
+    const resolvedEnv: StripeEnv = environment ?? "sandbox";
 
-    const stripe = createStripeClient(environment);
+    const stripe = createStripeClient(resolvedEnv, APP_ID);
 
     // -------------------------------------------------------------
     // App subscription path: operator buying their own SaaS plan.
@@ -138,7 +161,7 @@ Deno.serve(async (req) => {
         metadata: {
           userId,
           priceId,
-          environment,
+          environment: resolvedEnv,
           kind: "app_subscription",
           ...(extraMetadata ?? {}),
         },
@@ -148,13 +171,206 @@ Deno.serve(async (req) => {
             metadata: {
               userId,
               priceId,
-              environment,
+              environment: resolvedEnv,
               kind: "app_subscription",
               ...(extraMetadata ?? {}),
             },
           },
         }),
         allow_promotion_codes: true,
+      });
+
+      if (!session.url) {
+        return jsonResponse(
+          { error: "Stripe did not return a session URL" },
+          { status: 502 },
+        );
+      }
+      return jsonResponse({ url: session.url, sessionId: session.id });
+    }
+
+    // -------------------------------------------------------------
+    // Quote-charge path: homeowner paying a DEPOSIT (from the public Accept
+    // page) or the remaining BALANCE (from the public Invoice page). Both
+    // send { quote_id, kind }, so we hydrate amount / operator / customer /
+    // returnUrl from the quote + its invoice here. Routed through Stripe
+    // Connect to the operator (platform fallback if not Connect-ready).
+    //
+    // The invoice OWNS the money, so we look up the quote's invoice and stamp
+    // both quote_id AND invoice_id onto the session + payment_intent metadata.
+    // The webhook keys off invoice_id when present. For a balance charge the
+    // invoice is required; for a deposit it's optional (metadata-only).
+    // -------------------------------------------------------------
+    if (isQuoteCharge) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+
+      const { data: quote, error: quoteErr } = await supabase
+        .from("quotes")
+        .select(
+          "id,user_id,customer_id,customer_name,customer_email,deposit_amount,total",
+        )
+        .eq("id", bodyQuoteId!)
+        .maybeSingle();
+      if (quoteErr || !quote) {
+        return jsonResponse(
+          { error: "Quote not found for checkout" },
+          { status: 404 },
+        );
+      }
+
+      // Look up the quote's invoice (invoices.quote_id is unique).
+      let invoiceId: string | null = null;
+      let invoiceTotalCents = 0;
+      let invoicePublicToken: string | null = null;
+      try {
+        const { data: invoice } = await (supabase as any)
+          .from("invoices")
+          .select("id,total,public_token")
+          .eq("quote_id", bodyQuoteId!)
+          .maybeSingle();
+        if (invoice) {
+          invoiceId = invoice.id ?? null;
+          invoiceTotalCents = Math.round(Number(invoice.total ?? 0) * 100);
+          invoicePublicToken = invoice.public_token ?? null;
+        }
+      } catch (e) {
+        console.warn("[create-checkout-session] invoice lookup failed", e);
+      }
+
+      // Compute the charge amount + product label per kind.
+      let chargeCents: number;
+      let productName: string;
+      if (isBalance) {
+        if (!invoiceId) {
+          return jsonResponse(
+            { error: "No invoice found for this quote" },
+            { status: 404 },
+          );
+        }
+        // Remaining balance = invoice total − cumulative non-voided payments
+        // already applied to the invoice. A paid deposit is recorded against
+        // the invoice by the webhook, so it's included here — we never
+        // double-charge it.
+        let paidCents = 0;
+        try {
+          const { data: pays } = await (supabase as any)
+            .from("manual_payments")
+            .select("amount_cents,status")
+            .eq("invoice_id", invoiceId);
+          paidCents = (pays ?? [])
+            .filter((p: any) => p.status !== "voided")
+            .reduce((s: number, p: any) => s + Number(p.amount_cents ?? 0), 0);
+        } catch (e) {
+          console.warn("[create-checkout-session] payments sum failed", e);
+        }
+        chargeCents = invoiceTotalCents - paidCents;
+        productName = bodyProductName ?? "Invoice balance";
+        if (chargeCents < 50) {
+          return jsonResponse(
+            { error: "This invoice has no balance to collect" },
+            { status: 400 },
+          );
+        }
+      } else {
+        // deposit
+        const depositAmount = Number((quote as any).deposit_amount);
+        if (!Number.isFinite(depositAmount) || depositAmount <= 0) {
+          return jsonResponse(
+            { error: "This quote has no deposit to collect" },
+            { status: 400 },
+          );
+        }
+        chargeCents = Math.round(depositAmount * 100);
+        productName = bodyProductName ?? "Deposit";
+        if (chargeCents < 50) {
+          return jsonResponse(
+            { error: "Deposit amount must be at least $0.50" },
+            { status: 400 },
+          );
+        }
+      }
+
+      const opUserId = (quote as any).user_id as string;
+      const operator = await loadOperatorConnect(supabase, opUserId);
+      if (!operator.shouldRoute) {
+        console.warn(
+          `[create-checkout-session] ${checkoutKind}: operator ${opUserId} is not Connect-ready; falling back to platform charge. tier=${operator.tier}`,
+        );
+      }
+      const feeAmountCents =
+        operator.shouldRoute && operator.feePercent > 0
+          ? Math.round((chargeCents * operator.feePercent) / 100)
+          : undefined;
+
+      // Build the customer return URL. Prefer an explicit returnUrl; otherwise
+      // derive one from the request Origin — the accept page for deposits, the
+      // public invoice page for balances.
+      const origin = req.headers.get("origin") ?? "";
+      const paidMarker = isBalance ? "paid=1" : "deposit=paid";
+      const fallbackReturn = isBalance
+        ? (invoicePublicToken && origin
+            ? `${origin}/invoice/${invoicePublicToken}?paid=1`
+            : null)
+        : (origin ? `${origin}/accept/${bodyQuoteId}?deposit=paid` : null);
+      const chargeReturnUrl = returnUrl ?? fallbackReturn;
+      if (!chargeReturnUrl) {
+        return jsonResponse(
+          { error: "Unable to determine a return URL for checkout" },
+          { status: 400 },
+        );
+      }
+
+      const chargeMeta: Record<string, string> = {
+        userId: opUserId,
+        operatorUserId: opUserId,
+        environment: resolvedEnv,
+        kind: checkoutKind,
+        quote_id: bodyQuoteId!,
+        ...(invoiceId ? { invoice_id: invoiceId } : {}),
+        ...((quote as any).customer_id
+          ? { customer_id: (quote as any).customer_id as string }
+          : {}),
+        tier_at_capture: operator.tier,
+        fee_percent: String(operator.feePercent),
+        ...(extraMetadata ?? {}),
+      };
+
+      const chargeCustomerEmail =
+        customerEmail ?? ((quote as any).customer_email as string | null) ?? undefined;
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: { name: productName },
+              unit_amount: chargeCents,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: chargeReturnUrl,
+        cancel_url: chargeReturnUrl
+          .replace("session_id={CHECKOUT_SESSION_ID}", "canceled=1")
+          .replace(paidMarker, isBalance ? "paid=0" : "deposit=canceled"),
+        ...(chargeCustomerEmail && { customer_email: chargeCustomerEmail }),
+        metadata: chargeMeta,
+        payment_intent_data: {
+          metadata: chargeMeta,
+          ...(operator.shouldRoute
+            ? {
+                transfer_data: { destination: operator.stripeAccountId! },
+                ...(feeAmountCents !== undefined
+                  ? { application_fee_amount: feeAmountCents }
+                  : {}),
+              }
+            : {}),
+        },
       });
 
       if (!session.url) {
@@ -238,7 +454,7 @@ Deno.serve(async (req) => {
       metadata: {
         userId: opUserId,
         operatorUserId: opUserId,
-        environment,
+        environment: resolvedEnv,
         kind: checkoutKind,
         tier_at_capture: operator.tier,
         fee_percent: String(operator.feePercent),
@@ -248,7 +464,7 @@ Deno.serve(async (req) => {
         metadata: {
           userId: opUserId,
           operatorUserId: opUserId,
-          environment,
+          environment: resolvedEnv,
           kind: checkoutKind,
           tier_at_capture: operator.tier,
           fee_percent: String(operator.feePercent),

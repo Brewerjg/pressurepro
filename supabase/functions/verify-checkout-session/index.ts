@@ -7,8 +7,10 @@
 // truth — this function is just a "no spinner stuck for 30 seconds" hedge.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
-import { createStripeClient, type StripeEnv } from "../_shared/stripe.ts";
+import { createStripeClient, type AppId, type StripeEnv } from "../_shared/stripe.ts";
 import { corsHeaders, handleOptions, jsonResponse } from "../_shared/cors.ts";
+
+const APP_ID: AppId = "turfpro";
 
 Deno.serve(async (req) => {
   const pre = handleOptions(req);
@@ -31,7 +33,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const stripe = createStripeClient(environment);
+    const stripe = createStripeClient(environment, APP_ID);
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["subscription", "subscription.items.data.price"],
     });

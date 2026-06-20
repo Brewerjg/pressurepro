@@ -11,9 +11,11 @@
 // column name is misleading but kept for backward compat to avoid a schema
 // migration. The client reads `cached.daily as ForecastResponse`.
 //
-// Switched from `/data/4.0/onecall/timeline/1day` to `/data/4.0/onecall` so
-// one call surfaces current + hourly + daily + alerts. Same OneCall
-// subscription, same auth, just a richer endpoint.
+// One Call 4.0 has no single aggregate endpoint, so we fan out to three:
+//   /data/4.0/onecall/current        -> current observation (record in data[0])
+//   /data/4.0/onecall/timeline/1h    -> hourly (has weather + pop)
+//   /data/4.0/onecall/timeline/1day  -> daily (NO weather/pop; rain/clouds only)
+// The daily mapper derives conditions + precip-chance from rain/snow/clouds.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -191,7 +193,9 @@ interface OWDaily {
   wind_speed: number;
   wind_gust?: number;
   wind_deg: number;
-  weather: OWWeather[];
+  // v4.0 `/timeline/1day` returns this as `null` (and omits `pop`); the daily
+  // mapper derives condition + precip-chance from rain/snow/clouds instead.
+  weather?: OWWeather[] | null;
   clouds: number;
   pop?: number;
   rain?: number | { "1h"?: number };   // mm — number on v3.0, sometimes {"1h": n} on v4
@@ -302,7 +306,17 @@ Deno.serve(async (req) => {
     let currentRaw: OWCurrent | null = null;
     if (currentRes.ok) {
       try {
-        currentRaw = (await currentRes.json()) as OWCurrent;
+        // `/data/4.0/onecall/current` returns the single observation inside a
+        // `data[]` array (same envelope as the timeline endpoints) — NOT at
+        // the root. Reading the root object yielded all-undefined fields,
+        // which surfaced as a blank "current" (temp null, "Unknown"). Pull
+        // the record out of the envelope; fall back to the root object in
+        // case OW ever returns it bare.
+        const cj = await currentRes.json();
+        currentRaw =
+          extractList<OWCurrent>(cj as OWTimelineEnvelope<OWCurrent>)[0] ??
+          (cj as OWCurrent) ??
+          null;
       } catch {
         currentRaw = null;
       }
@@ -412,13 +426,31 @@ function mapHourly(h: OWHourly, tzOffsetSec: number): HourlyForecast {
 // Base daily mapping — no derived_tone/workConditions yet.
 type DailyBase = Omit<DailyForecast, "derived_tone" | "workConditions">;
 function mapDailyBase(d: OWDaily, tzOffsetSec: number): DailyBase {
-  const w = d.weather?.[0];
-  const precipChance = Math.round((d.pop ?? 0) * 100);
   const rainMm = typeof d.rain === "number" ? d.rain : (d.rain?.["1h"] ?? 0);
   const snowMm = typeof d.snow === "number" ? d.snow : (d.snow?.["1h"] ?? 0);
   const rainInches = round2(rainMm * MM_TO_INCHES);
   const snowInches = round2(snowMm * MM_TO_INCHES);
+  const clouds = Math.round(d.clouds ?? 0);
   const windDeg = Math.round(d.wind_deg ?? 0);
+
+  // The v4.0 `/timeline/1day` records carry NO `weather` array (it comes back
+  // `null`) and NO `pop` — only numeric `rain`/`snow`/`clouds`. So unlike the
+  // current/hourly endpoints we can't read conditions or a precip probability
+  // directly; we derive both from the precipitation totals + cloud cover.
+  // If OW ever starts populating `weather`/`pop` on daily, prefer the real
+  // values.
+  const w = d.weather?.[0];
+  const cond = w
+    ? {
+        condition: bucketCondition(w.main ?? ""),
+        icon: w.icon ?? "01d",
+        conditions: w.description ? capitalize(w.description) : (w.main ?? "Unknown"),
+      }
+    : deriveDailyCondition(rainMm, snowMm, clouds);
+  const precipChance = typeof d.pop === "number"
+    ? Math.round(d.pop * 100)
+    : deriveDailyPrecipChance(rainMm, snowMm);
+
   return {
     date: formatLocalDate(d.dt, tzOffsetSec),
     high: Math.round(d.temp?.max ?? 0),
@@ -426,12 +458,12 @@ function mapDailyBase(d: OWDaily, tzOffsetSec: number): DailyBase {
     feelsLikeDay: Math.round(d.feels_like?.day ?? 0),
     feelsLikeMorn: Math.round(d.feels_like?.morn ?? 0),
     feelsLikeNight: Math.round(d.feels_like?.night ?? 0),
-    conditions: w?.description ? capitalize(w.description) : (w?.main ?? "Unknown"),
+    conditions: cond.conditions,
     summary: d.summary ?? null,
-    icon: w?.icon ?? "01d",
-    condition: bucketCondition(w?.main ?? ""),
+    icon: cond.icon,
+    condition: cond.condition,
     precipChance,
-    rainExpected: precipChance >= 50,
+    rainExpected: precipChance >= 50 || rainInches >= 0.1,
     rainInches,
     snowInches,
     windMph: Math.round(d.wind_speed ?? 0),
@@ -441,9 +473,40 @@ function mapDailyBase(d: OWDaily, tzOffsetSec: number): DailyBase {
     humidity: Math.round(d.humidity ?? 0),
     dewPoint: Math.round(d.dew_point ?? 0),
     pressure: Math.round(d.pressure ?? 0),
-    cloudCover: Math.round(d.clouds ?? 0),
+    cloudCover: clouds,
     uvi: Math.round((d.uvi ?? 0) * 10) / 10,
   };
+}
+
+// Derive a condition bucket + OW icon code + human label for a daily record
+// that has no `weather` array, using the rain(mm)/snow(mm)/cloud(%) totals the
+// v4.0 daily timeline DOES return. Thresholds are daily TOTALS, not rates.
+function deriveDailyCondition(
+  rainMm: number,
+  snowMm: number,
+  cloudsPct: number,
+): { condition: WeatherCondition; icon: string; conditions: string } {
+  if (snowMm >= 1) return { condition: "snow", icon: "13d", conditions: "Snow" };
+  if (rainMm >= 10) return { condition: "rain", icon: "10d", conditions: "Heavy rain" };
+  if (rainMm >= 2.5) return { condition: "rain", icon: "10d", conditions: "Rain" };
+  if (rainMm >= 0.3) return { condition: "rain", icon: "09d", conditions: "Light rain" };
+  if (cloudsPct >= 85) return { condition: "cloud", icon: "04d", conditions: "Overcast clouds" };
+  if (cloudsPct >= 40) return { condition: "cloud", icon: "03d", conditions: "Scattered clouds" };
+  if (cloudsPct >= 12) return { condition: "sun", icon: "02d", conditions: "Few clouds" };
+  return { condition: "sun", icon: "01d", conditions: "Clear sky" };
+}
+
+// Proxy for probability-of-precipitation: the daily endpoint omits `pop`, so
+// step the daily rain/snow TOTAL (mm) into a coarse chance. This is an
+// approximation for the UI, NOT a true forecast probability.
+function deriveDailyPrecipChance(rainMm: number, snowMm: number): number {
+  const mm = Math.max(rainMm, snowMm);
+  if (mm >= 10) return 90;
+  if (mm >= 5) return 80;
+  if (mm >= 2) return 70;
+  if (mm >= 0.5) return 50;
+  if (mm >= 0.1) return 30;
+  return 0;
 }
 
 // Extract the timeline array from a v4 envelope. OpenWeather has used
@@ -658,11 +721,21 @@ function degToCompass(deg: number): string {
   return pts[Math.round(deg / 22.5) % 16];
 }
 
-// Format a unix ts as YYYY-MM-DD in the location's local timezone using the
-// OneCall timezone_offset (seconds). Avoids the UTC-slice TZ off-by-one
-// that the old timeline endpoint code exhibited.
-function formatLocalDate(unixSec: number, tzOffsetSec: number): string {
-  const d = new Date((unixSec + tzOffsetSec) * 1000);
+// Format a daily record's `dt` as YYYY-MM-DD.
+//
+// One Call 4.0 `/timeline/1day` sets `dt` to "Unix, UTC" at the START of the
+// forecast day (midnight UTC). The date it represents is therefore just the
+// UTC calendar date of `dt` — read it directly.
+//
+// DO NOT add `timezone_offset` here: for any western-hemisphere location the
+// offset is negative, so `dt + offset` rolls midnight-UTC back into the
+// previous calendar day, shifting the ENTIRE 7-day forecast back by one (e.g.
+// "today" rendered yesterday's numbers). That off-by-one is exactly the bug
+// this function previously shipped; the pre-4.0 code formatted via a plain
+// UTC slice and was correct. `tzOffsetSec` is retained for call-site
+// compatibility but intentionally unused.
+function formatLocalDate(unixSec: number, _tzOffsetSec: number): string {
+  const d = new Date(unixSec * 1000);
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");

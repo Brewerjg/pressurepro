@@ -51,6 +51,10 @@ const Gallery = lazy(() => import("./pages/Gallery"));
 const Quotes = lazy(() => import("./pages/Quotes"));
 const NewQuote = lazy(() => import("./pages/NewQuote"));
 const QuoteDetail = lazy(() => import("./pages/QuoteDetail"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
+const InvoiceView = lazy(() => import("./pages/InvoiceView"));
+const InvoicePrint = lazy(() => import("./pages/InvoicePrint"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Inbox = lazy(() => import("./pages/Inbox"));
 
@@ -105,6 +109,8 @@ const App = () => (
           {/* Public — customer-facing flows, no auth required */}
           <Route path="/accept/:id" element={<Accept />} />
           <Route path="/accept/:id/print" element={<QuotePrint />} />
+          <Route path="/invoice/:token" element={<InvoiceView />} />
+          <Route path="/invoice/:token/print" element={<InvoicePrint />} />
           <Route path="/plans/portal/:token" element={<PlanPortal />} />
           <Route path="/plans/portal/:token/done" element={<PlanPortalDone />} />
           <Route path="/review/:id" element={<Review />} />
@@ -125,6 +131,8 @@ const App = () => (
           <Route path="/quotes" element={<Protected><Quotes /></Protected>} />
           <Route path="/quotes/new" element={<Protected><NewQuote /></Protected>} />
           <Route path="/quotes/:id" element={<Protected><QuoteDetail /></Protected>} />
+          <Route path="/invoices" element={<Protected><Invoices /></Protected>} />
+          <Route path="/invoices/:id" element={<Protected><InvoiceDetail /></Protected>} />
           <Route path="/campaigns" element={<Protected><Campaigns /></Protected>} />
           <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
           <Route path="/inbox/:customerId" element={<Protected><Inbox /></Protected>} />

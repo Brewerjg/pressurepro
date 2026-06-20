@@ -17,9 +17,10 @@ type Draft = {
   business_name: string;
   phone: string;
   zip: string;
+  route_start_address: string;
 };
 
-const emptyDraft: Draft = { business_name: "", phone: "", zip: "" };
+const emptyDraft: Draft = { business_name: "", phone: "", zip: "", route_start_address: "" };
 
 export default function BusinessProfile() {
   const { user } = useAuth();
@@ -47,6 +48,7 @@ export default function BusinessProfile() {
       business_name: profile.business_name ?? "",
       phone: profile.phone ?? "",
       zip: profile.zip ?? "",
+      route_start_address: (profile as { route_start_address?: string | null }).route_start_address ?? "",
     });
   }, [profile]);
 
@@ -57,6 +59,7 @@ export default function BusinessProfile() {
         business_name: next.business_name.trim() || null,
         phone: next.phone.trim() || null,
         zip: next.zip.trim() || null,
+        route_start_address: next.route_start_address.trim() || null,
       };
       if (profile) {
         const { error } = await supabase
@@ -81,7 +84,7 @@ export default function BusinessProfile() {
   const handleBlur = () => {
     // Only save if something actually changed.
     if (!profile) {
-      if (draft.business_name || draft.phone || draft.zip) {
+      if (draft.business_name || draft.phone || draft.zip || draft.route_start_address) {
         saveMutation.mutate(draft);
       }
       return;
@@ -89,7 +92,8 @@ export default function BusinessProfile() {
     const changed =
       (profile.business_name ?? "") !== draft.business_name ||
       (profile.phone ?? "") !== draft.phone ||
-      (profile.zip ?? "") !== draft.zip;
+      (profile.zip ?? "") !== draft.zip ||
+      ((profile as { route_start_address?: string | null }).route_start_address ?? "") !== draft.route_start_address;
     if (changed) saveMutation.mutate(draft);
   };
 
@@ -139,6 +143,18 @@ export default function BusinessProfile() {
               />
             </Field>
           </div>
+
+          <Field label="Route start address (shop/home)">
+            <input
+              value={draft.route_start_address}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, route_start_address: e.target.value }))
+              }
+              onBlur={handleBlur}
+              placeholder="123 Main St, Roland, AR 72135"
+              className={inputCls}
+            />
+          </Field>
 
           <div className="flex items-center gap-2 pt-1">
             <button

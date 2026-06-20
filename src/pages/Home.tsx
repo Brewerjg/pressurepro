@@ -18,6 +18,7 @@ import {
   Users,
   MapPin,
   FileText,
+  ReceiptText,
   MessageSquare,
   AlertTriangle,
   Ban,
@@ -99,6 +100,7 @@ function iconFor(d: ForecastDay) {
 
 const quickActions = [
   { icon: FileText,     label: "Quotes",        sub: "One-off jobs",       accent: "text-bronze-600", to: "/quotes" },
+  { icon: ReceiptText,  label: "Invoices",      sub: "Accepted jobs",      accent: "text-green-700",  to: "/invoices" },
   { icon: MessageSquare,label: "Inbox",         sub: "Customer texts",     accent: "text-green-700",  to: "/inbox" },
   { icon: Camera,       label: "Photo pair",    sub: "Before / after",     accent: "text-green-600",  to: "/photos/new" },
   { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²",  accent: "text-bronze-600", to: "/calc" },

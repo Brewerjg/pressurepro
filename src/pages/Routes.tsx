@@ -20,15 +20,15 @@ import {
   EyeOff,
   HelpCircle,
   Sprout,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useForecast, useUserZip, type ForecastDay } from "@/lib/weather";
-import { geocodeAddress } from "@/lib/geocode";
-import { fetchDriveMatrix, type DriveStop } from "@/lib/drive-matrix";
-import { nearestNeighborOrder } from "@/lib/route-optimize";
+import { optimizeRoute } from "@/lib/optimize-route";
 import type { Route, RouteStop, SkipReason, StopStatus } from "@/components/routes/types";
 import {
   SortableList,
@@ -275,7 +275,7 @@ export default function RoutesPage() {
   // 10 (10, 20, 30...). Pinned stops (done / in_progress / skipped)
   // keep their existing sort_order — the operator can't re-sequence
   // history. The drive-time legs cached on each row are NOT recomputed
-  // here; they'll refresh from Mapbox on the next Start-route call.
+  // here; they'll refresh from Google Routes on the next Start-route call.
   const reorderStopsMutation = useMutation({
     mutationFn: async (next: RouteStop[]) => {
       const newOrders = computeReorderedSortOrders(next);
@@ -323,14 +323,24 @@ export default function RoutesPage() {
   // Start / Resume: creates the route + stops if needed; otherwise flips status
   // and navigates into route-mode.
   const startRouteMutation = useMutation({
-    mutationFn: async (input?: { crewId?: string | null }): Promise<{ id: string; freshlyCreated: boolean }> => {
+    mutationFn: async (input?: { crewId?: string | null }): Promise<{ id: string; freshlyCreated: boolean; wasOptimized: boolean }> => {
       if (!user) throw new Error("Not signed in");
+
+      // Operator start/home address for round-trip optimization (null = fall
+      // back to the first stop as the pivot).
+      const { data: profileRow } = await (supabase as any)
+        .from("profiles")
+        .select("route_start_address")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const startAddress: string | null = profileRow?.route_start_address ?? null;
+
       const existing = selectedRoute;
       const dateStr = ymd(selectedDate);
 
       // Already in_progress / complete -> just navigate.
       if (existing && existing.status === "in_progress") {
-        return { id: existing.id, freshlyCreated: false };
+        return { id: existing.id, freshlyCreated: false, wasOptimized: false };
       }
 
       // Planned -> flip to in_progress.
@@ -340,7 +350,7 @@ export default function RoutesPage() {
           .update({ status: "in_progress", started_at: new Date().toISOString() })
           .eq("id", existing.id);
         if (error) throw error;
-        return { id: existing.id, freshlyCreated: false };
+        return { id: existing.id, freshlyCreated: false, wasOptimized: false };
       }
 
       // Resolve which crew owns this freshly-created route, in priority order:
@@ -387,235 +397,188 @@ export default function RoutesPage() {
       if (routeErr) throw routeErr;
 
       const routeId: string = routeRow.id;
+      let wasOptimized = false;
       if (plans && plans.length > 0) {
         // -------------------------------------------------------------
-        // Resolve property coordinates. Plans reference properties by id;
-        // we need each property's lat/lng to build the Mapbox drive matrix.
-        // If lat/lng are missing we geocode the plan's address and persist
-        // the result back to `properties` so the next run skips this work.
-        //
-        // All weather/geocode/drive failures are non-fatal — they should
-        // never block the operator from starting their day.
+        // Google Routes optimization. Build waypoint addresses from each
+        // plan's address, optimize between a pivot (operator start address
+        // if set, else the first stop), and persist the returned order +
+        // per-leg drive metrics. All failures are non-fatal — on error we
+        // keep the plan order and leave drive times null.
         // -------------------------------------------------------------
-        const propertyIds = plans
-          .map((p: any) => p.property_id)
-          .filter((id: string | null): id is string => !!id);
-        const propsById = new Map<string, { lat: number | null; lng: number | null; address: string | null }>();
-        if (propertyIds.length > 0) {
-          const { data: props } = await (supabase as any)
-            .from("properties")
-            .select("id, lat, lng, address")
-            .in("id", propertyIds);
-          for (const p of (props ?? []) as Array<{ id: string; lat: number | null; lng: number | null; address: string | null }>) {
-            propsById.set(p.id, { lat: p.lat, lng: p.lng, address: p.address });
-          }
-        }
+        const addrOf = (p: any): string | null => (p.address ?? null);
+        const pivot = (startAddress && startAddress.trim()) || null;
 
-        // Geocode any property still missing coords. We use the property
-        // address first, falling back to the plan's snapshot address.
-        for (const p of plans) {
-          if (!p.property_id) continue;
-          const existing = propsById.get(p.property_id);
-          if (existing?.lat != null && existing?.lng != null) continue;
-          const addr = existing?.address ?? p.address;
-          if (!addr) continue;
+        // waypointPlans = the plans Google reorders. With a pivot (base) all
+        // plans are waypoints; without one, the first plan is the fixed
+        // start/end pivot and the rest are reordered.
+        const firstPlan = plans[0];
+        const waypointPlans: any[] = pivot ? plans : plans.slice(1);
+        const originAddr = pivot ?? addrOf(firstPlan);
+        const destAddr = originAddr;
+
+        // legByPlanId: plan id -> { minutes, miles } drive arriving at it.
+        const legByPlanId = new Map<string, { minutes: number; miles: number }>();
+        let orderedPlans: any[] = plans;
+
+        const waypointAddrs = waypointPlans.map(addrOf);
+        const allHaveAddrs = originAddr != null && waypointAddrs.every((a) => !!a);
+
+        if (originAddr && waypointPlans.length >= 1 && allHaveAddrs) {
           try {
-            const geo = await geocodeAddress(addr);
-            if (geo) {
-              propsById.set(p.property_id, { lat: geo.lat, lng: geo.lng, address: addr });
-              // Persist back so the next route assembly is a cache hit. Fire
-              // and forget — never block route start on a write failure.
-              await (supabase as any)
-                .from("properties")
-                .update({ lat: geo.lat, lng: geo.lng })
-                .eq("id", p.property_id);
+            const { order, legs } = await optimizeRoute({
+              origin: originAddr,
+              destination: destAddr!,
+              waypoints: waypointAddrs as string[],
+            });
+            // order permutes waypointPlans. legs[k] arrives at optimized
+            // waypoint k (legs[0] = origin -> first waypoint).
+            const orderedWaypoints = order.map((i) => waypointPlans[i]);
+            // Defensive: if Google dropped/duplicated indices, fall back.
+            if (orderedWaypoints.length === waypointPlans.length && orderedWaypoints.every(Boolean)) {
+              orderedPlans = pivot ? orderedWaypoints : [firstPlan, ...orderedWaypoints];
+              for (let k = 0; k < orderedWaypoints.length; k++) {
+                const leg = legs[k];
+                if (leg) legByPlanId.set(orderedWaypoints[k].id, leg);
+              }
             }
           } catch (e) {
-            // Soft-fail: drive times for legs touching this stop will be null.
-            console.warn("[Routes] geocode failed for", p.property_id, e);
+            console.warn("[Routes] optimize-route failed; keeping plan order", e);
           }
         }
 
-        // -------------------------------------------------------------
-        // Nearest-neighbor optimization. We reorder the plans array
-        // BEFORE building the drive matrix so the matrix is computed
-        // against the optimized sequence (Mapbox-cached by hash, so the
-        // optimized order also seeds the cache for any later edits).
-        //
-        // Operator start point: ideally `profiles.lat/lng` would seed
-        // the algorithm, but that column doesn't exist yet — see TODO
-        // below. For now we fall back to the centroid-seed path in
-        // nearestNeighborOrder, which is fine for clustered customer
-        // bases.
-        //
-        // Skip optimization entirely if fewer than 3 stops have coords:
-        // 2 stops is a single leg (nothing to reorder), 1 stop is
-        // trivially solved, and 0 means no coords at all.
-        // -------------------------------------------------------------
-        // TODO(profiles.lat/lng): once profiles store the operator's
-        // home/shop coordinates, plumb them in here as startLat/startLng.
-        const operatorHomeLat: number | undefined = undefined;
-        const operatorHomeLng: number | undefined = undefined;
-
-        const optimizeInput = plans.map((p: any) => {
-          const prop = p.property_id ? propsById.get(p.property_id) : null;
+        // Persist with sort_order in gaps of 10 (10, 20, 30...). Drive metrics
+        // come from legByPlanId; the first stop has no arriving leg when there
+        // is no pivot (base), matching the prior "–" convention.
+        wasOptimized = orderedPlans !== plans;
+        const stopRows = orderedPlans.map((p: any, i: number) => {
+          const leg = legByPlanId.get(p.id) ?? null;
           return {
-            id: p.id as string,
-            lat: prop?.lat ?? null,
-            lng: prop?.lng ?? null,
+            user_id: user.id,
+            route_id: routeId,
+            plan_id: p.id,
+            property_id: p.property_id,
+            customer_id: p.customer_id,
+            address_snapshot: p.address ?? null,
+            customer_name_snapshot: p.customer_name ?? null,
+            services: p.services ?? [],
+            fee_cents: p.amount != null ? Math.round(Number(p.amount) * 100) : null,
+            sort_order: (i + 1) * 10,
+            status: "pending",
+            drive_minutes_from_prev: leg ? leg.minutes : null,
+            drive_miles_from_prev: leg ? leg.miles : null,
           };
         });
-        const coordCount = optimizeInput.filter((s) => s.lat != null && s.lng != null).length;
-        let orderedPlans: any[] = plans;
-        if (coordCount >= 3) {
-          const optimizedIds = nearestNeighborOrder(
-            optimizeInput,
-            operatorHomeLat,
-            operatorHomeLng,
-          );
-          const planById = new Map<string, any>(plans.map((p: any) => [p.id, p]));
-          const reordered: any[] = [];
-          for (const id of optimizedIds) {
-            const p = planById.get(id);
-            if (p) reordered.push(p);
-          }
-          // Defensive: if the optimizer dropped any plans, append them.
-          if (reordered.length !== plans.length) {
-            const seen = new Set(reordered.map((p) => p.id));
-            for (const p of plans) if (!seen.has(p.id)) reordered.push(p);
-          }
-          orderedPlans = reordered;
-        }
-
-        // Drive matrix — one Mapbox call covers the whole ordered sequence.
-        // We only call it when at least 2 stops have coords; otherwise legs
-        // stay null and the UI shows "–" for drive time.
-        const orderedCoords: Array<{ idx: number; lat: number; lng: number } | null> = orderedPlans.map(
-          (p: any, i: number) => {
-            const prop = p.property_id ? propsById.get(p.property_id) : null;
-            if (prop?.lat != null && prop?.lng != null) {
-              return { idx: i, lat: Number(prop.lat), lng: Number(prop.lng) };
-            }
-            return null;
-          },
-        );
-        // legMinutes/Miles are aligned to the *orderedPlans* array index:
-        // entry i is the drive FROM orderedPlans[i-1] TO orderedPlans[i].
-        // Entry 0 is always null because there's no "previous" stop on
-        // the first visit.
-        const legMinutes = new Array<number | null>(orderedPlans.length).fill(null);
-        const legMiles = new Array<number | null>(orderedPlans.length).fill(null);
-
-        const coordStops: DriveStop[] = orderedCoords
-          .filter((c): c is { idx: number; lat: number; lng: number } => c !== null)
-          .map(({ lat, lng }) => ({ lat, lng }));
-        const coordIndices = orderedCoords
-          .map((c, i) => (c ? i : -1))
-          .filter((i) => i >= 0);
-
-        if (coordStops.length >= 2) {
-          try {
-            const matrixLegs = await fetchDriveMatrix(coordStops);
-            // matrixLegs[k] is the drive from coordStops[k] to coordStops[k+1].
-            // Map back into plans-space using coordIndices.
-            for (let k = 0; k < matrixLegs.length; k++) {
-              const toPlanIdx = coordIndices[k + 1];
-              if (toPlanIdx == null) continue;
-              legMinutes[toPlanIdx] = matrixLegs[k].minutes;
-              legMiles[toPlanIdx] = matrixLegs[k].miles;
-            }
-          } catch (e) {
-            console.warn("[Routes] drive-matrix failed", e);
-          }
-        }
-
-        // Persist with sort_order in gaps of 10 (10, 20, 30...). The
-        // gaps give us room to drop a stop between two others without
-        // a bulk renumber — matches the convention in
-        // computeReorderedSortOrders.
-        const stopRows = orderedPlans.map((p: any, i: number) => ({
-          user_id: user.id,
-          route_id: routeId,
-          plan_id: p.id,
-          property_id: p.property_id,
-          customer_id: p.customer_id,
-          address_snapshot: p.address ?? null,
-          customer_name_snapshot: p.customer_name ?? null,
-          services: p.services ?? [],
-          // amount on maintenance_plans is dollars (NUMERIC); convert to cents.
-          fee_cents: p.amount != null ? Math.round(Number(p.amount) * 100) : null,
-          sort_order: (i + 1) * 10,
-          status: "pending",
-          drive_minutes_from_prev: legMinutes[i],
-          drive_miles_from_prev: legMiles[i],
-        }));
         const { error: stopsErr } = await (supabase as any)
           .from("route_stops")
           .insert(stopRows);
         if (stopsErr) throw stopsErr;
       }
-      return { id: routeId, freshlyCreated: true };
+      return { id: routeId, freshlyCreated: true, wasOptimized };
     },
-    onSuccess: ({ id, freshlyCreated }) => {
-      if (freshlyCreated) setJustOptimizedRouteId(id);
+    onSuccess: ({ id, freshlyCreated, wasOptimized }) => {
+      if (freshlyCreated && wasOptimized) setJustOptimizedRouteId(id);
       invalidate();
       navigate(`/routes/run/${id}`);
     },
   });
 
   // -----------------------------------------------------------------
-  // Re-optimize remaining (pending) stops on an in-flight route.
-  // Done / skipped / in_progress stops stay pinned at their existing
-  // sort_order — we only rewrite the tail. After re-ordering we leave
-  // the drive-matrix legs alone (they'll refresh on the next Start
-  // call, matching the reorder mutation's behavior).
+  // Re-optimize remaining (pending) stops on a planned route via Google
+  // Routes. Done / skipped / in_progress stops stay pinned at their
+  // existing sort_order — we only rewrite the pending tail. A snapshot of
+  // the prior order is captured so the operator can Undo.
   // -----------------------------------------------------------------
+  // Snapshot for Undo: previous (id -> {sort_order, drive cols}) before a re-optimize.
+  const [undoOrder, setUndoOrder] = useState<
+    Map<string, { sort_order: number; drive_minutes: number | null; drive_miles: number | null }> | null
+  >(null);
+
   const reoptimizeMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedRoute) throw new Error("No route");
-      const pending = stops.filter((s) => s.status === "pending");
-      // Need property coords to optimize — pull from properties.
-      const propertyIds = pending
-        .map((s) => s.property_id)
-        .filter((id): id is string => !!id);
-      const propsById = new Map<string, { lat: number | null; lng: number | null }>();
-      if (propertyIds.length > 0) {
-        const { data: props } = await (supabase as any)
-          .from("properties")
-          .select("id, lat, lng")
-          .in("id", propertyIds);
-        for (const p of (props ?? []) as Array<{ id: string; lat: number | null; lng: number | null }>) {
-          propsById.set(p.id, { lat: p.lat, lng: p.lng });
-        }
-      }
-      const optimizeInput = pending.map((s) => ({
-        id: s.id,
-        lat: s.property_id ? propsById.get(s.property_id)?.lat ?? null : null,
-        lng: s.property_id ? propsById.get(s.property_id)?.lng ?? null : null,
-      }));
-      const coordCount = optimizeInput.filter((s) => s.lat != null && s.lng != null).length;
-      if (coordCount < 3) return; // Not worth re-running; matches start-route gate.
-      const orderedIds = nearestNeighborOrder(optimizeInput);
+      if (!selectedRoute) throw new Error("No route selected");
+      // Only pending stops are reorderable.
+      const pending = [...(selectedRoute.route_stops ?? [])]
+        .filter((s: any) => s.status === "pending")
+        .sort((a: any, b: any) => a.sort_order - b.sort_order);
+      if (pending.length < 2) throw new Error("Need at least 2 pending stops to optimize");
 
-      // Re-number ONLY the pending stops. The highest non-pending
-      // sort_order is our floor; we rewrite pending sort_orders to
-      // start above that in gaps of 10.
-      const nonPendingMax = stops
-        .filter((s) => s.status !== "pending")
-        .reduce((max, s) => Math.max(max, s.sort_order), 0);
-      const writes = orderedIds.map((id, i) =>
-        (supabase as any)
-          .from("route_stops")
-          .update({ sort_order: nonPendingMax + (i + 1) * 10 })
-          .eq("id", id),
+      const { data: profileRow } = await (supabase as any)
+        .from("profiles")
+        .select("route_start_address")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      const pivot: string | null = (profileRow?.route_start_address ?? "").trim() || null;
+
+      const addrOf = (s: any): string | null => s.address_snapshot ?? null;
+      const firstStop = pending[0];
+      const waypointStops: any[] = pivot ? pending : pending.slice(1);
+      const originAddr = pivot ?? addrOf(firstStop);
+      const waypointAddrs = waypointStops.map(addrOf);
+      if (!originAddr || !waypointAddrs.every(Boolean)) {
+        throw new Error("Some stops are missing an address");
+      }
+
+      const { order, legs } = await optimizeRoute({
+        origin: originAddr,
+        destination: originAddr,
+        waypoints: waypointAddrs as string[],
+      });
+      const orderedWaypoints = order.map((i) => waypointStops[i]);
+      if (orderedWaypoints.length !== waypointStops.length || !orderedWaypoints.every(Boolean)) {
+        throw new Error("Optimizer returned an inconsistent order");
+      }
+      const orderedStops = pivot ? orderedWaypoints : [firstStop, ...orderedWaypoints];
+
+      // Snapshot prior order + drive metrics for Undo.
+      const prev = new Map<string, { sort_order: number; drive_minutes: number | null; drive_miles: number | null }>();
+      for (const s of pending) prev.set(s.id, {
+        sort_order: s.sort_order,
+        drive_minutes: s.drive_minutes_from_prev,
+        drive_miles: s.drive_miles_from_prev,
+      });
+
+      // Persist new sort_order (gaps of 10) + drive metrics. Pending stops only.
+      const results = await Promise.all(
+        orderedStops.map((s: any, i: number) => {
+          const leg = pivot ? legs[i] : i === 0 ? null : legs[i - 1];
+          return (supabase as any)
+            .from("route_stops")
+            .update({
+              sort_order: (i + 1) * 10,
+              drive_minutes_from_prev: leg?.minutes ?? null,
+              drive_miles_from_prev: leg?.miles ?? null,
+            })
+            .eq("id", s.id);
+        }),
       );
-      const results = await Promise.all(writes);
+      const failed = results.find((r: any) => r?.error);
+      if (failed?.error) throw failed.error;
+      return prev;
+    },
+    onSuccess: (prev) => {
+      setUndoOrder(prev);
+      invalidate();
+    },
+  });
+
+  const undoReoptimize = useMutation({
+    mutationFn: async () => {
+      if (!undoOrder) return;
+      const results = await Promise.all(
+        Array.from(undoOrder.entries()).map(([id, snap]) =>
+          (supabase as any).from("route_stops").update({
+            sort_order: snap.sort_order,
+            drive_minutes_from_prev: snap.drive_minutes,
+            drive_miles_from_prev: snap.drive_miles,
+          }).eq("id", id),
+        ),
+      );
       const failed = results.find((r: any) => r?.error);
       if (failed?.error) throw failed.error;
     },
     onSuccess: () => {
-      // Treat the selected route as freshly optimized so the pill returns.
-      if (selectedRoute) setJustOptimizedRouteId(selectedRoute.id);
+      setUndoOrder(null);
       invalidate();
     },
   });
@@ -808,29 +771,67 @@ export default function RoutesPage() {
               )}
             </div>
           </div>
-          <button
-            type="button"
-            disabled={startRouteMutation.isPending}
-            onClick={() => {
-              if (selectedRoute && selectedRoute.status === "in_progress") {
-                navigate(`/routes/run/${selectedRoute.id}`);
-                return;
-              }
-              // Multi-crew accounts with no active filter need to pick a crew
-              // before we build the route. Otherwise we have a sensible
-              // default (filter selection or only-crew); fire immediately.
-              if (!selectedRoute && crews.length > 1 && selectedCrewId === "all") {
-                setCrewPickerOpen(true);
-                return;
-              }
-              startRouteMutation.mutate({});
-            }}
-            className="px-3.5 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-bold inline-flex items-center gap-1.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-60"
-          >
-            <startButton.Icon className="h-3 w-3" strokeWidth={2.5} />
-            {startRouteMutation.isPending ? "..." : startButton.label}
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedRoute?.status === "planned" && (
+              <button
+                type="button"
+                onClick={() => reoptimizeMutation.mutate()}
+                disabled={reoptimizeMutation.isPending}
+                className="h-9 px-3 rounded-xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+              >
+                {reoptimizeMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+                Re-optimize
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={startRouteMutation.isPending}
+              onClick={() => {
+                if (selectedRoute && selectedRoute.status === "in_progress") {
+                  navigate(`/routes/run/${selectedRoute.id}`);
+                  return;
+                }
+                // Multi-crew accounts with no active filter need to pick a crew
+                // before we build the route. Otherwise we have a sensible
+                // default (filter selection or only-crew); fire immediately.
+                if (!selectedRoute && crews.length > 1 && selectedCrewId === "all") {
+                  setCrewPickerOpen(true);
+                  return;
+                }
+                startRouteMutation.mutate({});
+              }}
+              className="px-3.5 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-bold inline-flex items-center gap-1.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-60"
+            >
+              <startButton.Icon className="h-3 w-3" strokeWidth={2.5} />
+              {startRouteMutation.isPending ? "..." : startButton.label}
+            </button>
+          </div>
         </div>
+
+        {undoOrder && (
+          <div className="mx-4 mb-2 flex items-center justify-between rounded-xl bg-green-50 px-3 py-2 text-[12px] text-green-800">
+            <span>Route re-optimized.</span>
+            <button
+              type="button"
+              onClick={() => undoReoptimize.mutate()}
+              disabled={undoReoptimize.isPending}
+              className="font-bold underline disabled:opacity-60"
+            >
+              Undo
+            </button>
+          </div>
+        )}
+        {reoptimizeMutation.isError && (
+          <p className="mx-4 mb-2 text-[12px] text-destructive">
+            {reoptimizeMutation.error instanceof Error
+              ? reoptimizeMutation.error.message
+              : "Couldn't optimize the route."}
+          </p>
+        )}
 
         {/* Progress + collected card */}
         <div className="bg-card border border-ink-100 rounded-[14px] px-3.5 py-3 flex gap-4 items-center shadow-card">
@@ -896,32 +897,6 @@ export default function RoutesPage() {
             <span>
               <span className="tp-num text-ink-900 font-semibold">{stops.length}</span> stops
             </span>
-            {/* Re-optimize remaining — only useful mid-route when there
-                are pending stops to actually shuffle. Confirms before
-                rewriting sort_order. */}
-            {selectedRoute &&
-              (selectedRoute.status === "planned" || selectedRoute.status === "in_progress") &&
-              counts.pending >= 3 && (
-                <>
-                  <span className="text-ink-300">·</span>
-                  <button
-                    type="button"
-                    disabled={reoptimizeMutation.isPending}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Re-optimize the remaining pending stops by nearest neighbor? Done and active stops stay put.",
-                        )
-                      ) {
-                        reoptimizeMutation.mutate();
-                      }
-                    }}
-                    className="text-green-800 font-semibold hover:underline disabled:opacity-60"
-                  >
-                    {reoptimizeMutation.isPending ? "Re-optimizing…" : "Re-optimize remaining"}
-                  </button>
-                </>
-              )}
           </div>
         )}
       </div>
