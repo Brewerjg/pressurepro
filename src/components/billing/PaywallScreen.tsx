@@ -69,21 +69,21 @@ export default function PaywallScreen() {
         {/* Tier preview — compact, pricing details live on /pricing */}
         <section className="flex flex-col sm:grid sm:grid-cols-3 gap-3 sm:gap-4 mb-7">
           {TIERS.map((tier) => {
-            const isPro = tier.id === "pro";
+            const isFeatured = tier.id === "crew";
             return (
               <div
                 key={tier.id}
                 className={cn(
                   "relative rounded-[20px] p-4 flex flex-col",
-                  isPro
+                  isFeatured
                     ? "bg-gradient-hero-deep text-white shadow-card-lg"
                     : "tp-card",
                 )}
               >
-                {isPro && (
+                {isFeatured && (
                   <div className="absolute -top-2.5 left-4 inline-flex items-center gap-1 bg-bronze-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-bronze">
                     <Sparkles className="h-3 w-3" strokeWidth={2.5} />
-                    Most popular
+                    Recommended
                   </div>
                 )}
 
@@ -91,7 +91,7 @@ export default function PaywallScreen() {
                   <h3
                     className={cn(
                       "font-display font-black text-lg",
-                      isPro ? "text-white" : "text-ink-900",
+                      isFeatured ? "text-white" : "text-ink-900",
                     )}
                   >
                     {tier.name}
@@ -100,7 +100,7 @@ export default function PaywallScreen() {
                     <span
                       className={cn(
                         "font-display font-bold text-[22px] leading-none",
-                        isPro ? "text-white" : "text-ink-900",
+                        isFeatured ? "text-white" : "text-ink-900",
                       )}
                     >
                       ${tier.monthly.price}
@@ -108,7 +108,7 @@ export default function PaywallScreen() {
                     <span
                       className={cn(
                         "text-[11px] font-semibold ml-0.5",
-                        isPro ? "text-[#cfead8]" : "text-ink-500",
+                        isFeatured ? "text-[#cfead8]" : "text-ink-500",
                       )}
                     >
                       /mo
@@ -118,7 +118,7 @@ export default function PaywallScreen() {
                 <p
                   className={cn(
                     "text-[12px] mb-2.5",
-                    isPro ? "text-[#cfead8]" : "text-ink-500",
+                    isFeatured ? "text-[#cfead8]" : "text-ink-500",
                   )}
                 >
                   {tier.tagline}
@@ -130,13 +130,13 @@ export default function PaywallScreen() {
                       key={h}
                       className={cn(
                         "flex items-start gap-2 text-[12.5px]",
-                        isPro ? "text-white/90" : "text-ink-700",
+                        isFeatured ? "text-white/90" : "text-ink-700",
                       )}
                     >
                       <Check
                         className={cn(
                           "h-3.5 w-3.5 shrink-0 mt-0.5",
-                          isPro ? "text-bronze-400" : "text-green-600",
+                          isFeatured ? "text-bronze-400" : "text-green-600",
                         )}
                         strokeWidth={3}
                       />

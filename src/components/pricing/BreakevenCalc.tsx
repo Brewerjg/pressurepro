@@ -8,12 +8,11 @@ import { cn } from "@/lib/utils";
 // Helps an operator decide whether the per-transaction 2% PAYG fee or one
 // of the flat-rate paid tiers is cheaper at their monthly card volume.
 // We compute PAYG cost from the entered volume (volume * 2%) and compare
-// against the flat Solo / Pro / Crew prices; the row with the lowest
+// against the flat Solo / Crew prices; the row with the lowest
 // monthly cost gets a "Best value" bronze badge.
 //
 // Tie-points (informational; the math arrives at them naturally):
 //   - $750 / mo  → PAYG = Solo = $15
-//   - $1,250 / mo → PAYG = Pro  = $25
 //   - $2,450 / mo → PAYG = Crew = $49
 //
 // Default volume is $5,000 — the median operator monthly volume per the
@@ -176,8 +175,8 @@ export default function BreakevenCalc() {
       </ul>
 
       <p className="text-[11px] text-ink-500 mt-4 leading-relaxed">
-        Quick reference: under $750/mo stay on Pay-as-you-go; $750–$1,250
-        Solo wins; $1,250–$2,450 Pro wins; $2,450+ Crew wins.
+        Quick reference: under $750/mo stay on Pay-as-you-go; $750–$2,450
+        Solo wins; $2,450+ Crew wins.
       </p>
     </section>
   );

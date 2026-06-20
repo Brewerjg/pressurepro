@@ -13,7 +13,6 @@ import {
   redirectToCheckout,
 } from "@/lib/stripe";
 import { setPayAsYouGoTier } from "@/lib/payg";
-import BreakevenCalc from "@/components/pricing/BreakevenCalc";
 import { cn } from "@/lib/utils";
 
 // Public marketing surface — no AppShell, no tab bar. The route is
@@ -120,7 +119,7 @@ export default function Pricing() {
       } catch (e) {
         setPaygSubmitting(false);
         setError(
-          e instanceof Error ? e.message : "Couldn't activate Pay-as-you-go",
+          e instanceof Error ? e.message : "Couldn't activate Base",
         );
       }
     })();
@@ -263,11 +262,9 @@ export default function Pricing() {
         )}
 
         {/* Tier cards. PAYG renders first as the "no decision" entry
-            point. On mobile we stack (flex-col); on sm+ we use a 2-up
-            grid (4 cards = neat 2x2) and at lg+ we go to a single 4-up
-            row. The 3-col layout the original used didn't scale cleanly
-            to 4 tiers, so the 2x2 sm tier keeps each card readable. */}
-        <div className="flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
+            point. On mobile we stack (flex-col); at lg+ we lay the three
+            tiers out in a single row. */}
+        <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3 sm:gap-4 mb-10">
           {TIERS.map((tier) => (
             <TierCard
               key={tier.id}
@@ -283,11 +280,6 @@ export default function Pricing() {
           ))}
         </div>
 
-        {/* Breakeven calculator. Lives below the cards so the tier choices
-            remain the dominant visual; the calculator is a secondary
-            decision aid for the operators who want to do the math. */}
-        <BreakevenCalc />
-
         <p className="text-center text-[12px] text-ink-500 mt-10">
           Prices in USD. Stripe handles payment securely — we never see your card.
         </p>
@@ -297,9 +289,9 @@ export default function Pricing() {
 }
 
 // ---------------------------------------------------------------------------
-// TierCard — extracted so the per-tier rendering branches (PAYG vs Pro vs
-// the rest) stay readable. PAYG and Pro both have distinct visual treatments;
-// Solo and Crew share the default `tp-card` look.
+// TierCard — extracted so the per-tier rendering branches (PAYG vs Crew vs
+// the rest) stay readable. PAYG and Crew both have distinct visual treatments;
+// Solo uses the default `tp-card` look.
 
 interface TierCardProps {
   tier: Tier;
@@ -311,29 +303,29 @@ interface TierCardProps {
 }
 
 function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCardProps) {
-  const isPro = tier.id === "pro";
+  const isFeatured = tier.id === "crew";
   const isPayg = tier.id === "payg";
   const cycleData = cycle === "monthly" ? tier.monthly : tier.yearly;
 
   // PAYG keeps a clean tp-card (NOT the bronze-gradient hero look that's
-  // reserved for the "recommended" Pro tier). Pro stays the visual
+  // reserved for the "recommended" Crew tier). Crew stays the visual
   // anchor; PAYG signals "different category" via a quieter chip.
   const cardClass = cn(
     "relative rounded-[22px] p-5 flex flex-col",
-    isPro ? "bg-gradient-hero-deep text-white shadow-card-lg" : "tp-card",
+    isFeatured ? "bg-gradient-hero-deep text-white shadow-card-lg" : "tp-card",
   );
 
   return (
     <div className={cardClass}>
-      {isPro && (
+      {isFeatured && (
         <div className="absolute -top-2.5 left-5 inline-flex items-center gap-1 bg-bronze-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-bronze">
           <Sparkles className="h-3 w-3" strokeWidth={2.5} />
-          Most popular
+          Recommended
         </div>
       )}
       {isPayg && (
         <div className="absolute -top-2.5 left-5 inline-flex items-center gap-1 bg-bronze-400 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em]">
-          Most popular for trial
+          Best for starting out
         </div>
       )}
 
@@ -342,7 +334,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           <h3
             className={cn(
               "font-display font-black text-xl",
-              isPro ? "text-white" : "text-ink-900",
+              isFeatured ? "text-white" : "text-ink-900",
             )}
           >
             {tier.name}
@@ -350,7 +342,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           <p
             className={cn(
               "text-[12px]",
-              isPro ? "text-[#cfead8]" : "text-ink-500",
+              isFeatured ? "text-[#cfead8]" : "text-ink-500",
             )}
           >
             {tier.tagline}
@@ -358,13 +350,14 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
         </div>
         <div className="text-right shrink-0">
           {isPayg ? (
-            // PAYG reads as a single equation: "$0 + 2% per payment".
-            // We deliberately drop the "/mo" suffix because both the
-            // monthly and yearly cycles are $0 — adding "/mo" vs "/yr"
-            // would look silly. The 2% line carries the real cost.
+            // PAYG reads as a low base + the 2% line carrying the real
+            // variable cost: "$5/mo + 2% per payment".
             <>
               <div className="font-display font-bold text-[30px] leading-none text-ink-900">
-                $0
+                ${cycleData.price}
+                <span className="text-[13px] font-semibold text-ink-500 ml-0.5">
+                  /{cycle === "monthly" ? "mo" : "yr"}
+                </span>
               </div>
               <span className="text-[11px] font-extrabold text-bronze-600 whitespace-nowrap">
                 + 2% per payment
@@ -375,7 +368,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
               <div
                 className={cn(
                   "font-display font-bold text-[30px] leading-none",
-                  isPro ? "text-white" : "text-ink-900",
+                  isFeatured ? "text-white" : "text-ink-900",
                 )}
               >
                 ${cycleData.price}
@@ -383,7 +376,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
               <span
                 className={cn(
                   "text-[11px] font-semibold",
-                  isPro ? "text-[#cfead8]" : "text-ink-500",
+                  isFeatured ? "text-[#cfead8]" : "text-ink-500",
                 )}
               >
                 /{cycle === "monthly" ? "mo" : "yr"}
@@ -398,7 +391,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
         <p
           className={cn(
             "text-[12px] font-extrabold -mt-2 mb-3",
-            isPro ? "text-bronze-400" : "text-success",
+            isFeatured ? "text-bronze-400" : "text-success",
           )}
         >
           {tier.yearly.saveLabel}
@@ -411,13 +404,13 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
             key={h}
             className={cn(
               "flex items-start gap-2 text-[13px]",
-              isPro ? "text-white/90" : "text-ink-700",
+              isFeatured ? "text-white/90" : "text-ink-700",
             )}
           >
             <Check
               className={cn(
                 "h-4 w-4 shrink-0 mt-0.5",
-                isPro ? "text-bronze-400" : "text-green-600",
+                isFeatured ? "text-bronze-400" : "text-green-600",
               )}
               strokeWidth={3}
             />
@@ -431,7 +424,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
       {isPayg && (
         <p className="text-[11px] italic text-ink-500 mb-4 leading-relaxed">
           Need to charge cards? Connect Stripe in Settings. Cash-only
-          operators pay $0.
+          operators pay just the base — no transaction fees.
         </p>
       )}
 
@@ -450,7 +443,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           disabled={busy || disabled}
           className={cn(
             "w-full h-12 rounded-[14px] font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100",
-            isPro
+            isFeatured
               ? "bg-bronze-500 text-white shadow-bronze hover:bg-bronze-600"
               : "border-[1.5px] border-ink-200 bg-card text-ink-900 hover:bg-ink-100",
           )}
@@ -459,7 +452,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
-              {isPayg ? "Start free" : `Choose ${tier.name}`}
+              {`Choose ${tier.name}`}
               <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
             </>
           )}

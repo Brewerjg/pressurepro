@@ -4,26 +4,25 @@
 // against `processed_stripe_events` (idempotency), and routes to one of
 // three destinations:
 //
-//   * CONNECT events (event.account is set) — operator-customer charges
-//     and invoices that landed on a Connect account. Recorded into the
-//     `application_fees` cache table so Reports can surface "TurfPro fees
-//     this month" without round-tripping to Stripe. Dunning logic for
-//     plan failures still runs via the existing platform-event path
-//     (Stripe also re-fires invoice.payment_failed on the connected
-//     subscription's parent flow), so we deliberately don't double-fire
-//     it here.
-//   * Platform PLAN events (metadata.kind === 'maintenance_plan') →
-//     delegate to the `sync-plan-status` edge function which mutates
-//     the `maintenance_plans` row.
-//   * Platform APP-subscription events (the default) → upsert into
-//     `public.subscriptions` keyed on stripe_subscription_id.
+//   * CONNECT events (event.account is set) — with DIRECT charges, ALL
+//     operator↔customer money flows (deposits, balances, visit charges,
+//     maintenance-plan subscriptions) are created on the operator's
+//     connected account, so their events arrive here as Connect events. For
+//     these we (a) write the `application_fees` cache for Reports, AND
+//     (b) run the SAME deposit + plan-sync business routers used for
+//     platform events, with Stripe reads scoped to the connected account.
+//   * PLAN events (metadata.kind === 'maintenance_plan') → delegate to the
+//     `sync-plan-status` edge function which mutates the `maintenance_plans`
+//     row. (These now arrive as Connect events.)
+//   * Platform APP-subscription events → upsert into `public.subscriptions`.
+//     NOTE: operator SaaS subscriptions are sold via the mobile app store,
+//     not Stripe, so this platform path is effectively legacy.
 //
-// For v1 we keep ONE webhook endpoint that handles both platform and
-// Connect events. Stripe sends Connect events with `account: 'acct_xxx'`
-// on the top-level event object — platform events don't have that field.
-// A separate webhook endpoint registered specifically as a Connect
-// webhook would also work and may be preferable long-term, but the
-// single-endpoint pattern keeps deployment simple.
+// ONE webhook endpoint handles both platform and Connect events. It MUST be
+// registered with "Listen to events on Connected accounts" enabled so Stripe
+// delivers the direct-charge events (see docs/STRIPE_PAYOUTS_SETUP.md).
+// Stripe sends Connect events with `account: 'acct_xxx'` on the top-level
+// event object; platform events don't have that field.
 //
 // Handled event types:
 //   - checkout.session.completed
@@ -90,8 +89,8 @@ async function handleConnectEvent(
 
   if (event.type === "charge.succeeded") {
     const charge = event.data.object as Stripe.Charge;
-    // application_fee_amount is set on the charge when transfer_data was
-    // applied at PI/sub create time. If it's null/0 the charge wasn't
+    // application_fee_amount is set on the charge by the direct-charge
+    // application_fee at PI/sub create time. If it's null/0 the charge wasn't
     // fee-bearing (paid tier with no fee) and we can skip — but we still
     // record a 0 row so reports can show "0 fees on $X in revenue".
     const feeAmount = (charge as any).application_fee_amount ?? 0;
@@ -237,23 +236,30 @@ Deno.serve(async (req) => {
     console.log("Processing event", event.type, "env:", env);
 
     // ----------------------------------------------------------------
-    // Connect event router
-    //   Stripe stamps `event.account` (an `acct_xxx`) on the top-level
-    //   event when the event originated from a connected account. We
-    //   route those into handleConnectEvent which writes into the
-    //   `application_fees` cache. Platform events (no `account` field)
-    //   continue through the existing routers below.
+    // Connect vs platform.
+    //   With DIRECT charges, the operator↔customer money flows (deposits,
+    //   balances, maintenance-plan subscriptions) are created ON the
+    //   operator's connected account, so their events arrive here with
+    //   `event.account` set. For those we must run BOTH:
+    //     1) the fee cache (application_fees) for money events, and
+    //     2) the SAME business routers used for platform events (deposit
+    //        recording + plan sync) — with every Stripe read scoped to the
+    //        connected account via `acctOpts`.
+    //   Platform events (event.account unset) are app-store / legacy SaaS
+    //   subscription events and flow through the platform handlers below.
     // ----------------------------------------------------------------
-    if ((event as any).account) {
+    const acctId = (event as any).account as string | undefined;
+    const acctOpts = acctId
+      ? ({ stripeAccount: acctId } as { stripeAccount: string })
+      : undefined;
+
+    if (acctId) {
+      // Fee cache — best-effort; must NOT block the business routing below.
       try {
-        await handleConnectEvent(event, (event as any).account as string, env, stripe, supabase);
+        await handleConnectEvent(event, acctId, env, stripe, supabase);
       } catch (e) {
-        console.error("Connect event handler failed:", e);
+        console.error("Connect fee-cache handler failed:", e);
       }
-      return new Response(
-        JSON.stringify({ received: true, route: "connect" }),
-        { headers: { "Content-Type": "application/json" } },
-      );
     }
 
     // ----------------------------------------------------------------
@@ -335,9 +341,16 @@ Deno.serve(async (req) => {
           const subId = session.subscription as string;
           let stripeSub: Stripe.Subscription | null = null;
           try {
-            stripeSub = await stripe.subscriptions.retrieve(subId, {
-              expand: ["default_payment_method", "latest_invoice.payment_intent"],
-            });
+            stripeSub = await stripe.subscriptions.retrieve(
+              subId,
+              {
+                expand: [
+                  "default_payment_method",
+                  "latest_invoice.payment_intent",
+                ],
+              },
+              acctOpts,
+            );
             // Ensure kind/plan_id are pinned to the subscription (Stripe
             // copies them via subscription_data.metadata on create — this
             // is a defensive re-write in case of older sessions).
@@ -345,14 +358,18 @@ Deno.serve(async (req) => {
               stripeSub.metadata?.kind !== "maintenance_plan" ||
               stripeSub.metadata?.plan_id !== planId
             ) {
-              await stripe.subscriptions.update(subId, {
-                metadata: {
-                  ...stripeSub.metadata,
-                  kind: "maintenance_plan",
-                  plan_id: planId,
-                  user_id: session.metadata?.user_id ?? "",
+              await stripe.subscriptions.update(
+                subId,
+                {
+                  metadata: {
+                    ...stripeSub.metadata,
+                    kind: "maintenance_plan",
+                    plan_id: planId,
+                    user_id: session.metadata?.user_id ?? "",
+                  },
                 },
-              });
+                acctOpts,
+              );
             }
           } catch (e) {
             console.error("retrieve sub after checkout failed", e);
@@ -417,7 +434,7 @@ Deno.serve(async (req) => {
         if (!subId) return false;
         let sub: Stripe.Subscription | null = null;
         try {
-          sub = await stripe.subscriptions.retrieve(subId);
+          sub = await stripe.subscriptions.retrieve(subId, undefined, acctOpts);
         } catch (e) {
           console.error("invoice → sub retrieve failed", e);
           return false;
@@ -429,7 +446,11 @@ Deno.serve(async (req) => {
         try {
           const chargeId = (invoice as any).charge as string | null;
           if (chargeId) {
-            const charge = await stripe.charges.retrieve(chargeId);
+            const charge = await stripe.charges.retrieve(
+              chargeId,
+              undefined,
+              acctOpts,
+            );
             cardLast4 = charge.payment_method_details?.card?.last4 ?? null;
           }
         } catch (e) {
@@ -476,12 +497,14 @@ Deno.serve(async (req) => {
 
     // ----------------------------------------------------------------
     // Deposit router
-    //   Deposits taken from the public Accept page go through
-    //   create-checkout-session (kind:'deposit') as a Connect-routed
-    //   `payment`-mode Checkout Session. The session.completed event fires
-    //   on the PLATFORM (Checkout Sessions live on the platform even with
-    //   transfer_data), so we handle it here rather than in the Connect
-    //   path.
+    //   Deposits/balances taken from the public Accept/Invoice pages go
+    //   through create-checkout-session (kind:'deposit'|'balance') as a
+    //   DIRECT-charge `payment`-mode Checkout Session created ON the
+    //   operator's connected account. So checkout.session.completed arrives
+    //   as a CONNECT event (event.account set) — but this router reads only
+    //   the session object (metadata/amount/payment_intent) so it works
+    //   unchanged whether the event is platform or Connect. It runs after the
+    //   Connect fee-cache above.
     //
     //   The invoice now OWNS deposits. When metadata.invoice_id is present
     //   we stamp invoices.deposit_paid_at, record a manual_payments row

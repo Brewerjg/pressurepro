@@ -295,13 +295,22 @@ Deno.serve(async (req) => {
 
       const opUserId = (quote as any).user_id as string;
       const operator = await loadOperatorConnect(supabase, opUserId);
+      // DIRECT CHARGES ONLY: we refuse the charge unless the operator's
+      // Connect account is ready. We never fall back to a platform charge —
+      // funds must settle directly into the operator's account so TurfPro
+      // never holds (or is liable for) the operator's money.
       if (!operator.shouldRoute) {
-        console.warn(
-          `[create-checkout-session] ${checkoutKind}: operator ${opUserId} is not Connect-ready; falling back to platform charge. tier=${operator.tier}`,
+        return jsonResponse(
+          {
+            error:
+              "This business hasn't finished setting up payments yet. Please try again later.",
+            code: "connect_not_ready",
+          },
+          { status: 409 },
         );
       }
       const feeAmountCents =
-        operator.shouldRoute && operator.feePercent > 0
+        operator.feePercent > 0
           ? Math.round((chargeCents * operator.feePercent) / 100)
           : undefined;
 
@@ -341,37 +350,39 @@ Deno.serve(async (req) => {
       const chargeCustomerEmail =
         customerEmail ?? ((quote as any).customer_email as string | null) ?? undefined;
 
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        payment_method_types: ["card"],
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: { name: productName },
-              unit_amount: chargeCents,
+      // DIRECT CHARGE: created ON the operator's connected account via the
+      // `stripeAccount` request option. Funds settle into the operator's
+      // balance, the operator's account pays Stripe's processing fee, and
+      // TurfPro skims `application_fee_amount`. No `transfer_data` — that's
+      // for destination charges where the platform holds funds + liability.
+      const session = await stripe.checkout.sessions.create(
+        {
+          mode: "payment",
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: { name: productName },
+                unit_amount: chargeCents,
+              },
+              quantity: 1,
             },
-            quantity: 1,
-          },
-        ],
-        success_url: chargeReturnUrl,
-        cancel_url: chargeReturnUrl
-          .replace("session_id={CHECKOUT_SESSION_ID}", "canceled=1")
-          .replace(paidMarker, isBalance ? "paid=0" : "deposit=canceled"),
-        ...(chargeCustomerEmail && { customer_email: chargeCustomerEmail }),
-        metadata: chargeMeta,
-        payment_intent_data: {
+          ],
+          success_url: chargeReturnUrl,
+          cancel_url: chargeReturnUrl
+            .replace("session_id={CHECKOUT_SESSION_ID}", "canceled=1")
+            .replace(paidMarker, isBalance ? "paid=0" : "deposit=canceled"),
+          ...(chargeCustomerEmail && { customer_email: chargeCustomerEmail }),
           metadata: chargeMeta,
-          ...(operator.shouldRoute
-            ? {
-                transfer_data: { destination: operator.stripeAccountId! },
-                ...(feeAmountCents !== undefined
-                  ? { application_fee_amount: feeAmountCents }
-                  : {}),
-              }
-            : {}),
+          payment_intent_data: {
+            metadata: chargeMeta,
+            ...(feeAmountCents !== undefined
+              ? { application_fee_amount: feeAmountCents }
+              : {}),
+          },
         },
-      });
+        { stripeAccount: operator.stripeAccountId! },
+      );
 
       if (!session.url) {
         return jsonResponse(
@@ -412,13 +423,17 @@ Deno.serve(async (req) => {
     );
     const operator = await loadOperatorConnect(supabase, opUserId);
 
-    // V1 fallback: if Connect isn't ready yet for this operator, log a
-    // warning and route the charge to the platform account. This keeps
-    // PAYG operators unblocked during the Connect rollout. Long-term we
-    // want to refuse the charge so funds always settle to the operator.
+    // DIRECT CHARGES ONLY: refuse unless the operator's Connect account is
+    // ready. We never charge on the platform account — funds must settle
+    // directly to the operator so TurfPro never holds their money.
     if (!operator.shouldRoute) {
-      console.warn(
-        `[create-checkout-session] Operator ${opUserId} is not Connect-ready; falling back to platform charge. tier=${operator.tier}`,
+      return jsonResponse(
+        {
+          error:
+            "This business hasn't finished setting up payments yet. Please try again later.",
+          code: "connect_not_ready",
+        },
+        { status: 409 },
       );
     }
 
@@ -426,60 +441,53 @@ Deno.serve(async (req) => {
     // (fixed cents), NOT application_fee_percent. Convert percent → cents
     // off the line-item total.
     const feeAmountCents =
-      operator.shouldRoute && operator.feePercent > 0
+      operator.feePercent > 0
         ? Math.round((amount * operator.feePercent) / 100)
         : undefined;
 
     const productName = bodyProductName ?? "TurfPro charge";
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { name: productName },
-            unit_amount: amount,
+    const chargeMeta = {
+      userId: opUserId,
+      operatorUserId: opUserId,
+      environment: resolvedEnv,
+      kind: checkoutKind,
+      tier_at_capture: operator.tier,
+      fee_percent: String(operator.feePercent),
+      ...(extraMetadata ?? {}),
+    };
+
+    // DIRECT CHARGE on the operator's connected account (see the quote-charge
+    // path above for the rationale). No transfer_data.
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: { name: productName },
+              unit_amount: amount,
+            },
+            quantity: 1,
           },
-          quantity: 1,
+        ],
+        success_url: returnUrl,
+        cancel_url: returnUrl.replace(
+          "session_id={CHECKOUT_SESSION_ID}",
+          "canceled=1",
+        ),
+        ...(customerEmail && { customer_email: customerEmail }),
+        metadata: chargeMeta,
+        payment_intent_data: {
+          metadata: chargeMeta,
+          ...(feeAmountCents !== undefined
+            ? { application_fee_amount: feeAmountCents }
+            : {}),
         },
-      ],
-      success_url: returnUrl,
-      cancel_url: returnUrl.replace(
-        "session_id={CHECKOUT_SESSION_ID}",
-        "canceled=1",
-      ),
-      ...(customerEmail && { customer_email: customerEmail }),
-      metadata: {
-        userId: opUserId,
-        operatorUserId: opUserId,
-        environment: resolvedEnv,
-        kind: checkoutKind,
-        tier_at_capture: operator.tier,
-        fee_percent: String(operator.feePercent),
-        ...(extraMetadata ?? {}),
       },
-      payment_intent_data: {
-        metadata: {
-          userId: opUserId,
-          operatorUserId: opUserId,
-          environment: resolvedEnv,
-          kind: checkoutKind,
-          tier_at_capture: operator.tier,
-          fee_percent: String(operator.feePercent),
-          ...(extraMetadata ?? {}),
-        },
-        ...(operator.shouldRoute
-          ? {
-              transfer_data: { destination: operator.stripeAccountId! },
-              ...(feeAmountCents !== undefined
-                ? { application_fee_amount: feeAmountCents }
-                : {}),
-            }
-          : {}),
-      },
-    });
+      { stripeAccount: operator.stripeAccountId! },
+    );
 
     if (!session.url) {
       return jsonResponse(

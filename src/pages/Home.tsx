@@ -378,8 +378,11 @@ export default function Home() {
           </button>
         )}
 
-        <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px] px-1 pb-2">
+        <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px] px-1 pb-2 flex items-center gap-2">
           This week
+          <span className="px-1.5 py-0.5 rounded-full bg-bronze-100 text-bronze-700 text-[9px] font-extrabold uppercase tracking-[0.06em]">
+            Beta
+          </span>
         </h2>
 
         {!forecast.hasZip && !zipQ.isLoading && (

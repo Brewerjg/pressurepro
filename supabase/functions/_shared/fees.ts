@@ -7,18 +7,18 @@
 // src/lib/stripe.ts. If you change the mapping in one place, update both.
 //
 // Fee model:
-//   - PAYG (free tier) pays 2.0% on every Connect-routed charge.
-//   - Solo / Pro / Crew (paid tiers) pay 0%.
-//   - No `subscriptions` row at all → treated as PAYG (2%). This matches the
-//     post-trial state where the operator's trial expired and they never
-//     picked a tier — the fee model becomes their default.
+//   - Base tier (id "payg") pays 2.0% on every Connect-routed charge.
+//   - Solo / Crew (paid tiers) pay 0%.
+//   - No `subscriptions` row at all → treated as Base (2%). Since paid-tier
+//     subscriptions are sold via the mobile app store (not Stripe), the
+//     default for operators is Base — which is exactly the 2% we collect.
 //
 // Connect routing is gated by the STRIPE_CONNECT_ENABLED env var (see
 // `connectEnabled()` below). When that's false, Connect logic short-circuits
 // and the existing platform-account behavior runs — needed for local dev
 // where Connect isn't configured.
 
-export type TierId = "payg" | "solo" | "pro" | "crew";
+export type TierId = "payg" | "solo" | "crew";
 
 /**
  * Resolve the application-fee percentage for a given tier id. Mirrors
@@ -29,7 +29,6 @@ export function feeForTier(tierId: TierId | null | undefined): number {
   const mapping: Record<TierId, number> = {
     payg: 2.0,
     solo: 0,
-    pro: 0,
     crew: 0,
   };
   return mapping[tierId] ?? 2.0;
@@ -64,8 +63,6 @@ export async function resolveTier(
     turfpro_payg_yearly: "payg",
     turfpro_solo_monthly: "solo",
     turfpro_solo_yearly: "solo",
-    turfpro_pro_monthly: "pro",
-    turfpro_pro_yearly: "pro",
     turfpro_crew_monthly: "crew",
     turfpro_crew_yearly: "crew",
   };
@@ -120,10 +117,14 @@ export async function loadOperatorConnect(
   let stripeAccountId: string | null = null;
   let connectReady = false;
   try {
+    // Match by id OR user_id — the merged PressurePro/TurfPro profiles table
+    // carries both, and connect-onboarding writes the Connect columns keyed on
+    // whichever matched. Since charges now REFUSE when Connect isn't found, a
+    // single-column lookup that missed would silently block all payouts.
     const { data } = await supabase
       .from("profiles")
       .select("stripe_account_id, connect_ready")
-      .eq("id", userId)
+      .or(`id.eq.${userId},user_id.eq.${userId}`)
       .maybeSingle();
     stripeAccountId = data?.stripe_account_id ?? null;
     connectReady = Boolean(data?.connect_ready);

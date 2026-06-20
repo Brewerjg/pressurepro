@@ -33,7 +33,10 @@
       "PowerShell(npx --yes supabase@latest db query --linked \"delete from weather_cache;\" 2>&1)",
       "PowerShell(\"=== before: row count ===\")",
       "PowerShell(\"=== flushing ===\")",
-      "PowerShell(\"=== after: row count ===\")"
+      "PowerShell(\"=== after: row count ===\")",
+      "Bash(command -v deno)",
+      "Bash(deno --version)",
+      "Bash(echo \"deno present: $\\(deno --version)"
     ],
     "deny": [],
     "ask": [],

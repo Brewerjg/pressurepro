@@ -46,7 +46,7 @@ export function getStripeEnvironment(): StripeEnv {
   return environment;
 }
 
-export type TierId = "payg" | "solo" | "pro" | "crew";
+export type TierId = "payg" | "solo" | "crew";
 export type Cycle = "monthly" | "yearly";
 
 export interface Tier {
@@ -77,7 +77,7 @@ export interface Tier {
 export const TIERS: Tier[] = [
   {
     id: "payg",
-    name: "Pay as you go",
+    name: "Base",
     tagline: "Low base — pay only when you earn",
     monthly: { priceId: "turfpro_payg_monthly", price: 5 },
     yearly: { priceId: "turfpro_payg_yearly", price: 50, saveLabel: "Save $10" },
@@ -102,22 +102,7 @@ export const TIERS: Tier[] = [
       "Up to 50 stops / week",
       "Customer & property records",
       "Photo before/after, chemical log",
-    ],
-    applicationFeePercent: 0,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    tagline: "Growing lawn-care crew",
-    monthly: { priceId: "turfpro_pro_monthly", price: 25 },
-    yearly: { priceId: "turfpro_pro_yearly", price: 250, saveLabel: "Save $50" },
-    seats: 2,
-    highlights: [
-      "2 user seats",
-      "Unlimited stops",
-      "Route optimization",
-      "QuickBooks sync",
-      "Recurring billing + maintenance plans",
+      "Weather & spray-day planner (beta)",
     ],
     applicationFeePercent: 0,
   },
@@ -130,10 +115,12 @@ export const TIERS: Tier[] = [
     seats: 5,
     highlights: [
       "5 user seats",
-      "Multi-truck routing",
-      "Fleet view + crew calendar",
-      "Reporting export",
-      "Everything in Pro",
+      "Unlimited stops",
+      "Multi-truck routing & route optimization (beta)",
+      "QuickBooks sync (coming soon)",
+      "Recurring billing + maintenance plans",
+      "Fleet view, crew calendar & report export",
+      "Everything in Solo",
     ],
     applicationFeePercent: 0,
   },
@@ -147,8 +134,6 @@ const PRICE_TO_TIER: Record<string, TierId> = {
   turfpro_payg_yearly: "payg",
   turfpro_solo_monthly: "solo",
   turfpro_solo_yearly: "solo",
-  turfpro_pro_monthly: "pro",
-  turfpro_pro_yearly: "pro",
   turfpro_crew_monthly: "crew",
   turfpro_crew_yearly: "crew",
 };
@@ -157,7 +142,7 @@ const PRICE_TO_TIER: Record<string, TierId> = {
  * Resolve the application-fee percentage for a given tier id. Used by:
  *   - create-plan-subscription / create-checkout-session edge fns when
  *     setting `application_fee_amount` on Stripe Connect charges
- *   - Reports page when computing "TurfPro fees this month" + Pro upgrade
+ *   - Reports page when computing "TurfPro fees this month" + Solo upgrade
  *     callout math
  *
  * Operators with no `subscriptions` row at all are treated as PAYG (2%).

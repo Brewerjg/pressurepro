@@ -87,16 +87,16 @@ Deno.serve(async (req) => {
     }
 
     // ----- Connect routing detection -----
-    // If create-plan-subscription set transfer_data + application_fee_percent
-    // on the subscription, the subscription LIVES on the operator's connected
-    // account — NOT the platform account. Stripe API calls against it must
-    // include the `stripeAccount` request option so they're scoped correctly.
+    // With DIRECT charges every plan subscription lives ON the operator's
+    // connected account (create-plan-subscription creates it with the
+    // `stripeAccount` request option), NOT the platform account. So Stripe
+    // API calls against it must include `stripeAccount`.
     //
-    // We try a platform-account retrieve first; if Stripe returns
-    // "resource_missing" (or similar) we know it's a connected-account
-    // subscription. Cheaper: look it up on the operator's profile and use
-    // that account directly if profiles.stripe_account_id is set, then
-    // verify application_fee_percent is non-null to confirm.
+    // We resolve the operator's connected account from their profile and
+    // probe that the subscription exists there. We do NOT gate on
+    // application_fee_percent — paid (0%-fee) tiers have it unset yet still
+    // live on the connected account. Legacy platform-account subs (pre-
+    // direct-charge) fall through to the platform retrieve.
     let stripeAccount: string | undefined;
     try {
       const { data: profile } = await admin
@@ -106,20 +106,18 @@ Deno.serve(async (req) => {
         .maybeSingle();
       const acct = profile?.stripe_account_id as string | null;
       if (acct) {
-        // Probe the connected account: if the sub exists there with
-        // application_fee_percent set, we route mutations through it.
         try {
           const subOnAcct = await stripe.subscriptions.retrieve(
             plan.stripe_subscription_id,
             {} as never,
             { stripeAccount: acct } as never,
           );
-          if (subOnAcct && subOnAcct.application_fee_percent != null) {
+          if (subOnAcct) {
             stripeAccount = acct;
           }
         } catch {
           // Sub isn't on the connected account — falls through to
-          // platform-account behavior below.
+          // platform-account behavior below (legacy subs).
         }
       }
     } catch (e) {

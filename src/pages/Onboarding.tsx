@@ -1027,8 +1027,8 @@ function Step5(props: {
       {!isReady && (
         <div className="rounded-xl bg-green-50/60 border border-green-700/20 p-3 space-y-1.5">
           <div className="text-[12.5px] text-ink-700 leading-snug">
-            On the free <span className="font-semibold">Pay-as-you-go</span> plan,
-            we take 2% per payment. On Solo / Pro / Crew, you keep
+            On the <span className="font-semibold">Base</span> plan,
+            we take 2% per payment. On Solo / Crew, you keep
             <span className="font-semibold"> 100%</span> of payments.
           </div>
         </div>

@@ -850,7 +850,7 @@ export default function Reports() {
           {/* TurfPro fees (this month) — sits between MRR and Cash+checks
               inside the "money flow" cluster so the operator sees what they
               pay TurfPro on PAYG before they see their cash intake. When
-              their MTD fees exceed Pro's $25 monthly the upgrade callout
+              their MTD fees exceed Solo's $15 monthly the upgrade callout
               below makes the savings math self-evident. */}
           <section className="mx-4 mb-3.5">
             <TurfProFeesCard
@@ -1132,20 +1132,20 @@ function PaymentFailuresCard({ count }: { count: number }) {
 }
 
 // =====================================================================
-// TurfProFeesCard — "TurfPro fees this month" + Pro upgrade callout
+// TurfProFeesCard — "TurfPro fees this month" + Solo upgrade callout
 //
 // Shows the application fees the operator has accrued in the current
 // calendar month (from the application_fees table, populated by the
 // Stripe Connect webhook). Three render modes drive the framing:
 //
-//   1. Paid tier (solo / pro / crew) — fees are always $0 (0%
+//   1. Paid tier (solo / crew) — fees are always $0 (0%
 //      application fee). Headline reads green; subtext reminds the
 //      operator their tier zeros out fees. No upgrade callout.
 //   2. PAYG, no fees processed this month — headline $0 with the
 //      "no card payments processed" note. Cash-only operators are
 //      explicitly NOT pushed to upgrade; the 2% on $0 is still $0.
 //   3. PAYG, fees > 0 — headline rendered in bronze. If the MTD fee
-//      exceeds Pro's $25/mo flat price, a bronze callout below the
+//      exceeds Solo's $15/mo flat price, a bronze callout below the
 //      card shows the operator how much they'd save by switching.
 //
 // The 6-month sparkline at the bottom uses recharts LineChart at ~40px
@@ -1166,13 +1166,11 @@ function TurfProFeesCard({
     return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-ink-100" />;
   }
 
-  const proPrice = getTier("pro").monthly.price; // $25
+  const soloPrice = getTier("solo").monthly.price; // $15
   const crewPrice = getTier("crew").monthly.price; // $49
-  // Crew (0% fee) becomes the better deal vs Pro once the operator's
-  // 2% take exceeds $49 + $25 = wait, no — the apples-to-apples comparison
-  // is the same $0-fee tier swap. Crew saves more than Pro for ops over
-  // (49 - 25) / 0.02 = $1,200/mo MORE in processing than the Pro
-  // break-even, i.e. processing > ($49 / 0.02) = $2,450/mo.
+  // Crew (0% fee) becomes the better deal vs Solo once the operator's
+  // 2% take clears Crew's flat price — i.e. processing > ($49 / 0.02) =
+  // $2,450/mo. Below that, Solo is the cheaper $0-fee swap.
   const crewBreakEvenProcessing = (crewPrice / 0.02) * 100; // cents
 
   const feeDollars = fees.currentMonthFeeCents / 100;
@@ -1181,10 +1179,10 @@ function TurfProFeesCard({
   const isPayg = tier === "payg";
   const hasFees = fees.currentMonthFeeCents > 0;
 
-  // Pro savings = (fees they paid on PAYG) - ($25 Pro flat). Only meaningful
+  // Solo savings = (fees they paid on PAYG) - ($15 Solo flat). Only meaningful
   // when positive; the upgrade callout gates on that.
-  const proSavingsDollars = feeDollars - proPrice;
-  const showUpgradeCallout = isPayg && proSavingsDollars > 0;
+  const soloSavingsDollars = feeDollars - soloPrice;
+  const showUpgradeCallout = isPayg && soloSavingsDollars > 0;
 
   // Headline color rules per spec:
   //  - $0 = green (good news)
@@ -1203,7 +1201,7 @@ function TurfProFeesCard({
   } else if (!hasFees) {
     subline = "No card payments processed this month.";
   } else {
-    subline = "On Pay-as-you-go (2% per payment)";
+    subline = "On Base (2% per payment)";
   }
 
   // 6-month sparkline only if any historical fees exist. We deliberately
@@ -1289,16 +1287,16 @@ function TurfProFeesCard({
             />
             <div className="flex-1">
               <div className="text-[13.5px] font-semibold text-bronze-700 leading-tight">
-                You'd save {fmtUSD(proSavingsDollars)} by switching to Pro this
+                You'd save {fmtUSD(soloSavingsDollars)} by switching to Solo this
                 month.
               </div>
               <div className="text-[11.5px] text-bronze-700/85 mt-1 leading-snug">
-                Pay {fmtUSD(proPrice)} flat instead of {fmtUSD(feeDollars)} in
+                Pay {fmtUSD(soloPrice)} flat instead of {fmtUSD(feeDollars)} in
                 fees. Crew at {fmtUSD(crewPrice)} starts saving for processors
                 over {fmtUSD(crewBreakEvenProcessing / 100)}/mo.
               </div>
               <div className="inline-flex items-center gap-1 mt-2 text-[12px] font-semibold text-bronze-700">
-                Switch to Pro
+                Switch to Solo
                 <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
               </div>
             </div>

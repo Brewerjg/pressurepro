@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Check, ChevronRight, CreditCard, Loader2, LogOut, Mail, Megaphone, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { Banknote, Calculator, Check, ChevronRight, CreditCard, Loader2, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,6 +138,28 @@ export default function Settings() {
           </div>
           <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2.2} />
         </Link>
+      </Section>
+
+      {/* Integrations — accounting/CRM sync. QuickBooks is the first and
+          isn't wired yet, so the row is a non-interactive "coming soon"
+          placeholder rather than a CTA. */}
+      <Section icon={<Plug className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Integrations">
+        <div className="tp-card p-4 flex items-center gap-3 opacity-90">
+          <span className="h-9 w-9 rounded-lg bg-ink-100 text-ink-500 grid place-items-center shrink-0">
+            <Calculator className="h-4 w-4" strokeWidth={2.2} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13.5px] font-semibold text-ink-900">
+              QuickBooks sync
+            </div>
+            <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+              Push invoices and payments into QuickBooks automatically.
+            </div>
+          </div>
+          <span className="px-2 py-1 rounded-full bg-bronze-100 text-bronze-700 text-[10px] font-extrabold uppercase tracking-[0.06em] shrink-0">
+            Coming soon
+          </span>
+        </div>
       </Section>
 
       {/* Billing */}

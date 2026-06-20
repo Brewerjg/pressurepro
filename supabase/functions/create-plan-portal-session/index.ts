@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     // Public lookup by portal_token (unique UUID) — app discriminator intentionally not filtered (see src/lib/app-context.ts)
     const { data: plan, error: pErr } = await supabase
       .from("maintenance_plans")
-      .select("id, status, stripe_customer_id")
+      .select("id, user_id, status, stripe_customer_id")
       .eq("portal_token", portalToken)
       .maybeSingle();
 
@@ -76,12 +76,39 @@ Deno.serve(async (req) => {
       );
     }
 
+    // DIRECT charges: the customer + subscription live on the operator's
+    // connected account, so the Billing Portal session must be created there
+    // (`stripeAccount`). Resolve the operator's account from their profile.
+    // NOTE: the connected account needs a Billing Portal configuration (set
+    // a default in the Express dashboard or have the platform create one on
+    // the account) — see the deploy checklist.
+    let stripeAccount: string | undefined;
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("stripe_account_id")
+        .eq("id", plan.user_id as string)
+        .maybeSingle();
+      stripeAccount = (profile?.stripe_account_id as string | null) ?? undefined;
+    } catch (e) {
+      console.warn("portal: operator profile lookup failed", e);
+    }
+    if (!stripeAccount) {
+      return jsonResponse(
+        { error: "This business hasn't finished setting up payments." },
+        { status: 409 },
+      );
+    }
+
     const stripe = createStripeClient(env, APP_ID);
     const origin = req.headers.get("origin") || "https://example.com";
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: plan.stripe_customer_id,
-      return_url: `${origin}/plans/portal/${portalToken}/done?action=card`,
-    });
+    const portal = await stripe.billingPortal.sessions.create(
+      {
+        customer: plan.stripe_customer_id,
+        return_url: `${origin}/plans/portal/${portalToken}/done?action=card`,
+      },
+      { stripeAccount },
+    );
 
     return jsonResponse({ url: portal.url });
   } catch (e) {

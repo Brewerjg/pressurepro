@@ -601,8 +601,11 @@ export default function RoutesPage() {
           <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
             Week of {MONTH_SHORT[weekStart.getMonth()]} {weekStart.getDate()}
           </div>
-          <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight">
+          <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight flex items-center gap-2">
             Routes
+            <span className="px-1.5 py-0.5 rounded-full bg-bronze-100 text-bronze-700 text-[10px] font-extrabold uppercase tracking-[0.06em] align-middle">
+              Beta
+            </span>
           </h1>
         </div>
         <div className="flex gap-2">
