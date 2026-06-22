@@ -350,8 +350,8 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
         </div>
         <div className="text-right shrink-0">
           {isPayg ? (
-            // PAYG reads as a low base + the 2% line carrying the real
-            // variable cost: "$5/mo + 2% per payment".
+            // PAYG reads as a low base + the 1.5% line carrying the real
+            // variable cost: "$5/mo + 1.5% per payment".
             <>
               <div className="font-display font-bold text-[30px] leading-none text-ink-900">
                 ${cycleData.price}
@@ -360,7 +360,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
                 </span>
               </div>
               <span className="text-[11px] font-extrabold text-bronze-600 whitespace-nowrap">
-                + 2% per payment
+                + 1.5% per payment
               </span>
             </>
           ) : (

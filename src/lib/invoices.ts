@@ -95,19 +95,32 @@ export async function getInvoiceByQuote(quoteId: string): Promise<Invoice | null
 }
 
 /**
- * Public/anon read of an invoice by its public_token. No getUser() — the RLS
- * policy allows anonymous select by public_token so a customer can open and
- * pay a shared invoice link. Returns null when not found.
+ * Public/anon read of an invoice by its public_token. No getUser().
+ *
+ * IMPORTANT: the `invoices` table has NO anon SELECT policy — a direct
+ * `.from("invoices").select()` from the public page is blocked by RLS and
+ * returns zero rows. The customer page must go through the security-definer
+ * RPC `get_invoice_by_token`, which exposes only customer-facing display
+ * fields (see migrations 0023 §6 / 0026). Returns null when not found.
+ *
+ * The RPC returns a subset of columns (no customer_id / updated_at — they
+ * aren't needed publicly); we fill those with safe defaults so callers keep
+ * the full Invoice surface.
  */
 export async function getInvoiceByToken(token: string): Promise<Invoice | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("invoices")
-    .select("*")
-    .eq("public_token", token)
-    .maybeSingle();
+  const { data, error } = await (supabase as any).rpc("get_invoice_by_token", {
+    p_token: token,
+  });
   if (error) throw new Error(error.message);
-  return (data as Invoice | null) ?? null;
+  // SQL set-returning function comes back as an array of rows.
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    customer_id: null,
+    updated_at: row.created_at,
+    ...row,
+  } as Invoice;
 }
 
 /**

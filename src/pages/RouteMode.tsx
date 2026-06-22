@@ -34,7 +34,7 @@ import { sendCompleted, sendOnTheWay } from "@/lib/customer-email";
 import { sendCompletedSms, sendOnTheWaySms } from "@/lib/customer-sms";
 import MessageCustomerButton from "@/components/messaging/MessageCustomerButton";
 import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
-import { openExternalUrl } from "@/lib/native-maps";
+import { openExternal } from "@/lib/native-browser";
 import {
   recordPayment,
   type ManualPaymentMethod,
@@ -1428,15 +1428,15 @@ function FullBleedShell({
 // will still open the Apple-Maps URL handler if installed; using Google's
 // universal URL keeps Android + web in the same path.
 //
-// On native we route through `openExternalUrl`, which calls
+// On native we route through `openExternal`, which calls
 // `@capacitor/app`'s `App.openUrl({ url })` so the OS hands the URL to
 // the user's actual Maps app instead of opening it inside a Capacitor
-// in-app browser. See src/lib/native-maps.ts.
+// in-app browser. See src/lib/native-browser.ts.
 function openInMaps(address: string | null) {
   if (!address) return;
   const encoded = encodeURIComponent(address);
   const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`;
-  void openExternalUrl(url);
+  void openExternal(url);
 }
 
 function formatDuration(minutes: number): string {

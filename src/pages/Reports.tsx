@@ -332,7 +332,7 @@ interface Derived {
   paymentFailures30d: number;
   // TurfPro application fees — current calendar month plus a 6-month trailing
   // monthly trend for the sparkline. Charge volume (gross processed) is also
-  // surfaced so the operator can see the denominator behind the 2% fee.
+  // surfaced so the operator can see the denominator behind the 1.5% fee.
   turfproFees: {
     currentMonthFeeCents: number;
     currentMonthChargeCents: number;
@@ -1143,7 +1143,7 @@ function PaymentFailuresCard({ count }: { count: number }) {
 //      operator their tier zeros out fees. No upgrade callout.
 //   2. PAYG, no fees processed this month — headline $0 with the
 //      "no card payments processed" note. Cash-only operators are
-//      explicitly NOT pushed to upgrade; the 2% on $0 is still $0.
+//      explicitly NOT pushed to upgrade; the 1.5% on $0 is still $0.
 //   3. PAYG, fees > 0 — headline rendered in bronze. If the MTD fee
 //      exceeds Solo's $15/mo flat price, a bronze callout below the
 //      card shows the operator how much they'd save by switching.
@@ -1168,10 +1168,13 @@ function TurfProFeesCard({
 
   const soloPrice = getTier("solo").monthly.price; // $15
   const crewPrice = getTier("crew").monthly.price; // $49
+  // Base application-fee rate (e.g. 0.015 for 1.5%), sourced from the tier
+  // table so this math tracks the fee if it ever changes again.
+  const baseFeeRate = getTier("payg").applicationFeePercent / 100;
   // Crew (0% fee) becomes the better deal vs Solo once the operator's
-  // 2% take clears Crew's flat price — i.e. processing > ($49 / 0.02) =
-  // $2,450/mo. Below that, Solo is the cheaper $0-fee swap.
-  const crewBreakEvenProcessing = (crewPrice / 0.02) * 100; // cents
+  // Base take clears Crew's flat price — i.e. processing > ($49 / rate).
+  // Below that, Solo is the cheaper $0-fee swap.
+  const crewBreakEvenProcessing = (crewPrice / baseFeeRate) * 100; // cents
 
   const feeDollars = fees.currentMonthFeeCents / 100;
   const chargeDollars = fees.currentMonthChargeCents / 100;
@@ -1201,7 +1204,7 @@ function TurfProFeesCard({
   } else if (!hasFees) {
     subline = "No card payments processed this month.";
   } else {
-    subline = "On Base (2% per payment)";
+    subline = "On Base (1.5% per payment)";
   }
 
   // 6-month sparkline only if any historical fees exist. We deliberately

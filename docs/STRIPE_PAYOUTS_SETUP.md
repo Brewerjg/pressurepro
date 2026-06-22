@@ -13,9 +13,9 @@ created _on the operator's connected account_:
 - Funds settle **directly into the operator's** Stripe balance. TurfPro never
   holds or owes the operator's money.
 - The **operator's** account pays Stripe's processing fee (~2.9% + 30¢).
-- TurfPro keeps a clean **2% `application_fee`** (the "Base" tier fee). Solo/
+- TurfPro keeps a clean **1.5% `application_fee`** (the "Base" tier fee). Solo/
   Crew tiers are 0% — but those are sold via the mobile app store, so by
-  default every operator is Base (2%).
+  default every operator is Base (1.5%).
 - The **operator** is the merchant of record and is liable for refunds/
   chargebacks — not TurfPro.
 
@@ -89,15 +89,15 @@ supabase functions deploy create-checkout-session create-plan-subscription \
 1. **Onboard** a test operator: Settings → "Set up payouts" → finish Stripe's
    test onboarding → confirm `profiles.connect_ready = true`.
 2. **Deposit:** public Accept page → pay a deposit with `4242 4242 4242 4242`.
-   - Money lands on the **connected** account; an `application_fee` of 2% is
+   - Money lands on the **connected** account; an `application_fee` of 1.5% is
      taken; `application_fees` row written; `manual_payments` row recorded;
      invoice status advances.
 3. **Balance:** public Invoice page → pay remaining balance → invoice → `paid`.
 4. **Recurring plan:** create a maintenance plan → complete Checkout → plan
-   goes `active`; renewals deduct 2% each cycle.
+   goes `active`; renewals deduct 1.5% each cycle.
 5. **Not-ready guard:** with a non-onboarded operator, a charge returns 409
    `connect_not_ready` (nothing routes to the platform).
-6. **Reports:** "TurfPro fees this month" reflects the 2% taken.
+6. **Reports:** "TurfPro fees this month" reflects the 1.5% taken.
 
 ## Files changed for direct charges
 
@@ -106,4 +106,4 @@ supabase functions deploy create-checkout-session create-plan-subscription \
 - `mutate-plan-subscription` — pause/resume/cancel scoped to the connected account.
 - `create-plan-portal-session` — portal minted on the connected account.
 - `payments-webhook` — runs deposit + plan business logic on Connect events (account-scoped reads), plus the fee cache.
-- `_shared/fees.ts`, `src/lib/stripe.ts` — tier/fee model (Base = 2%, Solo/Crew = 0%).
+- `_shared/fees.ts`, `src/lib/stripe.ts` — tier/fee model (Base = 1.5%, Solo/Crew = 0%).

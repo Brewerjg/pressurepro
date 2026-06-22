@@ -10,6 +10,8 @@
 // + webhook secrets are reused server-side. Client-side we read
 // VITE_PAYMENTS_CLIENT_TOKEN, the publishable key. `pk_test_*` means sandbox.
 
+import { openInAppBrowser } from "@/lib/native-browser";
+
 type StripeEnv = "sandbox" | "live";
 
 const clientToken = import.meta.env.VITE_PAYMENTS_CLIENT_TOKEN as string | undefined;
@@ -62,8 +64,8 @@ export interface Tier {
   /**
    * Stripe Connect application fee percentage applied to every customer-facing
    * charge that flows through the operator's Stripe account (plan billing,
-   * quote deposits, per-visit charges). Pay-as-you-go pays 2.0%; paid tiers
-   * pay 0%. See feeForTier() for the runtime resolver.
+   * quote deposits, per-visit charges). Base (Pay-as-you-go) pays 1.5%; paid
+   * tiers pay 0%. See feeForTier() for the runtime resolver.
    */
   applicationFeePercent: number;
 }
@@ -82,13 +84,15 @@ export const TIERS: Tier[] = [
     monthly: { priceId: "turfpro_payg_monthly", price: 5 },
     yearly: { priceId: "turfpro_payg_yearly", price: 50, saveLabel: "Save $10" },
     seats: 1,
+    // Base tier's Stripe Connect application fee (the % TurfPro keeps on each
+    // customer→operator charge). Paid tiers below are 0%.
     highlights: [
       "$5 monthly base",
-      "2% on processed payments",
+      "1.5% on processed payments",
       "All operator features",
       "Best for trials + cash-heavy ops",
     ],
-    applicationFeePercent: 2.0,
+    applicationFeePercent: 1.5,
   },
   {
     id: "solo",
@@ -145,14 +149,14 @@ const PRICE_TO_TIER: Record<string, TierId> = {
  *   - Reports page when computing "TurfPro fees this month" + Solo upgrade
  *     callout math
  *
- * Operators with no `subscriptions` row at all are treated as PAYG (2%).
+ * Operators with no `subscriptions` row at all are treated as Base (1.5%).
  * This matches the post-trial state where the trial expired and they
  * never picked a tier — the fee model becomes their default.
  */
 export function feeForTier(tierId: TierId | null | undefined): number {
-  if (!tierId) return 2.0;
+  if (!tierId) return 1.5;
   const tier = TIERS.find((t) => t.id === tierId);
-  return tier?.applicationFeePercent ?? 2.0;
+  return tier?.applicationFeePercent ?? 1.5;
 }
 
 export function tierFromPriceId(priceId: string | null | undefined): TierId | null {
@@ -198,5 +202,5 @@ export async function redirectToCheckout(opts: {
   if (result.error || !result.url) {
     throw new Error(result.error || "Checkout session did not return a URL");
   }
-  window.location.assign(result.url);
+  await openInAppBrowser(result.url);
 }

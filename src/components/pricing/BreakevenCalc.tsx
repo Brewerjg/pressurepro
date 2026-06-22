@@ -5,15 +5,14 @@ import { cn } from "@/lib/utils";
 
 // Breakeven calculator for the public Pricing page.
 //
-// Helps an operator decide whether the per-transaction 2% PAYG fee or one
+// Helps an operator decide whether the per-transaction Base fee (1.5%) or one
 // of the flat-rate paid tiers is cheaper at their monthly card volume.
-// We compute PAYG cost from the entered volume (volume * 2%) and compare
-// against the flat Solo / Crew prices; the row with the lowest
-// monthly cost gets a "Best value" bronze badge.
+// We compute Base cost from the entered volume (volume * rate, rate read from
+// the tier table) and compare against the flat Solo / Crew prices; the row
+// with the lowest monthly cost gets a "Best value" bronze badge.
 //
-// Tie-points (informational; the math arrives at them naturally):
-//   - $750 / mo  → PAYG = Solo = $15
-//   - $2,450 / mo → PAYG = Crew = $49
+// Tie-points (informational; the math arrives at them naturally; shift with
+// the rate — at 1.5%: Solo $15/0.015 = $1,000/mo, Crew $49/0.015 ≈ $3,267/mo).
 //
 // Default volume is $5,000 — the median operator monthly volume per the
 // product brief. Operators type their actual number; we deliberately use
@@ -50,9 +49,9 @@ export default function BreakevenCalc() {
     return [
       {
         id: "payg",
-        label: "Pay-as-you-go",
+        label: "Base",
         cost: paygCost,
-        formula: `${formatMoney(safeVolume)} × 2%`,
+        formula: `${formatMoney(safeVolume)} × ${PAYG_TIER.applicationFeePercent}%`,
       },
       ...TIERS.filter((t) => t.id !== "payg").map<Row>((t) => ({
         id: t.id,
@@ -175,8 +174,8 @@ export default function BreakevenCalc() {
       </ul>
 
       <p className="text-[11px] text-ink-500 mt-4 leading-relaxed">
-        Quick reference: under $750/mo stay on Pay-as-you-go; $750–$2,450
-        Solo wins; $2,450+ Crew wins.
+        Quick reference: under $1,000/mo stay on Base; $1,000–$3,267
+        Solo wins; $3,267+ Crew wins.
       </p>
     </section>
   );

@@ -13,7 +13,7 @@
 //   2) `kind` === 'maintenance_plan' OR 'plan_one_time' OR 'visit_charge'
 //      A lawn-care customer is paying the OPERATOR. This must flow through
 //      Stripe Connect: payment lands on the operator's Connect account, and
-//      we deduct an application_fee based on the operator's tier (PAYG = 2%,
+//      we deduct an application_fee based on the operator's tier (Base = 1.5%,
 //      paid tiers = 0%). Requires the operator's profile to have
 //      stripe_account_id set AND connect_ready=true. If Connect isn't
 //      ready, we currently fall back to platform-account charging (v1
@@ -397,7 +397,7 @@ Deno.serve(async (req) => {
     // Connect-routed path: homeowner paying the operator.
     // Lawn-care customer is the payer; operator's Connect account is
     // the destination. We deduct application_fee_amount based on
-    // operator tier (PAYG 2% / paid 0%).
+    // operator tier (Base 1.5% / paid 0%).
     //
     // Caller supplies amountCents directly because these are one-off
     // charges that don't need a Stripe Price catalog entry.

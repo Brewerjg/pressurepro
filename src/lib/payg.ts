@@ -1,9 +1,9 @@
 // Pay-as-you-go tier setup helper.
 //
-// PAYG is the "$0 monthly + 2% per processed payment" plan. Unlike the
+// PAYG is the "$0 monthly + 1.5% per processed payment" plan. Unlike the
 // paid tiers (Solo / Crew), opting into PAYG never goes through
 // Stripe Checkout — there's no recurring charge to set up — so we just
-// upsert a subscriptions row directly. The 2% application fee is collected
+// upsert a subscriptions row directly. The 1.5% application fee is collected
 // per-transaction via Stripe Connect (see feeForTier in src/lib/stripe.ts).
 //
 // We store the PAYG lookup_key as `price_id` (rather than null) so that

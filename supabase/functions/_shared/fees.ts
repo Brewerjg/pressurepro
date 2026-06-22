@@ -7,11 +7,11 @@
 // src/lib/stripe.ts. If you change the mapping in one place, update both.
 //
 // Fee model:
-//   - Base tier (id "payg") pays 2.0% on every Connect-routed charge.
+//   - Base tier (id "payg") pays 1.5% on every Connect-routed charge.
 //   - Solo / Crew (paid tiers) pay 0%.
-//   - No `subscriptions` row at all → treated as Base (2%). Since paid-tier
+//   - No `subscriptions` row at all → treated as Base (1.5%). Since paid-tier
 //     subscriptions are sold via the mobile app store (not Stripe), the
-//     default for operators is Base — which is exactly the 2% we collect.
+//     default for operators is Base — which is exactly the 1.5% we collect.
 //
 // Connect routing is gated by the STRIPE_CONNECT_ENABLED env var (see
 // `connectEnabled()` below). When that's false, Connect logic short-circuits
@@ -25,13 +25,13 @@ export type TierId = "payg" | "solo" | "crew";
  * `feeForTier()` in src/lib/stripe.ts exactly.
  */
 export function feeForTier(tierId: TierId | null | undefined): number {
-  if (!tierId) return 2.0;
+  if (!tierId) return 1.5;
   const mapping: Record<TierId, number> = {
-    payg: 2.0,
+    payg: 1.5,
     solo: 0,
     crew: 0,
   };
-  return mapping[tierId] ?? 2.0;
+  return mapping[tierId] ?? 1.5;
 }
 
 /**

@@ -36,7 +36,11 @@
       "PowerShell(\"=== after: row count ===\")",
       "Bash(command -v deno)",
       "Bash(deno --version)",
-      "Bash(echo \"deno present: $\\(deno --version)"
+      "Bash(echo \"deno present: $\\(deno --version)",
+      "Bash(echo \"EXIT: $?\")",
+      "PowerShell(npx tsc --noEmit)",
+      "Bash(grep -iA2 \"functions\\\\|project\")",
+      "PowerShell(npx tsc --noEmit; \"tsc exit code: $LASTEXITCODE\")"
     ],
     "deny": [],
     "ask": [],

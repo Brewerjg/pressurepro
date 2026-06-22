@@ -389,6 +389,15 @@ deno_version = 2
 [functions.payments-webhook]
 verify_jwt = false
 
+# RevenueCat calls this endpoint with its own `Authorization` header (a shared
+# secret we set as REVENUECAT_WEBHOOK_AUTH), NOT a Supabase JWT — so the
+# platform JWT gate must be OFF or every delivery is rejected with 401 before
+# reaching the handler. The function authenticates each request by comparing
+# that Authorization header to the secret itself, so this does not weaken
+# security.
+[functions.revenuecat-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

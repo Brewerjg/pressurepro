@@ -19,6 +19,7 @@
 //     gate to decide whether to show "Connected ✓" vs the Connect button.
 
 import { supabase } from "@/integrations/supabase/client";
+import { openInAppBrowser } from "@/lib/native-browser";
 
 /** Minimal shape of profiles needed to evaluate Connect readiness. */
 export type ConnectableProfile = {
@@ -60,8 +61,9 @@ export async function startConnectOnboarding(): Promise<void> {
   if (!payload?.url) {
     throw new Error("Stripe did not return an onboarding URL");
   }
-  // Leaves the SPA — no await possible past this point.
-  window.location.assign(payload.url);
+  // On web this leaves the SPA (full-page redirect); on native it opens
+  // an in-app browser tab so the operator returns to the app afterward.
+  await openInAppBrowser(payload.url);
 }
 
 /**

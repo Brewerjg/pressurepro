@@ -20,6 +20,7 @@
 import { Capacitor } from "@capacitor/core";
 import { installAuthDeepLinkListener } from "./auth-deep-link";
 import { registerPushNotifications } from "./push";
+import { configureRevenueCat } from "./iap";
 import { supabase } from "@/integrations/supabase/client";
 
 async function loadKeyboard(): Promise<any | null> {
@@ -103,6 +104,7 @@ async function installPushAuthListener(): Promise<void> {
     if (initialUserId && initialUserId !== registeredForUserId) {
       registeredForUserId = initialUserId;
       void registerPushNotifications(initialUserId);
+      void configureRevenueCat(initialUserId);
     }
   } catch (err) {
     console.warn("[native-init] initial getSession failed:", err);
@@ -117,6 +119,7 @@ async function installPushAuthListener(): Promise<void> {
     if (userId === registeredForUserId) return;
     registeredForUserId = userId;
     void registerPushNotifications(userId);
+    void configureRevenueCat(userId);
   });
 }
 
