@@ -14,6 +14,13 @@ import {
 } from "@/lib/stripe";
 import { setPayAsYouGoTier } from "@/lib/payg";
 import { cn } from "@/lib/utils";
+import { Capacitor } from "@capacitor/core";
+import {
+  isRevenueCatAvailable,
+  getOfferings,
+  purchasePackage,
+  type IapPackage
+} from "@/lib/iap";
 
 // Public marketing surface — no AppShell, no tab bar. The route is
 // registered as public in App.tsx so non-authenticated visitors can land
@@ -37,6 +44,8 @@ export default function Pricing() {
   const [checkingOut, setCheckingOut] = useState<TierId | null>(null);
   const [paygSubmitting, setPaygSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [iapPackages, setIapPackages] = useState<IapPackage[] | null>(null);
+  const isIOS = Capacitor.getPlatform() === "ios";
 
   // Read the current subscription so we can highlight the user's tier.
   // Bumping `subscription` after a PAYG setup also re-derives the
@@ -81,6 +90,15 @@ export default function Pricing() {
       active = false;
     };
   }, [user]);
+
+  // Load RevenueCat offerings for iOS
+  useEffect(() => {
+    if (!isIOS || !isRevenueCatAvailable()) return;
+    (async () => {
+      const packages = await getOfferings();
+      setIapPackages(packages);
+    })();
+  }, [isIOS]);
 
   // Honor an incoming ?priceId hint from the post-auth redirect — the user
   // clicked "Choose plan" while signed-out, signed in, and is now back here.
@@ -135,10 +153,40 @@ export default function Pricing() {
 
   const handleSelectPayg = async () => {
     setError(null);
+
+    // iOS: Base tier is also an IAP now
+    if (isIOS && isRevenueCatAvailable() && iapPackages) {
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+      setPaygSubmitting(true);
+
+      try {
+        const priceId = priceIdForTier("payg", cycle);
+        const pkg = iapPackages.find((p: any) => p.product?.identifier === priceId);
+
+        if (!pkg) {
+          throw new Error(`Base tier product ${priceId} not found in App Store`);
+        }
+
+        const result = await purchasePackage(pkg);
+
+        if (result.status === "success") {
+          navigate("/settings?welcome=payg");
+        } else if (result.status === "error") {
+          throw result.error;
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Couldn't activate Base tier");
+      } finally {
+        setPaygSubmitting(false);
+      }
+      return;
+    }
+
+    // Web/Android: Direct database activation (original flow)
     if (!user) {
-      // Signed-out PAYG flow: send to auth with autoPayg so we can finish
-      // the setup on bounce-back. We don't need a priceId here — PAYG
-      // skips Stripe Checkout entirely.
       const next = encodeURIComponent("/pricing?autoPayg=1");
       navigate(`/auth?next=${next}&autoPayg=1`);
       return;
@@ -150,7 +198,7 @@ export default function Pricing() {
     } catch (e) {
       setPaygSubmitting(false);
       setError(
-        e instanceof Error ? e.message : "Couldn't activate Pay-as-you-go",
+        e instanceof Error ? e.message : "Couldn't activate Base tier",
       );
     }
   };
@@ -158,6 +206,42 @@ export default function Pricing() {
   const handleSelectPaid = async (tierId: TierId) => {
     setError(null);
     const priceId = priceIdForTier(tierId, cycle);
+
+    // iOS: Use RevenueCat In-App Purchases
+    if (isIOS && isRevenueCatAvailable() && iapPackages) {
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+      setCheckingOut(tierId);
+
+      try {
+        // Find the matching RevenueCat package
+        const packageId = priceId; // RevenueCat product IDs should match Stripe lookup keys
+        const pkg = iapPackages.find((p: any) => p.product?.identifier === packageId);
+
+        if (!pkg) {
+          throw new Error(`Product ${packageId} not found in App Store`);
+        }
+
+        const result = await purchasePackage(pkg);
+
+        if (result.status === "success") {
+          // Sync with backend via webhook or direct API call
+          navigate("/settings?welcome=upgraded");
+        } else if (result.status === "error") {
+          throw result.error;
+        }
+        // If cancelled, just reset state without error
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Purchase failed");
+      } finally {
+        setCheckingOut(null);
+      }
+      return;
+    }
+
+    // Web/Android: Use Stripe Checkout
     if (!user) {
       const next = encodeURIComponent(`/pricing?priceId=${priceId}`);
       navigate(`/auth?next=${next}&priceId=${priceId}`);
@@ -187,9 +271,14 @@ export default function Pricing() {
   };
 
   const handleSelect = (tierId: TierId) => {
-    if (tierId === "payg") {
+    // On iOS, all tiers go through IAP
+    if (isIOS && isRevenueCatAvailable()) {
+      void handleSelectPaid(tierId);
+    } else if (tierId === "payg") {
+      // Web/Android: Base tier uses database activation
       void handleSelectPayg();
     } else {
+      // Web/Android: Solo/Crew use Stripe
       void handleSelectPaid(tierId);
     }
   };
