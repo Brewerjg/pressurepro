@@ -15,7 +15,6 @@ import {
 import {
   ArrowUp,
   ArrowDown,
-  ArrowUpRight,
   DollarSign,
   Gauge,
   Users,
@@ -35,8 +34,6 @@ import {
   listManualPaymentsLifetime,
   type ManualPayment,
 } from "@/lib/manual-payments";
-import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { getTier, type TierId } from "@/lib/stripe";
 
 // Reports — TurfPro operator KPIs (v2). MRR is the headline (recurring is the
 // lawn-care default per TURFPRO_SPEC.md). v1 windows are still 30/60/90 day;
@@ -331,8 +328,9 @@ interface Derived {
   // Renders as a destructive-tinted card that links to /plans?filter=dunning.
   paymentFailures30d: number;
   // TurfPro application fees — current calendar month plus a 6-month trailing
-  // monthly trend for the sparkline. Charge volume (gross processed) is also
-  // surfaced so the operator can see the denominator behind the 1.5% fee.
+  // monthly trend for the sparkline. Under the 0%-on-every-tier model the fee
+  // is always $0; charge volume (gross processed) is still surfaced as a useful
+  // "how much did I run through cards" stat.
   turfproFees: {
     currentMonthFeeCents: number;
     currentMonthChargeCents: number;
@@ -807,15 +805,6 @@ export default function Reports() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Subscription state drives the TurfPro fees card's framing. The hook
-  // returns `tier: null` for the no-subscription / no-active-sub state; we
-  // defensively coerce null -> 'payg' here for the purposes of this card so
-  // the operator on the implicit pay-as-you-go path sees the right copy and
-  // the upgrade callout math runs. Once the hook is updated to return 'payg'
-  // explicitly this coercion can be removed.
-  const subStatus = useSubscriptionStatus();
-  const effectiveTier: TierId = subStatus.tier ?? "payg";
-
   const k = useMemo(() => (data ? deriveKPIs(data) : null), [data]);
 
   return (
@@ -848,14 +837,12 @@ export default function Reports() {
           />
 
           {/* TurfPro fees (this month) — sits between MRR and Cash+checks
-              inside the "money flow" cluster so the operator sees what they
-              pay TurfPro on PAYG before they see their cash intake. When
-              their MTD fees exceed Solo's $15 monthly the upgrade callout
-              below makes the savings math self-evident. */}
+              inside the "money flow" cluster. Under the 0%-on-every-tier
+              model this is always $0; the card reassures the operator they
+              keep 100% of customer payments. */}
           <section className="mx-4 mb-3.5">
             <TurfProFeesCard
               loading={isLoading || !k}
-              tier={effectiveTier}
               fees={k?.turfproFees ?? null}
             />
           </section>
@@ -1132,84 +1119,37 @@ function PaymentFailuresCard({ count }: { count: number }) {
 }
 
 // =====================================================================
-// TurfProFeesCard — "TurfPro fees this month" + Solo upgrade callout
+// TurfProFeesCard — "TurfPro fees this month"
 //
-// Shows the application fees the operator has accrued in the current
-// calendar month (from the application_fees table, populated by the
-// Stripe Connect webhook). Three render modes drive the framing:
+// Under the 2026 flat-fee pricing model EVERY tier has a 0% application
+// fee, so this number is always $0 going forward (it reads
+// fees.currentMonthFeeCents, which the webhook no longer accrues). The card
+// now simply reassures the operator that TurfPro takes nothing out of
+// customer payments — there's no tier distinction and no "upgrade to save
+// on fees" pitch anymore.
 //
-//   1. Paid tier (solo / crew) — fees are always $0 (0%
-//      application fee). Headline reads green; subtext reminds the
-//      operator their tier zeros out fees. No upgrade callout.
-//   2. PAYG, no fees processed this month — headline $0 with the
-//      "no card payments processed" note. Cash-only operators are
-//      explicitly NOT pushed to upgrade; the 1.5% on $0 is still $0.
-//   3. PAYG, fees > 0 — headline rendered in bronze. If the MTD fee
-//      exceeds Solo's $15/mo flat price, a bronze callout below the
-//      card shows the operator how much they'd save by switching.
-//
-// The 6-month sparkline at the bottom uses recharts LineChart at ~40px
-// height with the same palette as the other charts. It's rendered only
-// when at least one historical month has fees; otherwise the card stays
-// compact for first-time / cash-only operators.
+// We still surface the processed-volume / charge count when present (a
+// useful "how much did I run through cards this month" stat) and keep the
+// 6-month sparkline only when historical fee data exists (legacy rows from
+// before the reset); otherwise the card stays compact.
 // =====================================================================
 function TurfProFeesCard({
   loading,
-  tier,
   fees,
 }: {
   loading: boolean;
-  tier: TierId;
   fees: Derived["turfproFees"] | null;
 }) {
   if (loading || !fees) {
     return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-ink-100" />;
   }
 
-  const soloPrice = getTier("solo").monthly.price; // $15
-  const crewPrice = getTier("crew").monthly.price; // $49
-  // Base application-fee rate (e.g. 0.015 for 1.5%), sourced from the tier
-  // table so this math tracks the fee if it ever changes again.
-  const baseFeeRate = getTier("payg").applicationFeePercent / 100;
-  // Crew (0% fee) becomes the better deal vs Solo once the operator's
-  // Base take clears Crew's flat price — i.e. processing > ($49 / rate).
-  // Below that, Solo is the cheaper $0-fee swap.
-  const crewBreakEvenProcessing = (crewPrice / baseFeeRate) * 100; // cents
-
   const feeDollars = fees.currentMonthFeeCents / 100;
   const chargeDollars = fees.currentMonthChargeCents / 100;
+  const hasCharges = fees.currentMonthCount > 0;
 
-  const isPayg = tier === "payg";
-  const hasFees = fees.currentMonthFeeCents > 0;
-
-  // Solo savings = (fees they paid on PAYG) - ($15 Solo flat). Only meaningful
-  // when positive; the upgrade callout gates on that.
-  const soloSavingsDollars = feeDollars - soloPrice;
-  const showUpgradeCallout = isPayg && soloSavingsDollars > 0;
-
-  // Headline color rules per spec:
-  //  - $0 = green (good news)
-  //  - PAYG with fees the operator would save on by upgrading = bronze
-  //  - PAYG with fees below the upgrade threshold = ink (neutral — they're
-  //    on the right tier)
-  let headlineClass = "text-green-700";
-  if (hasFees) {
-    headlineClass = showUpgradeCallout ? "text-bronze-600" : "text-ink-900";
-  }
-
-  // Sub-line tier-aware copy.
-  let subline: string;
-  if (!isPayg) {
-    subline = `You're on ${getTier(tier).name} — no application fees.`;
-  } else if (!hasFees) {
-    subline = "No card payments processed this month.";
-  } else {
-    subline = "On Base (1.5% per payment)";
-  }
-
-  // 6-month sparkline only if any historical fees exist. We deliberately
-  // include the current (in-progress) month — it's the rightmost dot the
-  // operator's eye lands on after reading the headline number.
+  // 6-month sparkline only if any historical fees exist (legacy data from
+  // before the 0% reset). Otherwise the card stays compact.
   const sparkData = fees.monthlyTrend.map((m) => ({
     month: m.monthLabel,
     fee: m.feeCents / 100,
@@ -1217,96 +1157,60 @@ function TurfProFeesCard({
   const sparkHasData = sparkData.some((d) => d.fee > 0);
 
   return (
-    <>
-      <div className="tp-card p-3.5">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Receipt className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
-          <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
-            TurfPro fees · this month
-          </div>
+    <div className="tp-card p-3.5">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Receipt className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+          TurfPro fees · this month
         </div>
-        <div
-          className={cn(
-            "tp-num tp-display text-[26px] font-bold leading-none",
-            headlineClass,
-          )}
-        >
-          {fmtUSD(feeDollars)}
-        </div>
-        <div className="text-[11px] text-ink-500 mt-1.5">{subline}</div>
-
-        {hasFees && (
-          <div className="text-[11px] text-ink-500 mt-1">
-            {fees.currentMonthCount} charge
-            {fees.currentMonthCount === 1 ? "" : "s"} · {fmtUSD(chargeDollars)}{" "}
-            total processed
-          </div>
-        )}
-
-        {sparkHasData && (
-          <div className="mt-3 -mx-1" style={{ height: 40 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={sparkData}
-                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
-              >
-                <XAxis dataKey="month" hide />
-                <YAxis hide domain={[0, "dataMax + 1"]} />
-                <Tooltip
-                  cursor={{ stroke: "hsl(150 6% 80%)", strokeDasharray: "3 3" }}
-                  formatter={(v: number) => [fmtUSD(v), "Fees"]}
-                  labelFormatter={(m: string) => m}
-                  contentStyle={{
-                    fontSize: 11,
-                    borderRadius: 8,
-                    border: "1px solid hsl(150 6% 88%)",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="fee"
-                  stroke={
-                    showUpgradeCallout ? PALETTE.bronze500 : PALETTE.green700
-                  }
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+      </div>
+      <div className="tp-num tp-display text-[26px] font-bold leading-none text-green-700">
+        {fmtUSD(feeDollars)}
+      </div>
+      <div className="text-[11px] text-ink-500 mt-1.5">
+        TurfPro takes 0% — you keep 100% of customer payments.
       </div>
 
-      {showUpgradeCallout && (
-        <Link
-          to="/pricing"
-          className="mt-3 block rounded-[18px] bg-bronze-100 border border-bronze-400/50 p-3.5 active:scale-[0.99] transition-transform"
-        >
-          <div className="flex items-start gap-2">
-            <ArrowUpRight
-              className="h-4 w-4 text-bronze-700 shrink-0 mt-0.5"
-              strokeWidth={2.2}
-            />
-            <div className="flex-1">
-              <div className="text-[13.5px] font-semibold text-bronze-700 leading-tight">
-                You'd save {fmtUSD(soloSavingsDollars)} by switching to Solo this
-                month.
-              </div>
-              <div className="text-[11.5px] text-bronze-700/85 mt-1 leading-snug">
-                Pay {fmtUSD(soloPrice)} flat instead of {fmtUSD(feeDollars)} in
-                fees. Crew at {fmtUSD(crewPrice)} starts saving for processors
-                over {fmtUSD(crewBreakEvenProcessing / 100)}/mo.
-              </div>
-              <div className="inline-flex items-center gap-1 mt-2 text-[12px] font-semibold text-bronze-700">
-                Switch to Solo
-                <ArrowUpRight className="h-3 w-3" strokeWidth={2.4} />
-              </div>
-            </div>
-          </div>
-        </Link>
+      {hasCharges && (
+        <div className="text-[11px] text-ink-500 mt-1">
+          {fees.currentMonthCount} charge
+          {fees.currentMonthCount === 1 ? "" : "s"} · {fmtUSD(chargeDollars)}{" "}
+          total processed
+        </div>
       )}
-    </>
+
+      {sparkHasData && (
+        <div className="mt-3 -mx-1" style={{ height: 40 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={sparkData}
+              margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+            >
+              <XAxis dataKey="month" hide />
+              <YAxis hide domain={[0, "dataMax + 1"]} />
+              <Tooltip
+                cursor={{ stroke: "hsl(150 6% 80%)", strokeDasharray: "3 3" }}
+                formatter={(v: number) => [fmtUSD(v), "Fees"]}
+                labelFormatter={(m: string) => m}
+                contentStyle={{
+                  fontSize: 11,
+                  borderRadius: 8,
+                  border: "1px solid hsl(150 6% 88%)",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="fee"
+                stroke={PALETTE.green700}
+                strokeWidth={2}
+                isAnimationActive={false}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
   );
 }
 

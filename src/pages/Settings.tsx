@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Calculator, Check, ChevronRight, CreditCard, Loader2, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { Banknote, Calculator, Check, ChevronRight, CreditCard, Loader2, Lock, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 import BusinessProfile from "@/components/settings/BusinessProfile";
 import CatalogEditor from "@/components/settings/CatalogEditor";
 import CrewEditor from "@/components/settings/CrewEditor";
 import MessagingPreferences from "@/components/settings/MessagingPreferences";
+import SubscriptionCard from "@/components/settings/SubscriptionCard";
+import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
 import SeasonToggle from "@/components/season/SeasonToggle";
 import {
   isConnectComplete,
@@ -25,26 +26,8 @@ import {
 // surface_pricing / SH cost / gallons-per-sqft controls are intentionally
 // skipped — lawn care prices per visit, not per square foot of a surface.
 
-type Subscription = Database["public"]["Tables"]["subscriptions"]["Row"];
-
 export default function Settings() {
   const { user, signOut } = useAuth();
-
-  const { data: subscription, isLoading: subLoading } = useQuery({
-    queryKey: ["subscription", user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return (data ?? null) as Subscription | null;
-    },
-  });
 
   // Connect status — pulled straight off the profile row so the section
   // reflects whatever the last `refresh_status` call wrote. We only need
@@ -162,51 +145,17 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* Billing */}
+      {/* Billing — subscription management. On native the operator can change
+          tier, manage/cancel via the store, and restore purchases; on web the
+          card is read-only and points at the mobile app (subscriptions ship
+          through the app stores via RevenueCat). */}
       <Section icon={<CreditCard className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Billing">
-        <div className="tp-card p-4 space-y-3">
-          <p className="text-[12.5px] text-ink-700 leading-relaxed">
-            Stripe-managed subscription billing is coming with the next release.
-            Plans you create today track in your database, but they won't
-            auto-charge until billing wiring lands.
-          </p>
-          <div className="rounded-xl border border-ink-100 p-3 bg-ink-100/40">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500">
-              Your subscription
-            </div>
-            {subLoading ? (
-              <div className="text-sm text-ink-500 mt-1">Loading…</div>
-            ) : subscription ? (
-              <div className="mt-1">
-                <div className="text-sm font-semibold text-ink-900 capitalize">
-                  Status: {subscription.status}
-                  {subscription.cancel_at_period_end &&
-                    " · cancels at period end"}
-                </div>
-                <div className="text-[11px] text-ink-500 mt-0.5 tp-num">
-                  {subscription.current_period_end
-                    ? `Renews ${new Date(
-                        subscription.current_period_end,
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}`
-                    : "No active period"}
-                </div>
-                {subscription.price_id && (
-                  <div className="text-[10px] text-ink-400 mt-0.5 tp-mono">
-                    {subscription.price_id}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-sm text-ink-700 mt-1">
-                No subscription on file yet.
-              </div>
-            )}
-          </div>
-        </div>
+        <SubscriptionCard />
+      </Section>
+
+      {/* Security — change password for the signed-in operator. */}
+      <Section icon={<Lock className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Security">
+        <ChangePasswordCard />
       </Section>
 
       {/* Account */}

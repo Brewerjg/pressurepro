@@ -10,6 +10,7 @@ import { AppShell } from "@/components/AppShell";
 // first few seconds (Home, the tab-bar destinations, Auth). Splitting these
 // adds spinner flicker without saving real bytes.
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Test from "./pages/Test";
 import SignOut from "./pages/SignOut";
@@ -104,6 +105,7 @@ const App = () => (
         <Routes>
           <Route path="/test" element={<Test />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signout" element={<SignOut />} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           {/* Public — customer-facing flows, no auth required */}

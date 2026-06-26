@@ -59,13 +59,25 @@ export interface Tier {
   yearly: { priceId: string; price: number; saveLabel: string };
   /** Short bullet list shown on the pricing card. */
   highlights: string[];
-  /** Seat count surfaced in the card subtitle. */
+  /** Number of user seats INCLUDED in the base price. */
   seats: number;
   /**
-   * Stripe Connect application fee percentage applied to every customer-facing
-   * charge that flows through the operator's Stripe account (plan billing,
-   * quote deposits, per-visit charges). Base (Pay-as-you-go) pays 1.5%; paid
-   * tiers pay 0%. See feeForTier() for the runtime resolver.
+   * Price per ADDITIONAL seat beyond `seats`, in whole dollars/month. null =
+   * extra seats not offered (the tier is capped at `seats`). Currently only
+   * Crew sells add-on seats (+$10/seat beyond the 5 included).
+   */
+  extraSeatPrice: number | null;
+  /**
+   * Max route stops the operator may schedule per week. null = unlimited.
+   * Enforced via canScheduleMoreStops()/weeklyStopLimitFor() against the
+   * current week's route_stops count.
+   */
+  weeklyStopLimit: number | null;
+  /**
+   * Stripe Connect application fee percentage on customer-facing charges.
+   * As of the 2026 pricing reset this is 0% on EVERY tier — TurfPro's revenue
+   * is subscription-only and operators keep 100% of customer payments.
+   * See feeForTier() for the runtime resolver.
    */
   applicationFeePercent: number;
 }
@@ -80,19 +92,20 @@ export const TIERS: Tier[] = [
   {
     id: "payg",
     name: "Base",
-    tagline: "Low base — pay only when you earn",
-    monthly: { priceId: "turfpro_payg_monthly", price: 5 },
-    yearly: { priceId: "turfpro_payg_yearly", price: 50, saveLabel: "Save $10" },
+    tagline: "Low flat price — keep 100%",
+    monthly: { priceId: "turfpro_payg_monthly", price: 8 },
+    yearly: { priceId: "turfpro_payg_yearly", price: 80, saveLabel: "Save $16" },
     seats: 1,
-    // Base tier's Stripe Connect application fee (the % TurfPro keeps on each
-    // customer→operator charge). Paid tiers below are 0%.
+    extraSeatPrice: null,
+    weeklyStopLimit: 25,
     highlights: [
-      "$5 monthly base",
-      "1.5% on processed payments",
+      "$8/mo flat",
+      "0% payout fees — keep 100%",
+      "1 user seat",
+      "Up to 25 stops / week",
       "All operator features",
-      "Best for trials + cash-heavy ops",
     ],
-    applicationFeePercent: 1.5,
+    applicationFeePercent: 0,
   },
   {
     id: "solo",
@@ -101,10 +114,12 @@ export const TIERS: Tier[] = [
     monthly: { priceId: "turfpro_solo_monthly", price: 15 },
     yearly: { priceId: "turfpro_solo_yearly", price: 150, saveLabel: "Save $30" },
     seats: 1,
+    extraSeatPrice: null,
+    weeklyStopLimit: 50,
     highlights: [
       "1 user seat",
       "Up to 50 stops / week",
-      "Customer & property records",
+      "0% payout fees — keep 100%",
       "Photo before/after, chemical log",
       "Weather & spray-day planner (beta)",
     ],
@@ -114,17 +129,18 @@ export const TIERS: Tier[] = [
     id: "crew",
     name: "Crew",
     tagline: "Multi-truck operation",
-    monthly: { priceId: "turfpro_crew_monthly", price: 49 },
-    yearly: { priceId: "turfpro_crew_yearly", price: 490, saveLabel: "Save $98" },
+    monthly: { priceId: "turfpro_crew_monthly", price: 59 },
+    yearly: { priceId: "turfpro_crew_yearly", price: 590, saveLabel: "Save $118" },
     seats: 5,
+    extraSeatPrice: 10,
+    weeklyStopLimit: null,
     highlights: [
-      "5 user seats",
+      "5 seats included (+$10/seat after)",
       "Unlimited stops",
       "Multi-truck routing & route optimization (beta)",
       "QuickBooks sync (coming soon)",
       "Recurring billing + maintenance plans",
       "Fleet view, crew calendar & report export",
-      "Everything in Solo",
     ],
     applicationFeePercent: 0,
   },
@@ -143,20 +159,38 @@ const PRICE_TO_TIER: Record<string, TierId> = {
 };
 
 /**
- * Resolve the application-fee percentage for a given tier id. Used by:
- *   - create-plan-subscription / create-checkout-session edge fns when
- *     setting `application_fee_amount` on Stripe Connect charges
- *   - Reports page when computing "TurfPro fees this month" + Solo upgrade
- *     callout math
+ * Resolve the application-fee percentage for a given tier id.
  *
- * Operators with no `subscriptions` row at all are treated as Base (1.5%).
- * This matches the post-trial state where the trial expired and they
- * never picked a tier — the fee model becomes their default.
+ * As of the 2026 pricing reset, EVERY tier is 0% — TurfPro takes no
+ * application fee on customer→operator payments; revenue is subscription-only.
+ * Kept as a function (rather than inlining 0) so a future fee can be
+ * reintroduced in one place, and so existing callers don't change.
  */
 export function feeForTier(tierId: TierId | null | undefined): number {
-  if (!tierId) return 1.5;
+  if (!tierId) return 0;
   const tier = TIERS.find((t) => t.id === tierId);
-  return tier?.applicationFeePercent ?? 1.5;
+  return tier?.applicationFeePercent ?? 0;
+}
+
+/**
+ * Weekly route-stop limit for a tier (null = unlimited). Operators with no
+ * resolved tier fall back to the Base limit — the most restrictive paid floor.
+ */
+export function weeklyStopLimitFor(tierId: TierId | null | undefined): number | null {
+  const tier = tierId ? TIERS.find((t) => t.id === tierId) : undefined;
+  return (tier ?? getTier("payg")).weeklyStopLimit;
+}
+
+/**
+ * True when `currentWeekStops` is below the tier's weekly limit (or the tier
+ * is unlimited). Used to gate scheduling more stops + drive the upgrade prompt.
+ */
+export function canScheduleMoreStops(
+  tierId: TierId | null | undefined,
+  currentWeekStops: number,
+): boolean {
+  const limit = weeklyStopLimitFor(tierId);
+  return limit === null || currentWeekStops < limit;
 }
 
 export function tierFromPriceId(priceId: string | null | undefined): TierId | null {

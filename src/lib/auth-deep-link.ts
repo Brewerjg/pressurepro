@@ -41,8 +41,33 @@
 // web build does not require the plugin to be installed.
 
 import { Capacitor } from "@capacitor/core";
+import { supabase } from "@/integrations/supabase/client";
 
 let installed = false;
+
+// Pull an OAuth `?code=...` (PKCE) out of the callback URL, if present.
+function extractCode(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.searchParams.get("code");
+  } catch {
+    return null;
+  }
+}
+
+// Pull access/refresh tokens out of the URL hash (implicit/recovery flows
+// deliver them as `#access_token=...&refresh_token=...`).
+function extractHashTokens(
+  url: string,
+): { access_token: string; refresh_token: string } | null {
+  const hashIndex = url.indexOf("#");
+  if (hashIndex === -1) return null;
+  const params = new URLSearchParams(url.slice(hashIndex + 1));
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+  if (access_token && refresh_token) return { access_token, refresh_token };
+  return null;
+}
 
 export async function installAuthDeepLinkListener(): Promise<void> {
   if (installed) return;
@@ -52,7 +77,7 @@ export async function installAuthDeepLinkListener(): Promise<void> {
   const moduleSpecifier = "@capacitor/app";
   try {
     const mod: any = await import(/* @vite-ignore */ moduleSpecifier);
-    await mod.App.addListener("appUrlOpen", (event: { url: string }) => {
+    await mod.App.addListener("appUrlOpen", async (event: { url: string }) => {
       // Defensive: only react to our own scheme.
       if (!event?.url) return;
 
@@ -63,16 +88,67 @@ export async function installAuthDeepLinkListener(): Promise<void> {
 
       if (!isAuthCallback) return;
 
-      // No client-side work needed for the basic sign-up confirmation
-      // flow — Supabase already updated the user record server-side,
-      // and `onAuthStateChange` in AuthContext picks up the session
-      // on the next refresh. The OS has already brought us back to
-      // the foreground by the time this listener fires.
+      // Close the system browser (Google OAuth opens it via
+      // @capacitor/browser) so the app is in the foreground when we finish.
+      try {
+        const browserMod: any = await import(
+          /* @vite-ignore */ "@capacitor/browser"
+        );
+        await browserMod.Browser.close();
+      } catch {
+        // Browser plugin may not be present / nothing open — ignore.
+      }
+
+      // --- OAuth (Google) PKCE flow -------------------------------------
+      // The callback carries `?code=...`. Exchange it for a session so the
+      // native session is established; AuthContext's onAuthStateChange then
+      // fires and the app navigates home.
+      const code = extractCode(event.url);
+      if (code) {
+        try {
+          // supabase-js accepts the full URL or the bare code; pass the URL
+          // so it can also read the PKCE verifier it stored at start.
+          const { error } = await supabase.auth.exchangeCodeForSession(
+            event.url,
+          );
+          if (error) {
+            console.warn(
+              "[auth-deep-link] exchangeCodeForSession failed:",
+              error,
+            );
+          }
+        } catch (err) {
+          console.warn("[auth-deep-link] exchangeCodeForSession threw:", err);
+        }
+        return;
+      }
+
+      // --- Implicit / recovery token flow -------------------------------
+      // Some flows deliver tokens in the URL hash instead of a code.
+      // Establish the session directly from them.
+      const tokens = extractHashTokens(event.url);
+      if (tokens) {
+        try {
+          const { error } = await supabase.auth.setSession(tokens);
+          if (error) {
+            console.warn("[auth-deep-link] setSession failed:", error);
+          }
+        } catch (err) {
+          console.warn("[auth-deep-link] setSession threw:", err);
+        }
+        return;
+      }
+
+      // --- Plain confirm flow (sign-up email) ---------------------------
+      // No code or tokens to process — Supabase already confirmed the
+      // account server-side and onAuthStateChange picks up the session on
+      // the next refresh. The OS has foregrounded us already.
       //
-      // TODO: if we add magic-link or OAuth-code callback flows, parse
-      // `event.url` (hash + query) here and call
-      // `supabase.auth.exchangeCodeForSession(...)` or
-      // `supabase.auth.setSession(...)` as appropriate.
+      // NOTE: `?type=recovery` (our password-reset deep link) currently has
+      // no in-app screen on native — there is no /reset-password equivalent
+      // wired into a native route here. The recovery session will still be
+      // established (via the hash-token path above when present); a future
+      // pass could route the user to an in-app new-password form.
     });
   } catch (err) {
     console.warn(

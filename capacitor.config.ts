@@ -15,7 +15,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // mirrors the PressurePro precedent.
 
 const config: CapacitorConfig = {
-  appId: "tech.falcon.turfpro",
+  appId: "com.turfpro.beta",
   appName: "TurfPro",
   webDir: "dist",
   server: {

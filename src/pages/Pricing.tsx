@@ -378,9 +378,10 @@ export default function Pricing() {
 }
 
 // ---------------------------------------------------------------------------
-// TierCard — extracted so the per-tier rendering branches (PAYG vs Crew vs
-// the rest) stay readable. PAYG and Crew both have distinct visual treatments;
-// Solo uses the default `tp-card` look.
+// TierCard — extracted so the per-tier rendering stays readable. All tiers
+// share the same flat-price layout; Crew gets the bronze-gradient hero
+// treatment and Base/Solo use the default `tp-card` look. Base (payg) keeps a
+// quieter "Best for starting out" chip but is otherwise a normal flat tier.
 
 interface TierCardProps {
   tier: Tier;
@@ -438,45 +439,29 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           </p>
         </div>
         <div className="text-right shrink-0">
-          {isPayg ? (
-            // PAYG reads as a low base + the 1.5% line carrying the real
-            // variable cost: "$5/mo + 1.5% per payment".
-            <>
-              <div className="font-display font-bold text-[30px] leading-none text-ink-900">
-                ${cycleData.price}
-                <span className="text-[13px] font-semibold text-ink-500 ml-0.5">
-                  /{cycle === "monthly" ? "mo" : "yr"}
-                </span>
-              </div>
-              <span className="text-[11px] font-extrabold text-bronze-600 whitespace-nowrap">
-                + 1.5% per payment
-              </span>
-            </>
-          ) : (
-            <>
-              <div
-                className={cn(
-                  "font-display font-bold text-[30px] leading-none",
-                  isFeatured ? "text-white" : "text-ink-900",
-                )}
-              >
-                ${cycleData.price}
-              </div>
-              <span
-                className={cn(
-                  "text-[11px] font-semibold",
-                  isFeatured ? "text-[#cfead8]" : "text-ink-500",
-                )}
-              >
-                /{cycle === "monthly" ? "mo" : "yr"}
-              </span>
-            </>
-          )}
+          {/* Every tier (Base included) is a flat price with a 0% payout
+              fee, so they all render the same: "$<price> /mo|/yr". */}
+          <div
+            className={cn(
+              "font-display font-bold text-[30px] leading-none",
+              isFeatured ? "text-white" : "text-ink-900",
+            )}
+          >
+            ${cycleData.price}
+          </div>
+          <span
+            className={cn(
+              "text-[11px] font-semibold",
+              isFeatured ? "text-[#cfead8]" : "text-ink-500",
+            )}
+          >
+            /{cycle === "monthly" ? "mo" : "yr"}
+          </span>
         </div>
       </div>
 
-      {/* Yearly savings label — never applies to PAYG (saveLabel is ""). */}
-      {cycle === "yearly" && !isPayg && tier.yearly.saveLabel && (
+      {/* Yearly savings label — shown for any tier that defines one. */}
+      {cycle === "yearly" && tier.yearly.saveLabel && (
         <p
           className={cn(
             "text-[12px] font-extrabold -mt-2 mb-3",
@@ -507,15 +492,6 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           </li>
         ))}
       </ul>
-
-      {/* PAYG-only callout — explains the Stripe-Connect-vs-cash distinction
-          that subscription tiers don't have to surface. */}
-      {isPayg && (
-        <p className="text-[11px] italic text-ink-500 mb-4 leading-relaxed">
-          Need to charge cards? Connect Stripe in Settings. Cash-only
-          operators pay just the base — no transaction fees.
-        </p>
-      )}
 
       {isCurrent ? (
         <button

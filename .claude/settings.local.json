@@ -1,7 +1,32 @@
 {
   "permissions": {
     "allow": [
-      "Bash(awk '{print $9}')"
+      "Bash(awk '{print $9}')",
+      "Bash(git check-ignore *)",
+      "PowerShell(npx tsc --noEmit; \"EXIT: $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(npx tsc --noEmit; \"EXIT=$LASTEXITCODE\")",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx supabase@latest secrets list --project-ref dkksryutecjbyuscpxdb)",
+      "Bash(npx supabase@latest secrets set STRIPE_CONNECT_ENABLED=true --project-ref dkksryutecjbyuscpxdb)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(npm uninstall *)",
+      "Bash(npm audit *)",
+      "Bash(npm install *)",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -Last 30; \"TSC_EXIT=$LASTEXITCODE\")",
+      "PowerShell(npm run *)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-reset-pw.sql)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-subs.sql)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-verify.sql)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-photos.sql)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-bucket.sql)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-pol.sql)",
+      "Bash(npx supabase@latest db query --linked -f .tmp-who.sql)",
+      "PowerShell(npx tsc --noEmit; \"exit: $LASTEXITCODE\")"
     ],
     "deny": [],
     "ask": [],

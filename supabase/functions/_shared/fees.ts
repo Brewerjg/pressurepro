@@ -6,12 +6,11 @@
 // The contract MUST stay in sync with `feeForTier()` and `PRICE_TO_TIER` in
 // src/lib/stripe.ts. If you change the mapping in one place, update both.
 //
-// Fee model:
-//   - Base tier (id "payg") pays 1.5% on every Connect-routed charge.
-//   - Solo / Crew (paid tiers) pay 0%.
-//   - No `subscriptions` row at all → treated as Base (1.5%). Since paid-tier
-//     subscriptions are sold via the mobile app store (not Stripe), the
-//     default for operators is Base — which is exactly the 1.5% we collect.
+// Fee model (2026 pricing reset):
+//   - EVERY tier is 0% — TurfPro takes no application fee on customer→operator
+//     charges. Revenue is subscription-only; operators keep 100% of payments.
+//   - Kept as a resolver (not inlined) so a fee could be reintroduced in one
+//     place. Mirror of feeForTier() in src/lib/stripe.ts.
 //
 // Connect routing is gated by the STRIPE_CONNECT_ENABLED env var (see
 // `connectEnabled()` below). When that's false, Connect logic short-circuits
@@ -25,13 +24,13 @@ export type TierId = "payg" | "solo" | "crew";
  * `feeForTier()` in src/lib/stripe.ts exactly.
  */
 export function feeForTier(tierId: TierId | null | undefined): number {
-  if (!tierId) return 1.5;
+  if (!tierId) return 0;
   const mapping: Record<TierId, number> = {
-    payg: 1.5,
+    payg: 0,
     solo: 0,
     crew: 0,
   };
-  return mapping[tierId] ?? 1.5;
+  return mapping[tierId] ?? 0;
 }
 
 /**

@@ -4,7 +4,7 @@ android {
     namespace "tech.falcon.turfpro"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "tech.falcon.turfpro"
+        applicationId "com.turfpro.v1"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

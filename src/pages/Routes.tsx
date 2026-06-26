@@ -38,6 +38,14 @@ import {
 import WinterRoutesBanner from "@/components/season/WinterRoutesBanner";
 import { useSeason } from "@/lib/season";
 import { APP_ID } from "@/lib/app-context";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { weeklyStopLimitFor } from "@/lib/stripe";
+import {
+  planOccursOn,
+  plannedStopsForDate,
+  type PlannedStop,
+  type SchedulablePlan,
+} from "@/lib/planned-jobs";
 
 // =====================================================================
 // Date utilities — local-time week math. We deliberately avoid date-fns
@@ -83,12 +91,6 @@ const MONTH_SHORT = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-// Convert a Mon-indexed offset (0..6) to a SQL day_of_week (0=Sun..6=Sat).
-function monIdxToSqlDow(monIdx: number): number {
-  // monIdx 0=Mon -> 1, 1=Tue -> 2, ..., 5=Sat -> 6, 6=Sun -> 0
-  return (monIdx + 1) % 7;
-}
-
 const SKIP_REASONS: { value: SkipReason; label: string; Icon: typeof CloudRain }[] = [
   { value: "rain",            label: "Rain",              Icon: CloudRain },
   { value: "drought",         label: "Drought",           Icon: Sun },
@@ -107,6 +109,7 @@ export default function RoutesPage() {
   const qc = useQueryClient();
 
   const { isWinter } = useSeason();
+  const { tier } = useSubscriptionStatus();
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
   const weekDays = useMemo(
@@ -180,6 +183,32 @@ export default function RoutesPage() {
     },
   });
 
+  // -----------------------------------------------------------------
+  // Active maintenance plans — the source for PLANNED (not-yet-persisted)
+  // job display. We surface these via the recurrence engine on days that
+  // have no real `routes` row. We pull the full set of fields planOccursOn
+  // needs; new columns (frequency/season_pause/plan_kind/schedule_anchor_
+  // date) are read through the `(supabase as any)` cast like elsewhere.
+  // -----------------------------------------------------------------
+  const plansQuery = useQuery({
+    queryKey: ["routes-active-plans", user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<SchedulablePlan[]> => {
+      if (!user) return [];
+      const { data, error } = await (supabase as any)
+        .from("maintenance_plans")
+        .select(
+          "id, customer_id, property_id, address, customer_name, services, amount, day_of_week, frequency, season_pause, plan_kind, status, schedule_anchor_date, start_date",
+        )
+        .eq("user_id", user.id)
+        .eq("app", APP_ID)
+        .eq("status", "active");
+      if (error) throw error;
+      return (data ?? []) as SchedulablePlan[];
+    },
+  });
+  const activePlans = useMemo(() => plansQuery.data ?? [], [plansQuery.data]);
+
   // The week query returns every route the operator owns. When a crew
   // chip is active we narrow to routes whose crew_id matches; "all"
   // surfaces everything. Multiple routes per date are possible once
@@ -197,10 +226,33 @@ export default function RoutesPage() {
     return m;
   }, [weekRoutesQuery.data, selectedCrewId]);
 
-  // Count per visible day = stops on that day's route (0 if no route).
+  // -----------------------------------------------------------------
+  // Weekly stop-limit enforcement. The visible week IS the current
+  // Mon–Sun week (the page always renders startOfWeekMonday(today)), so
+  // we can count the operator's CURRENT-WEEK persisted stops straight
+  // from weekRoutesQuery — no extra round-trip. The limit is per
+  // OPERATOR, so we sum across every crew's routes (not the crew-
+  // filtered routesByDate). `weekRoutesQuery` is already scoped to
+  // user_id + this week's date range; the routes table has no `app`
+  // column (the discriminator was only added to quotes/plans/etc.), so
+  // we match the existing query's user+date filter exactly.
+  const currentWeekStops = useMemo(
+    () =>
+      (weekRoutesQuery.data ?? []).reduce(
+        (sum, r) => sum + (r.route_stops?.length ?? 0),
+        0,
+      ),
+    [weekRoutesQuery.data],
+  );
+  const weeklyStopLimit = weeklyStopLimitFor(tier); // null = unlimited
+
+  // Count per visible day. When a real route exists we count its stops;
+  // otherwise we show the PLANNED count derived from active plans + the
+  // recurrence engine so empty days still reflect what's scheduled.
   const dayCounts = weekDays.map((d) => {
     const r = routesByDate.get(ymd(d));
-    return r?.route_stops?.length ?? 0;
+    if (r) return r.route_stops?.length ?? 0;
+    return plannedStopsForDate(activePlans, d, { isWinter }).length;
   });
 
   const selectedRoute = routesByDate.get(ymd(selectedDate));
@@ -208,6 +260,17 @@ export default function RoutesPage() {
     const s = selectedRoute?.route_stops ?? [];
     return [...s].sort((a, b) => a.sort_order - b.sort_order);
   }, [selectedRoute]);
+
+  // Planned (ghost) stops for the selected day — only meaningful when there's
+  // no persisted route. Rendered READ-ONLY (no drag/done/skip); tapping
+  // "Start route" is what persists them.
+  const plannedStops = useMemo(
+    () =>
+      selectedRoute
+        ? []
+        : plannedStopsForDate(activePlans, selectedDate, { isWinter }),
+    [selectedRoute, activePlans, selectedDate, isWinter],
+  );
 
   // Local mirror of the stop list so drag-to-reorder can update the UI
   // optimistically before the bulk sort_order write completes. We
@@ -338,18 +401,20 @@ export default function RoutesPage() {
       const existing = selectedRoute;
       const dateStr = ymd(selectedDate);
 
-      // Already in_progress / complete -> just navigate.
-      if (existing && existing.status === "in_progress") {
-        return { id: existing.id, freshlyCreated: false, wasOptimized: false };
-      }
-
-      // Planned -> flip to in_progress.
-      if (existing && existing.status === "planned") {
-        const { error } = await (supabase as any)
-          .from("routes")
-          .update({ status: "in_progress", started_at: new Date().toISOString() })
-          .eq("id", existing.id);
-        if (error) throw error;
+      // A route already exists for this day. Only `planned` flips to
+      // in_progress (Start). Every other existing status — in_progress
+      // (Resume) or complete (Review, opened read-only) — just navigates
+      // WITHOUT mutating status. We must never fall through to creation
+      // when a route exists, or we'd recreate/restart it.
+      if (existing) {
+        // Planned -> flip to in_progress.
+        if (existing.status === "planned") {
+          const { error } = await (supabase as any)
+            .from("routes")
+            .update({ status: "in_progress", started_at: new Date().toISOString() })
+            .eq("id", existing.id);
+          if (error) throw error;
+        }
         return { id: existing.id, freshlyCreated: false, wasOptimized: false };
       }
 
@@ -367,19 +432,50 @@ export default function RoutesPage() {
               ? crews[0].id
               : null;
 
-      // No route yet -> build one from active plans for this weekday.
+      // No route yet -> build one from active plans for this date.
+      // CRITICAL consistency: we filter through planOccursOn (the SAME engine
+      // that drives the planned preview + day counts) rather than a bare
+      // day_of_week match, so the route we CREATE matches exactly what the
+      // operator was previewing. We over-fetch all active plans and let the
+      // pure engine apply day-of-week + biweekly/monthly phasing + season
+      // pause locally.
       // TODO(per-property crew assignment): once `properties.crew_id` lands,
-      // narrow this query by crew. v1 seeds ALL active plans regardless of
-      // crew — the operator can drag stops between crews later.
-      const sqlDow = monIdxToSqlDow(selectedIdx);
-      const { data: plans, error: plansErr } = await (supabase as any)
+      // narrow this by crew. v1 seeds ALL matching plans regardless of crew —
+      // the operator can drag stops between crews later.
+      const { data: allActivePlans, error: plansErr } = await (supabase as any)
         .from("maintenance_plans")
-        .select("id, customer_id, property_id, address, customer_name, services, amount, day_of_week, status")
+        .select(
+          "id, customer_id, property_id, address, customer_name, services, amount, day_of_week, frequency, season_pause, plan_kind, status, schedule_anchor_date, start_date",
+        )
         .eq("user_id", user.id)
         .eq("app", APP_ID)
-        .eq("status", "active")
-        .eq("day_of_week", sqlDow);
+        .eq("status", "active");
       if (plansErr) throw plansErr;
+      const plans = ((allActivePlans ?? []) as SchedulablePlan[]).filter((p) =>
+        planOccursOn(p, selectedDate, { isWinter }),
+      );
+
+      // -------------------------------------------------------------
+      // Per-tier WEEKLY STOP LIMIT enforcement. Block (don't silently
+      // drop) when creating this route would push the operator past
+      // their tier's weekly allowance. Unlimited tiers (Crew →
+      // weeklyStopLimit null) are never blocked. We re-read the limit
+      // here off the same `tier` the header uses; the count comes from
+      // the freshly-loaded weekRoutesQuery snapshot. This route doesn't
+      // exist yet (we're in the no-existing-route branch), so none of
+      // currentWeekStops belongs to it — adding plans.length is correct.
+      if (weeklyStopLimit !== null && plans.length > 0) {
+        const remaining = weeklyStopLimit - currentWeekStops;
+        if (plans.length > remaining) {
+          const tierName = tier === "solo" ? "Solo" : "Base";
+          throw new Error(
+            `WEEKLY_STOP_LIMIT:You've hit your weekly stop limit ` +
+              `(${weeklyStopLimit} on ${tierName}). This route would add ` +
+              `${plans.length} stop${plans.length === 1 ? "" : "s"}, but you ` +
+              `have ${Math.max(0, remaining)} left this week. Upgrade to add more.`,
+          );
+        }
+      }
 
       const { data: routeRow, error: routeErr } = await (supabase as any)
         .from("routes")
@@ -600,6 +696,18 @@ export default function RoutesPage() {
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
             Week of {MONTH_SHORT[weekStart.getMonth()]} {weekStart.getDate()}
+            {weeklyStopLimit !== null && (
+              <span
+                className={cn(
+                  "ml-2 normal-case tracking-normal font-semibold",
+                  currentWeekStops >= weeklyStopLimit
+                    ? "text-destructive"
+                    : "text-ink-400",
+                )}
+              >
+                {currentWeekStops} / {weeklyStopLimit} stops
+              </span>
+            )}
           </div>
           <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight flex items-center gap-2">
             Routes
@@ -761,16 +869,24 @@ export default function RoutesPage() {
         <div className="flex items-end justify-between mb-2.5">
           <div>
             <div className="tp-display text-[18px] font-bold text-ink-900">
-              {WEEKDAY_NAMES[selectedIdx]} · {stops.length} stop{stops.length === 1 ? "" : "s"}
+              {WEEKDAY_NAMES[selectedIdx]} ·{" "}
+              {selectedRoute ? stops.length : plannedStops.length} stop
+              {(selectedRoute ? stops.length : plannedStops.length) === 1 ? "" : "s"}
             </div>
             <div className="text-xs text-ink-500 mt-0.5">
-              {stops.length === 0 ? (
+              {selectedRoute ? (
+                stops.length === 0 ? (
+                  "Nothing scheduled"
+                ) : (
+                  <>
+                    {counts.done} done · {counts.in_progress} active · {counts.pending} pending
+                    {counts.skipped > 0 ? ` · ${counts.skipped} skipped` : ""}
+                  </>
+                )
+              ) : plannedStops.length === 0 ? (
                 "Nothing scheduled"
               ) : (
-                <>
-                  {counts.done} done · {counts.in_progress} active · {counts.pending} pending
-                  {counts.skipped > 0 ? ` · ${counts.skipped} skipped` : ""}
-                </>
+                `${plannedStops.length} planned · tap Start route to begin`
               )}
             </div>
           </div>
@@ -835,6 +951,30 @@ export default function RoutesPage() {
               : "Couldn't optimize the route."}
           </p>
         )}
+        {startRouteMutation.isError &&
+          (() => {
+            const msg =
+              startRouteMutation.error instanceof Error
+                ? startRouteMutation.error.message
+                : "Couldn't start the route.";
+            // Weekly-limit errors are tagged so we can surface an upgrade CTA.
+            const isLimit = msg.startsWith("WEEKLY_STOP_LIMIT:");
+            const text = isLimit ? msg.slice("WEEKLY_STOP_LIMIT:".length) : msg;
+            return (
+              <div className="mx-4 mb-2 rounded-xl bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+                <span>{text}</span>
+                {isLimit && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pricing")}
+                    className="ml-1 font-bold underline"
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
         {/* Progress + collected card */}
         <div className="bg-card border border-ink-100 rounded-[14px] px-3.5 py-3 flex gap-4 items-center shadow-card">
@@ -912,11 +1052,31 @@ export default function RoutesPage() {
           </div>
         )}
 
-        {!weekRoutesQuery.isLoading && stops.length === 0 && (
-          <EmptyDay
-            hasRoute={!!selectedRoute}
-            onCreate={() => navigate("/plans/new")}
-          />
+        {!weekRoutesQuery.isLoading &&
+          stops.length === 0 &&
+          (selectedRoute || plannedStops.length === 0) && (
+            <EmptyDay
+              hasRoute={!!selectedRoute}
+              onCreate={() => navigate("/plans/new")}
+            />
+          )}
+
+        {/* Planned (ghost) preview — only when there's no persisted route.
+            READ-ONLY: no drag, no done/skip. The "Start route" CTA above is
+            what persists these (it runs the SAME plans through the SAME
+            recurrence engine, so this preview == the created route). */}
+        {!weekRoutesQuery.isLoading && !selectedRoute && plannedStops.length > 0 && (
+          <div className="space-y-2">
+            <div className="px-1 pb-0.5 text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+              Planned for {WEEKDAY_NAMES[selectedIdx]}
+            </div>
+            {plannedStops.map((s) => (
+              <PlannedStopCard key={s.id} stop={s} />
+            ))}
+            <p className="pt-1 text-center text-[11px] text-ink-400">
+              Tap Start route to optimize and begin these stops.
+            </p>
+          </div>
         )}
 
         <SortableList stops={stops} onReorder={handleReorder}>
@@ -1191,6 +1351,38 @@ function StopCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Read-only card for a PLANNED (not-yet-persisted) stop. Mirrors StopCard's
+// layout but strips every action (no drag handle, no done/skip) and uses a
+// neutral dot, signalling that nothing is committed until Start route.
+function PlannedStopCard({ stop }: { stop: PlannedStop }) {
+  return (
+    <div className="rounded-[14px] border border-dashed border-ink-200 bg-card flex items-center gap-3 px-3 py-3">
+      <div className="h-[30px] w-[30px] rounded-full bg-ink-50 border-[1.5px] border-dashed border-ink-300 text-ink-400 grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
+        {stop.sort_order / 10}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[14.5px] font-semibold text-ink-900 truncate">
+            {stop.address_snapshot ?? "(no address)"}
+          </div>
+          <div className="tp-num text-[13.5px] font-bold whitespace-nowrap text-ink-700">
+            ${stop.fee_cents != null ? Math.round(stop.fee_cents / 100) : "—"}
+          </div>
+        </div>
+        <div className="text-[11.5px] text-ink-500 mt-px flex items-center gap-1.5">
+          <span className="truncate">{stop.customer_name_snapshot ?? "—"}</span>
+          {stop.services.length > 0 && (
+            <>
+              <span className="text-ink-300">·</span>
+              <span className="truncate">{stop.services.join(" + ")}</span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

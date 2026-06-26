@@ -34,6 +34,7 @@ import DayDetailSheet from "@/components/weather/DayDetailSheet";
 import { useSeason } from "@/lib/season";
 import { TWILIO_ENABLED } from "@/lib/feature-flags";
 import { APP_ID } from "@/lib/app-context";
+import { plannedStopsForDate, type SchedulablePlan } from "@/lib/planned-jobs";
 
 // Ported from design/turf/project/screen-home.jsx. MRR/hero card numbers stay
 // hardcoded until the billing data layer lands; the forecast strip is now live
@@ -173,24 +174,92 @@ export default function Home() {
 
       if (custError) throw custError;
 
-      // Get active plans count
-      const { count: planCount, error: planError } = await supabase
+      // Pull the plan rows (not just a count) so we can compute MRR the SAME
+      // way Reports.tsx does: per-month value of an active plan is
+      // amount / interval_months, summed across active plans. We select only
+      // the billing fields we need to keep the payload small.
+      const { data: planRows, error: planError } = await supabase
         .from("maintenance_plans")
-        .select("*", { count: "exact", head: true })
+        .select("amount, interval_months, status")
         .eq("user_id", user!.id)
         .eq("app", APP_ID);
 
       if (planError) throw planError;
 
+      const plans = planRows ?? [];
+      // Active plans drive both the count and MRR (mirrors Reports.tsx).
+      const activePlans = plans.filter((p) => p.status === "active");
+      const planCount = activePlans.length;
+
+      // monthlyValue — identical to Reports.tsx: dollars / interval_months.
+      const mrr = activePlans.reduce((sum, p) => {
+        if (!p.amount || !p.interval_months) return sum;
+        return sum + Number(p.amount) / Number(p.interval_months);
+      }, 0);
+
+      // Avg/customer = MRR spread across active plans (matches Reports' hero
+      // stat, which divides mrr by activePlans). Churn needs plan status
+      // history Home doesn't fetch, so it stays 0 here — the reported bug is
+      // MRR, and Reports remains the source of truth for churn.
+      const avgPerCustomer = planCount > 0 ? Math.round(mrr / planCount) : 0;
+
       return {
         customerCount: customerCount || 0,
-        planCount: planCount || 0,
-        // These would need real calculation from billing data
-        mrr: 0,
+        planCount,
+        mrr: Math.round(mrr),
         churn: 0,
-        avgPerCustomer: 0,
+        avgPerCustomer,
       };
     },
+  });
+
+  // Today's route — mirrors how Routes.tsx queries the `routes` table
+  // (user_id + date = today's yyyy-mm-dd). We only need to know whether a row
+  // exists (and its status) so Home can surface a "Resume today's route" link
+  // instead of the empty state. Home never creates or mutates routes.
+  const { data: todayRoute } = useQuery({
+    queryKey: ["home-today-route", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const t = new Date();
+      const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+      const { data, error } = await (supabase as any)
+        .from("routes")
+        .select("id, status")
+        .eq("user_id", user!.id)
+        .eq("date", today)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; status: string } | null;
+    },
+  });
+
+  // Active plans — feed the recurrence engine so that, when no route row
+  // exists for today, we can still surface today's PLANNED job count/preview
+  // instead of a bare empty state. Home never creates/mutates routes; the
+  // CTA just links into Routes where Start route persists. Same field set +
+  // `(supabase as any)` pattern as Routes.tsx.
+  const { data: activePlans } = useQuery({
+    queryKey: ["home-active-plans", user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<SchedulablePlan[]> => {
+      const { data, error } = await (supabase as any)
+        .from("maintenance_plans")
+        .select(
+          "id, customer_id, property_id, address, customer_name, services, amount, day_of_week, frequency, season_pause, plan_kind, status, schedule_anchor_date, start_date",
+        )
+        .eq("user_id", user!.id)
+        .eq("app", APP_ID)
+        .eq("status", "active");
+      if (error) throw error;
+      return (data ?? []) as SchedulablePlan[];
+    },
+  });
+
+  // Planned jobs for TODAY (local date) via the recurrence engine. Only used
+  // when there's no persisted route row for today.
+  const plannedToday = plannedStopsForDate(activePlans ?? [], new Date(), {
+    isWinter,
   });
 
   const isDemo = profile?.is_demo === true;
@@ -310,8 +379,87 @@ export default function Home() {
             </Link>
           </div>
         </section>
+      ) : todayRoute ? (
+        // A route row already exists for today — surface a resume/start link
+        // into Routes rather than the empty state. We never mutate the route
+        // from Home; Routes owns the start/resume flow.
+        <section className="mx-4 mb-3">
+          <div className="tp-card p-6 text-center">
+            <MapPin className="h-12 w-12 text-green-700 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-ink-700 mb-1">
+              {todayRoute.status === "complete"
+                ? "Today's route is complete"
+                : todayRoute.status === "in_progress"
+                  ? "Route in progress"
+                  : "Today's route is ready"}
+            </h3>
+            <p className="text-xs text-ink-500 mb-4">
+              {todayRoute.status === "complete"
+                ? "Review today's stops in Routes."
+                : "Pick up where you left off in Routes."}
+            </p>
+            <Link
+              to="/routes"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-bronze-500 text-white rounded-xl text-sm font-semibold hover:bg-bronze-600 transition-colors"
+            >
+              <Play className="h-3.5 w-3.5" />{" "}
+              {todayRoute.status === "complete" ? "Review route" : "Resume today's route"}
+            </Link>
+          </div>
+        </section>
+      ) : plannedToday.length > 0 ? (
+        // No route row yet, but the recurrence engine says jobs are planned
+        // for today — surface the count + a short preview and a CTA into
+        // Routes. Home never persists; Start route (in Routes) does.
+        <section className="mx-4 mb-3">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">
+              Today's route
+            </h2>
+            <span className="text-xs text-ink-500">Planned</span>
+          </div>
+          <div className="tp-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="tp-num text-[22px] font-bold text-ink-900">
+                {plannedToday.length}
+                <span className="text-[13px] text-ink-500 font-medium"> stops</span>
+              </div>
+              <span className="text-[11px] font-semibold text-green-700 bg-green-50 px-2 py-1 rounded-full">
+                From your plans
+              </span>
+            </div>
+            {/* Up-to-three address preview so the operator recognizes the day. */}
+            <div className="space-y-1.5 mb-3.5">
+              {plannedToday.slice(0, 3).map((s, i) => (
+                <div key={s.id} className="flex items-center gap-2.5">
+                  <div className="h-6 w-6 rounded-full bg-ink-100 text-ink-500 grid place-items-center text-[11px] font-bold tp-num">
+                    {i + 1}
+                  </div>
+                  <div className="text-[13px] text-ink-900 truncate">
+                    {s.address_snapshot ?? s.customer_name_snapshot ?? "Stop"}
+                  </div>
+                </div>
+              ))}
+              {plannedToday.length > 3 && (
+                <div className="text-[11px] text-ink-500 pl-[34px]">
+                  +{plannedToday.length - 3} more
+                </div>
+              )}
+            </div>
+            <Link
+              to="/routes"
+              className="w-full rounded-[14px] bg-bronze-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-bronze hover:bg-bronze-600 transition-colors"
+            >
+              <Play className="h-3.5 w-3.5" /> Start today's route
+            </Link>
+          </div>
+        </section>
       ) : (
-        // Empty state for real users with no routes
+        // No route row for today — show the empty state with messaging that
+        // matches the operator's actual setup. The three cases:
+        //   0 customers          -> "Add customers"
+        //   customers but 0 plans -> "Create maintenance plans"
+        //   active plans, no route -> acknowledge plans, point to Routes
         <section className="mx-4 mb-3">
           <div className="tp-card p-6 text-center">
             <MapPin className="h-12 w-12 text-ink-300 mx-auto mb-3" />
@@ -319,15 +467,25 @@ export default function Home() {
             <p className="text-xs text-ink-500 mb-4">
               {stats?.customerCount === 0
                 ? "Add customers to start planning routes"
-                : "Create maintenance plans for your customers to see routes here"
+                : (stats?.planCount ?? 0) > 0
+                  ? `You have ${stats?.planCount} active plan${stats?.planCount === 1 ? "" : "s"}. Head to Routes to start today's route.`
+                  : "Create maintenance plans for your customers to see routes here"
               }
             </p>
             <Link
-              to={stats?.customerCount === 0 ? "/customers" : "/plans"}
+              to={
+                stats?.customerCount === 0
+                  ? "/customers"
+                  : (stats?.planCount ?? 0) > 0
+                    ? "/routes"
+                    : "/plans"
+              }
               className="inline-flex items-center gap-2 px-4 py-2 bg-green-800 text-white rounded-xl text-sm font-semibold hover:bg-green-900 transition-colors"
             >
               {stats?.customerCount === 0 ? (
                 <><Users className="h-4 w-4" /> Add First Customer</>
+              ) : (stats?.planCount ?? 0) > 0 ? (
+                <><MapPin className="h-4 w-4" /> Go to Routes</>
               ) : (
                 <><TrendingUp className="h-4 w-4" /> Create Plan</>
               )}

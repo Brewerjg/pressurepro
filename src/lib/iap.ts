@@ -14,6 +14,7 @@
 // into the build graph statically. All SDK access stays behind loadPurchases().
 
 import { Capacitor } from "@capacitor/core";
+import { openExternal } from "@/lib/native-browser";
 
 // RevenueCat product identifiers — these must match the products configured
 // in the RevenueCat dashboard (and the underlying App Store / Play Store
@@ -143,6 +144,46 @@ export async function purchasePackage(pkg: IapPackage): Promise<PurchaseResult> 
     console.warn("[iap] purchasePackage failed:", err);
     return { status: "error", error: err };
   }
+}
+
+/**
+ * Open the store-native subscription-management screen so the operator can
+ * cancel, change billing, or request a refund. The app stores own this flow
+ * — we never cancel a sub ourselves.
+ *
+ * Prefers RevenueCat's `Purchases.showManageSubscriptions()` (which routes to
+ * the correct platform screen). If the SDK doesn't expose it (older versions),
+ * falls back to opening the platform's subscriptions URL externally. No-ops on
+ * web (warns) — subscriptions there are managed in the mobile app.
+ */
+export async function manageSubscriptions(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) {
+    console.warn(
+      "[iap] manageSubscriptions is native-only — subscriptions are managed in the mobile app.",
+    );
+    return;
+  }
+
+  const Purchases = await loadPurchases();
+  if (Purchases && typeof Purchases.showManageSubscriptions === "function") {
+    try {
+      await Purchases.showManageSubscriptions();
+      return;
+    } catch (err) {
+      console.warn(
+        "[iap] showManageSubscriptions failed, falling back to store URL:",
+        err,
+      );
+    }
+  }
+
+  // Fallback — open the platform's subscriptions screen in the default app.
+  const platform = Capacitor.getPlatform();
+  const url =
+    platform === "ios"
+      ? "https://apps.apple.com/account/subscriptions"
+      : "https://play.google.com/store/account/subscriptions";
+  await openExternal(url);
 }
 
 export type RestoreResult =
