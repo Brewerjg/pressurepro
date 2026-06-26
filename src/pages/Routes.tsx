@@ -38,6 +38,8 @@ import {
 import WinterRoutesBanner from "@/components/season/WinterRoutesBanner";
 import { useSeason } from "@/lib/season";
 import { APP_ID } from "@/lib/app-context";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { weeklyStopLimitFor } from "@/lib/stripe";
 import {
   planOccursOn,
   plannedStopsForDate,
@@ -107,6 +109,7 @@ export default function RoutesPage() {
   const qc = useQueryClient();
 
   const { isWinter } = useSeason();
+  const { tier } = useSubscriptionStatus();
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
   const weekDays = useMemo(
@@ -222,6 +225,26 @@ export default function RoutesPage() {
     }
     return m;
   }, [weekRoutesQuery.data, selectedCrewId]);
+
+  // -----------------------------------------------------------------
+  // Weekly stop-limit enforcement. The visible week IS the current
+  // Mon–Sun week (the page always renders startOfWeekMonday(today)), so
+  // we can count the operator's CURRENT-WEEK persisted stops straight
+  // from weekRoutesQuery — no extra round-trip. The limit is per
+  // OPERATOR, so we sum across every crew's routes (not the crew-
+  // filtered routesByDate). `weekRoutesQuery` is already scoped to
+  // user_id + this week's date range; the routes table has no `app`
+  // column (the discriminator was only added to quotes/plans/etc.), so
+  // we match the existing query's user+date filter exactly.
+  const currentWeekStops = useMemo(
+    () =>
+      (weekRoutesQuery.data ?? []).reduce(
+        (sum, r) => sum + (r.route_stops?.length ?? 0),
+        0,
+      ),
+    [weekRoutesQuery.data],
+  );
+  const weeklyStopLimit = weeklyStopLimitFor(tier); // null = unlimited
 
   // Count per visible day. When a real route exists we count its stops;
   // otherwise we show the PLANNED count derived from active plans + the
@@ -431,6 +454,28 @@ export default function RoutesPage() {
       const plans = ((allActivePlans ?? []) as SchedulablePlan[]).filter((p) =>
         planOccursOn(p, selectedDate, { isWinter }),
       );
+
+      // -------------------------------------------------------------
+      // Per-tier WEEKLY STOP LIMIT enforcement. Block (don't silently
+      // drop) when creating this route would push the operator past
+      // their tier's weekly allowance. Unlimited tiers (Crew →
+      // weeklyStopLimit null) are never blocked. We re-read the limit
+      // here off the same `tier` the header uses; the count comes from
+      // the freshly-loaded weekRoutesQuery snapshot. This route doesn't
+      // exist yet (we're in the no-existing-route branch), so none of
+      // currentWeekStops belongs to it — adding plans.length is correct.
+      if (weeklyStopLimit !== null && plans.length > 0) {
+        const remaining = weeklyStopLimit - currentWeekStops;
+        if (plans.length > remaining) {
+          const tierName = tier === "solo" ? "Solo" : "Base";
+          throw new Error(
+            `WEEKLY_STOP_LIMIT:You've hit your weekly stop limit ` +
+              `(${weeklyStopLimit} on ${tierName}). This route would add ` +
+              `${plans.length} stop${plans.length === 1 ? "" : "s"}, but you ` +
+              `have ${Math.max(0, remaining)} left this week. Upgrade to add more.`,
+          );
+        }
+      }
 
       const { data: routeRow, error: routeErr } = await (supabase as any)
         .from("routes")
@@ -651,6 +696,18 @@ export default function RoutesPage() {
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
             Week of {MONTH_SHORT[weekStart.getMonth()]} {weekStart.getDate()}
+            {weeklyStopLimit !== null && (
+              <span
+                className={cn(
+                  "ml-2 normal-case tracking-normal font-semibold",
+                  currentWeekStops >= weeklyStopLimit
+                    ? "text-destructive"
+                    : "text-ink-400",
+                )}
+              >
+                {currentWeekStops} / {weeklyStopLimit} stops
+              </span>
+            )}
           </div>
           <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight flex items-center gap-2">
             Routes
@@ -894,6 +951,30 @@ export default function RoutesPage() {
               : "Couldn't optimize the route."}
           </p>
         )}
+        {startRouteMutation.isError &&
+          (() => {
+            const msg =
+              startRouteMutation.error instanceof Error
+                ? startRouteMutation.error.message
+                : "Couldn't start the route.";
+            // Weekly-limit errors are tagged so we can surface an upgrade CTA.
+            const isLimit = msg.startsWith("WEEKLY_STOP_LIMIT:");
+            const text = isLimit ? msg.slice("WEEKLY_STOP_LIMIT:".length) : msg;
+            return (
+              <div className="mx-4 mb-2 rounded-xl bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+                <span>{text}</span>
+                {isLimit && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pricing")}
+                    className="ml-1 font-bold underline"
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
         {/* Progress + collected card */}
         <div className="bg-card border border-ink-100 rounded-[14px] px-3.5 py-3 flex gap-4 items-center shadow-card">

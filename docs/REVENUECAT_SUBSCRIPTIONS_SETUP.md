@@ -3,7 +3,8 @@
 Operator SaaS subscriptions (Solo / Crew) are sold through the **mobile app
 stores** via **RevenueCat** — not Stripe. (Stripe is only for **payouts** —
 customer→operator payments; see `docs/STRIPE_PAYOUTS_SETUP.md`.) "Base" is the
-free default tier (no purchase) and is what charges the 1.5% payout fee.
+entry tier at **$8/mo ($80/yr)**. Every tier — Base, Solo, Crew — has a **0%
+payout fee**; operators keep 100% of customer payments.
 
 ## How it fits together
 
@@ -24,13 +25,16 @@ already reads, nothing downstream had to change — `useSubscriptionStatus`,
 ## Product / entitlement identifiers (must match exactly)
 
 Create these product identifiers in App Store Connect, Google Play, **and**
-RevenueCat — they must equal the existing Stripe lookup_keys so
-`tierFromPriceId()` resolves the tier with no extra mapping:
+RevenueCat — they must equal the existing Stripe lookup_keys (the constants in
+`src/lib/stripe.ts`) so `tierFromPriceId()` resolves the tier with no extra
+mapping. Prices:
 
-- `turfpro_solo_monthly`, `turfpro_solo_yearly`
-- `turfpro_crew_monthly`, `turfpro_crew_yearly`
+- `turfpro_payg_monthly` (Base, $8/mo), `turfpro_payg_yearly` (Base, $80/yr)
+- `turfpro_solo_monthly` ($15/mo), `turfpro_solo_yearly` ($150/yr)
+- `turfpro_crew_monthly` ($59/mo), `turfpro_crew_yearly` ($590/yr)
 
-Attach them to the current **Offering**'s packages. Base/`payg` has no product.
+Attach them to the current **Offering**'s packages. (Base's identifiers keep
+the historical `payg` slug.)
 
 ## Config checklist
 
@@ -71,7 +75,7 @@ Attach them to the current **Offering**'s packages. Base/`payg` has no product.
 3. RevenueCat fires the webhook → `subscriptions` row upserts (`price_id =
    turfpro_solo_monthly`, status `active`, environment `sandbox`).
 4. The paywall clears and the app unlocks (Routes/Plans/Reports).
-5. Confirm the operator's payout fee drops to 0% (Solo tier) on the next charge.
+5. Confirm the operator's tier shows as Solo (payout fee is 0% on every tier).
 6. Cancel in the store → webhook sets `cancel_at_period_end`; on expiration →
    `canceled`; access ends after the period.
 

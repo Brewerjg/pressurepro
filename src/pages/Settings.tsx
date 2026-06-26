@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Calculator, Check, ChevronRight, CreditCard, Loader2, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { Banknote, Calculator, Check, ChevronRight, CreditCard, Loader2, Lock, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import CatalogEditor from "@/components/settings/CatalogEditor";
 import CrewEditor from "@/components/settings/CrewEditor";
 import MessagingPreferences from "@/components/settings/MessagingPreferences";
 import SubscriptionCard from "@/components/settings/SubscriptionCard";
+import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
 import SeasonToggle from "@/components/season/SeasonToggle";
 import {
   isConnectComplete,
@@ -150,6 +151,11 @@ export default function Settings() {
           through the app stores via RevenueCat). */}
       <Section icon={<CreditCard className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Billing">
         <SubscriptionCard />
+      </Section>
+
+      {/* Security — change password for the signed-in operator. */}
+      <Section icon={<Lock className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Security">
+        <ChangePasswordCard />
       </Section>
 
       {/* Account */}

@@ -1,20 +1,21 @@
-// Pay-as-you-go tier setup helper.
+// Base ("payg") tier setup helper.
 //
-// PAYG is the "$0 monthly + 1.5% per processed payment" plan. Unlike the
-// paid tiers (Solo / Crew), opting into PAYG never goes through
-// Stripe Checkout — there's no recurring charge to set up — so we just
-// upsert a subscriptions row directly. The 1.5% application fee is collected
-// per-transaction via Stripe Connect (see feeForTier in src/lib/stripe.ts).
+// Base is now a flat $8/mo ($80/yr) plan with a 0% payout fee — TurfPro
+// takes no per-transaction skim, operators keep 100% of customer payments
+// (see feeForTier in src/lib/stripe.ts, which returns 0 for every tier).
+// The "payg" id is retained for historical continuity. Unlike the other
+// paid tiers (Solo / Crew) sold via Stripe Checkout / app-store IAP, opting
+// into Base on web/Android currently just upserts a subscriptions row
+// directly rather than starting a recurring charge.
 //
-// We store the PAYG lookup_key as `price_id` (rather than null) so that
+// We store the Base lookup_key as `price_id` (rather than null) so that
 // the existing tierFromPriceId() resolver and useSubscriptionStatus() hook
-// correctly identify PAYG users as having an active tier. Everything that
-// already keys off price_id (Reports fee math, SubscriptionGate, the
-// "Current plan" badge on Pricing) just works.
+// correctly identify Base users as having an active tier. Everything that
+// already keys off price_id (SubscriptionGate, the "Current plan" badge on
+// Pricing) just works.
 //
-// status='active' is intentional — PAYG operators have nothing to "trial"
-// or "renew", they're permanently on the fee model. Setting active also
-// keeps them out of the trial-expired paywall.
+// status='active' is intentional — Base operators have nothing to "trial"
+// or "renew". Setting active also keeps them out of the trial-expired paywall.
 
 import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment, priceIdForTier } from "@/lib/stripe";

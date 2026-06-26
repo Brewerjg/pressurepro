@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getStripeEnvironment } from "@/lib/stripe";
 import {
   Loader2,
   Printer,
@@ -129,6 +130,7 @@ const InvoiceView = () => {
             quote_id: invoice.quote_id,
             kind: payKind,
             returnUrl: `${window.location.origin}/invoice/${token}?paid=1`,
+            environment: getStripeEnvironment(),
           },
         },
       );

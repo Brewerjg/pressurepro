@@ -3,6 +3,11 @@ import { Sparkles } from "lucide-react";
 import { TIERS, type TierId } from "@/lib/stripe";
 import { cn } from "@/lib/utils";
 
+// DEPRECATED / UNUSED: not rendered anywhere. Under the 2026 flat-fee model
+// every tier has a 0% payout fee, so the per-transaction break-even concept is
+// moot (Base would always compute to $0). Kept only so the import graph + types
+// stay intact; do not wire this back in without rewriting its premise.
+//
 // Breakeven calculator for the public Pricing page.
 //
 // Helps an operator decide whether the per-transaction Base fee (1.5%) or one

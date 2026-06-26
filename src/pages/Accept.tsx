@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { Check, Phone, Loader2, Printer, ShieldCheck, Repeat, CreditCard } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
 
@@ -275,7 +276,7 @@ const Accept = () => {
     setPayLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { quote_id: q.id, kind: "deposit" },
+        body: { quote_id: q.id, kind: "deposit", environment: getStripeEnvironment() },
       });
       if (error) throw error;
       const url = (data as { url?: string })?.url;
