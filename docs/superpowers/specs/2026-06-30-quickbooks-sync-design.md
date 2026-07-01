@@ -51,6 +51,39 @@ company.
    becomes a distinct QBO `Payment`, tracked per-row so re-sync never
    duplicates.
 
+## Security — OAuth account-linking hardening (Phase 1 fix, folded in here)
+
+A background security review flagged the Phase-1 `quickbooks-oauth` callback:
+the OAuth `state` is bound to a `user_id` **server-side** and the callback
+trusts that mapping with no browser/session binding. An attacker who initiates
+`authorize` (state bound to *them*) can phish a victim into approving TurfPro
+against the victim's QuickBooks company; the callback then stores the **victim's
+QBO tokens under the attacker's TurfPro account** — an account-linking hijack.
+
+Note that *post-connect confirmation by the account holder does not fix this* —
+the stolen connection lands under the attacker, so the attacker is the one who
+would "confirm". The fix must bind the connection to whoever actually approved
+at Intuit.
+
+**Fix — claim-token binding + state TTL:**
+
+- `authorize` stamps a 10-minute `expires_at` on the state row.
+- `callback` validates the state TTL, exchanges the code for tokens, but stores
+  them in a new **`quickbooks_pending_connections`** table keyed by a random
+  `claim_token` — *not* in `quickbooks_connections`. It redirects to
+  `…/settings?quickbooks=claim&token=<claim_token>`.
+- A new `claim` op (auth required) promotes the pending grant into
+  `quickbooks_connections` under **the caller's** `user_id`, then deletes the
+  pending row.
+
+The `claim_token` is delivered only to the browser that approved at Intuit and
+is spendable only by an authenticated session, so the connection binds to the
+approver — the attacker never receives the token. TTLs bound replay. **Known
+caveat:** on native (Capacitor) the callback lands in the in-app browser's web
+session, so the claim completes there — consistent with the already-documented
+native connect limitation, not worse; a fully native-in-app claim (deep link)
+is a follow-up.
+
 ## Architecture & components
 
 ### 1. New shared module `supabase/functions/_shared/quickbooks.ts`
@@ -103,6 +136,8 @@ only by the service-role sync function.
 | `invoices` | `qbo_invoice_id TEXT`, `qbo_synced_at TIMESTAMPTZ`, `qbo_sync_error TEXT` | idempotency + button state |
 | `manual_payments` | `qbo_payment_id TEXT` | per-payment idempotency |
 | `quickbooks_connections` | `qbo_default_item_id TEXT` | cache default service item id |
+| `quickbooks_oauth_states` | `expires_at TIMESTAMPTZ` | OAuth state TTL (security hardening) |
+| `quickbooks_pending_connections` (new) | `claim_token` PK, `realm_id`, `access_token`, `refresh_token`, `token_expires_at`, `created_at`, `expires_at` | unclaimed OAuth grants; RLS on, no policies (security hardening) |
 
 ## Sync algorithm (`sync_invoice`)
 
