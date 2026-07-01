@@ -85,10 +85,11 @@ async function resolveDefaultItem(
     if (!itemId) throw new Error("Failed to create default QuickBooks service item");
   }
 
-  await svc
+  const { error: itemCacheErr } = await svc
     .from("quickbooks_connections")
     .update({ qbo_default_item_id: itemId } as never)
     .eq("user_id", conn.user_id);
+  if (itemCacheErr) console.warn("Failed to cache qbo_default_item_id:", itemCacheErr.message);
   return itemId;
 }
 
@@ -156,10 +157,11 @@ async function resolveCustomer(
   }
 
   if (invoice.customer_id) {
-    await svc
+    const { error: custCacheErr } = await svc
       .from("customers")
       .update({ qbo_customer_id: customerId } as never)
       .eq("id", invoice.customer_id);
+    if (custCacheErr) console.warn("Failed to cache qbo_customer_id:", custCacheErr.message);
   }
   return customerId;
 }
@@ -172,13 +174,14 @@ Deno.serve(async (req) => {
   }
 
   const body = await req.json().catch(() => ({}));
+
+  const user = await resolveUser(req);
+  if (!user) return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+
   if (body?.action !== "sync_invoice" || typeof body?.invoice_id !== "string") {
     return jsonResponse({ error: "Expected { action: 'sync_invoice', invoice_id }" }, { status: 400 });
   }
   const invoiceId = body.invoice_id as string;
-
-  const user = await resolveUser(req);
-  if (!user) return jsonResponse({ error: "Unauthorized" }, { status: 401 });
 
   const svc = serviceClient();
 
@@ -212,10 +215,11 @@ Deno.serve(async (req) => {
       });
       qboInvoiceId = createdInv?.Invoice?.Id ?? null;
       if (!qboInvoiceId) throw new Error("Failed to create QuickBooks invoice");
-      await svc
+      const { error: invWriteErr } = await svc
         .from("invoices")
         .update({ qbo_invoice_id: qboInvoiceId } as never)
         .eq("id", invoice.id);
+      if (invWriteErr) throw new Error(`Failed to persist qbo_invoice_id: ${invWriteErr.message}`);
     }
 
     // Mirror each non-voided, not-yet-synced payment.
@@ -236,10 +240,11 @@ Deno.serve(async (req) => {
       });
       const paymentId = createdPay?.Payment?.Id;
       if (!paymentId) throw new Error("Failed to create QuickBooks payment");
-      await svc
+      const { error: payWriteErr } = await svc
         .from("manual_payments")
         .update({ qbo_payment_id: paymentId } as never)
         .eq("id", p.id);
+      if (payWriteErr) throw new Error(`Failed to persist qbo_payment_id for payment ${p.id}: ${payWriteErr.message}`);
       paymentsSynced += 1;
     }
 
