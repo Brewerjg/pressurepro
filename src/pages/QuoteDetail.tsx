@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { parseLines, quoteTotal, type QuoteLine } from "@/components/quotes/types";
 import { getInvoiceByQuote, formatInvoiceNumber } from "@/lib/invoices";
+import { publicAppOrigin } from "@/lib/public-url";
 import { sendQuote } from "@/lib/customer-email";
 import { sendQuoteSms } from "@/lib/customer-sms";
 import MessageCustomerButton from "@/components/messaging/MessageCustomerButton";
@@ -317,7 +318,7 @@ export default function QuoteDetail() {
   };
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}/accept/${quote.id}`;
+    const url = `${publicAppOrigin()}/accept/${quote.id}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopyState("copied");

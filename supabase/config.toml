@@ -398,6 +398,14 @@ verify_jwt = false
 [functions.revenuecat-webhook]
 verify_jwt = false
 
+# QuickBooks' OAuth callback is a browser redirect FROM Intuit (no Supabase
+# JWT), so the platform JWT gate must be OFF or the callback is rejected with
+# 401 before reaching the handler. The auth-required ops (authorize/status/
+# disconnect/claim) authenticate themselves per-request by resolving the user
+# from the Authorization header, so this does not weaken security.
+[functions.quickbooks-oauth]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

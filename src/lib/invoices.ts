@@ -35,6 +35,9 @@ export interface Invoice {
   issued_at: string;
   created_at: string;
   updated_at: string;
+  qbo_invoice_id: string | null;
+  qbo_synced_at: string | null;
+  qbo_sync_error: string | null;
 }
 
 /** Human-facing invoice number, e.g. INV-1001. */

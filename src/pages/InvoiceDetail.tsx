@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
+  Calculator,
   CheckCircle2,
   CircleCheckBig,
   DollarSign,
@@ -24,6 +25,7 @@ import {
   updateInvoice,
   type Invoice,
 } from "@/lib/invoices";
+import { publicAppOrigin } from "@/lib/public-url";
 import {
   listManualPaymentsForInvoice,
   recordPayment,
@@ -31,6 +33,8 @@ import {
   type ManualPaymentMethod,
 } from "@/lib/manual-payments";
 import { APP_ID } from "@/lib/app-context";
+import { getQuickBooksStatus } from "@/lib/quickbooks";
+import { syncInvoiceToQuickBooks } from "@/lib/quickbooks-sync";
 
 // InvoiceDetail — the post-acceptance money + fulfillment surface. Once a
 // quote is accepted it spawns an invoice; the operator works the invoice
@@ -239,6 +243,28 @@ export default function InvoiceDetail() {
       setConvertError(err instanceof Error ? err.message : "Conversion failed"),
   });
 
+  const { data: qbStatus } = useQuery({
+    queryKey: ["quickbooks-status"],
+    queryFn: getQuickBooksStatus,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [qbError, setQbError] = useState<string | null>(null);
+  const syncQb = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("Missing invoice id");
+      return syncInvoiceToQuickBooks(id);
+    },
+    onSuccess: () => {
+      setQbError(null);
+      queryClient.invalidateQueries({ queryKey: ["invoice", id] });
+    },
+    onError: (e: unknown) => {
+      setQbError(e instanceof Error ? e.message : "QuickBooks sync failed");
+      queryClient.invalidateQueries({ queryKey: ["invoice", id] });
+    },
+  });
+
   if (isLoading) {
     return <div className="pt-6 px-[22px] text-sm text-ink-500">Loading…</div>;
   }
@@ -270,7 +296,7 @@ export default function InvoiceDetail() {
   const remaining = Math.max(0, total - collected);
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}/invoice/${invoice.public_token}`;
+    const url = `${publicAppOrigin()}/invoice/${invoice.public_token}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopyState("copied");
@@ -458,6 +484,34 @@ export default function InvoiceDetail() {
           Print
         </button>
       </section>
+
+      {qbStatus?.connected && (
+        <section className="mx-4 mb-3">
+          <button
+            type="button"
+            onClick={() => syncQb.mutate()}
+            disabled={syncQb.isPending}
+            className="w-full rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            {syncQb.isPending
+              ? "Syncing to QuickBooks…"
+              : invoice.qbo_synced_at
+                ? "Synced to QuickBooks ✓ — sync again"
+                : "Sync to QuickBooks"}
+          </button>
+          {invoice.qbo_synced_at && !qbError && (
+            <p className="mt-1 text-[11px] text-ink-500">
+              Last synced {fmtDate(invoice.qbo_synced_at)}.
+            </p>
+          )}
+          {(qbError || invoice.qbo_sync_error) && (
+            <p className="mt-1 text-[11px] font-semibold text-destructive">
+              {qbError || invoice.qbo_sync_error}
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Record-payment form */}
       {paymentFormOpen && (
