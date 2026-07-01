@@ -5,6 +5,7 @@
 // helper because the UI needs the body string to render copy buttons.
 
 import { supabase } from "@/integrations/supabase/client";
+import { publicAppOrigin } from "@/lib/public-url";
 
 export type ComposeKind =
   | "on_the_way"
@@ -46,13 +47,12 @@ export async function composeCustomerMessage(
   req: ComposeRequest,
 ): Promise<ComposeResult> {
   try {
-    // Forward window.location.origin so links in the body match the
-    // operator's deployed app URL rather than whatever PUBLIC_APP_ORIGIN
-    // the edge function falls back to.
-    const origin =
-      typeof window !== "undefined" && window.location?.origin
-        ? window.location.origin
-        : undefined;
+    // Forward the PUBLIC web origin so links in the body resolve for the
+    // customer. On web this is window.location.origin; in the native app it's
+    // the configured VITE_PUBLIC_APP_ORIGIN (NOT the WebView's localhost
+    // origin, which would produce dead links). Falls back to undefined so the
+    // edge function uses its PUBLIC_APP_ORIGIN secret if we can't resolve one.
+    const origin = publicAppOrigin() || undefined;
 
     const { data, error } = await supabase.functions.invoke(
       "compose-customer-message",
