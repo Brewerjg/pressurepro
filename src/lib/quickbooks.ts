@@ -75,6 +75,22 @@ export async function getQuickBooksStatus(): Promise<QuickBooksStatus> {
 }
 
 /**
+ * Finish a QuickBooks connection by spending the one-time claim token the
+ * callback delivered to this browser. Binds the connection to the signed-in
+ * operator. Throws on failure.
+ */
+export async function claimQuickBooks(token: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("quickbooks-oauth", {
+    body: { action: "claim", claim_token: token },
+  });
+  if (error) throw new Error(error.message);
+  const payload = data as { ok?: boolean; error?: string };
+  if (payload?.error || !payload?.ok) {
+    throw new Error(payload?.error || "Could not finish connecting QuickBooks");
+  }
+}
+
+/**
  * Disconnect the operator's QuickBooks company. Best-effort revokes the token
  * at Intuit and deletes the stored connection. Throws on failure.
  */

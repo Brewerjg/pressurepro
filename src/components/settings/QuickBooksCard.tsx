@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Calculator, Check, Loader2 } from "lucide-react";
 import {
+  claimQuickBooks,
   connectQuickBooks,
   disconnectQuickBooks,
   getQuickBooksStatus,
@@ -36,22 +37,36 @@ export default function QuickBooksCard() {
   };
 
   useEffect(() => {
-    // Read the post-redirect note, then strip it from the URL.
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const qb = params.get("quickbooks");
-      if (qb === "connected" || qb === "error") {
-        setRedirectNote(qb);
-        params.delete("quickbooks");
-        const next =
-          window.location.pathname +
-          (params.toString() ? `?${params.toString()}` : "");
-        window.history.replaceState({}, "", next);
+    (async () => {
+      let note: "connected" | "error" | null = null;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const qb = params.get("quickbooks");
+        const token = params.get("token");
+        if (qb === "claim" && token) {
+          try {
+            await claimQuickBooks(token);
+            note = "connected";
+          } catch {
+            note = "error";
+          }
+        } else if (qb === "connected" || qb === "error") {
+          note = qb;
+        }
+        if (qb) {
+          params.delete("quickbooks");
+          params.delete("token");
+          const next =
+            window.location.pathname +
+            (params.toString() ? `?${params.toString()}` : "");
+          window.history.replaceState({}, "", next);
+        }
+      } catch {
+        // ignore — non-browser env
       }
-    } catch {
-      // ignore — non-browser env
-    }
-    refresh();
+      if (note) setRedirectNote(note);
+      refresh();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

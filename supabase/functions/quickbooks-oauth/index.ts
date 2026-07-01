@@ -66,7 +66,7 @@ const INTUIT_REVOKE_URL =
   "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 const QBO_SCOPE = "com.intuit.quickbooks.accounting";
 
-type Op = "authorize" | "callback" | "status" | "disconnect";
+type Op = "authorize" | "callback" | "status" | "disconnect" | "claim";
 
 function getOp(req: Request, body: Record<string, unknown>): Op | null {
   const url = new URL(req.url);
@@ -77,7 +77,8 @@ function getOp(req: Request, body: Record<string, unknown>): Op | null {
     candidate === "authorize" ||
     candidate === "callback" ||
     candidate === "status" ||
-    candidate === "disconnect"
+    candidate === "disconnect" ||
+    candidate === "claim"
   ) {
     return candidate;
   }
@@ -213,18 +214,22 @@ Deno.serve(async (req) => {
 
       const svc = serviceClient();
 
-      // Look up state → user, then delete it (single-use CSRF token).
+      // Look up state → validate TTL → delete (single-use CSRF token).
       const { data: stateRow, error: stateErr } = await svc
         .from("quickbooks_oauth_states")
-        .select("user_id")
+        .select("user_id, expires_at")
         .eq("state", state)
         .maybeSingle();
       if (stateErr || !stateRow) {
-        console.error("QuickBooks callback: unknown/expired state", stateErr);
+        console.error("QuickBooks callback: unknown state", stateErr);
         return redirectToApp(origin, "quickbooks=error");
       }
-      const userId = (stateRow as { user_id: string }).user_id;
+      const expiresAt = (stateRow as { expires_at: string | null }).expires_at;
       await svc.from("quickbooks_oauth_states").delete().eq("state", state);
+      if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+        console.error("QuickBooks callback: state expired");
+        return redirectToApp(origin, "quickbooks=error");
+      }
 
       // Exchange the authorization code for tokens.
       const tokens = await intuitTokenRequest({
@@ -236,28 +241,30 @@ Deno.serve(async (req) => {
         Date.now() + tokens.expires_in * 1000,
       ).toISOString();
 
-      // Best-effort company name lookup is a Phase-2 concern (needs the QBO
-      // data API). For now store realm_id; company_name stays null until sync.
-      const { error: upsertErr } = await svc
-        .from("quickbooks_connections")
-        .upsert(
-          {
-            user_id: userId,
-            realm_id: realmId,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            token_expires_at: tokenExpiresAt,
-            connected_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          } as never,
-          { onConflict: "user_id" },
-        );
-      if (upsertErr) {
-        console.error("QuickBooks connection upsert failed:", upsertErr);
+      // Store as a PENDING grant keyed by a claim_token. The connection is NOT
+      // active until an authenticated `claim` call promotes it — binding it to
+      // whoever approved at Intuit (this browser), not the state initiator.
+      const claimToken =
+        crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
+      const { error: pendErr } = await svc
+        .from("quickbooks_pending_connections")
+        .insert({
+          claim_token: claimToken,
+          realm_id: realmId,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expires_at: tokenExpiresAt,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        } as never);
+      if (pendErr) {
+        console.error("QuickBooks callback: pending insert failed", pendErr);
         return redirectToApp(origin, "quickbooks=error");
       }
 
-      return redirectToApp(origin, "quickbooks=connected");
+      return redirectToApp(
+        origin,
+        `quickbooks=claim&token=${encodeURIComponent(claimToken)}`,
+      );
     } catch (e) {
       console.error("quickbooks-oauth callback error:", e);
       return redirectToApp(origin, "quickbooks=error");
@@ -295,7 +302,11 @@ Deno.serve(async (req) => {
       const state = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
       const { error: stateErr } = await svc
         .from("quickbooks_oauth_states")
-        .insert({ state, user_id: userId } as never);
+        .insert({
+          state,
+          user_id: userId,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        } as never);
       if (stateErr) {
         console.error("QuickBooks authorize: state insert failed", stateErr);
         return jsonResponse(
@@ -381,6 +392,64 @@ Deno.serve(async (req) => {
         );
       }
       return jsonResponse({ ok: true });
+    }
+
+    // -------------------------------------------------------------------
+    // OP: claim — promote a pending grant into this user's connection.
+    // Binds the QBO company to whoever approved at Intuit (holds the token).
+    // -------------------------------------------------------------------
+    if (op === "claim") {
+      const claimToken =
+        typeof body.claim_token === "string" ? body.claim_token : "";
+      if (!claimToken) {
+        return jsonResponse({ error: "Missing claim token" }, { status: 400 });
+      }
+      const { data: pending, error: pendErr } = await svc
+        .from("quickbooks_pending_connections")
+        .select("realm_id, access_token, refresh_token, token_expires_at, expires_at")
+        .eq("claim_token", claimToken)
+        .maybeSingle();
+      if (pendErr) {
+        return jsonResponse({ error: "Could not load pending connection" }, { status: 500 });
+      }
+      if (!pending) {
+        return jsonResponse({ error: "Connection request not found or already used" }, { status: 400 });
+      }
+      const p = pending as {
+        realm_id: string;
+        access_token: string;
+        refresh_token: string;
+        token_expires_at: string | null;
+        expires_at: string;
+      };
+      // Consume it regardless of outcome (single-use).
+      await svc
+        .from("quickbooks_pending_connections")
+        .delete()
+        .eq("claim_token", claimToken);
+      if (new Date(p.expires_at).getTime() < Date.now()) {
+        return jsonResponse({ error: "Connection request expired — please reconnect" }, { status: 400 });
+      }
+
+      const { error: upsertErr } = await svc
+        .from("quickbooks_connections")
+        .upsert(
+          {
+            user_id: userId,
+            realm_id: p.realm_id,
+            access_token: p.access_token,
+            refresh_token: p.refresh_token,
+            token_expires_at: p.token_expires_at,
+            connected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "user_id" },
+        );
+      if (upsertErr) {
+        console.error("QuickBooks claim upsert failed:", upsertErr);
+        return jsonResponse({ error: "Could not finish connecting QuickBooks" }, { status: 500 });
+      }
+      return jsonResponse({ ok: true, connected: true });
     }
 
     return jsonResponse({ error: "Unhandled op" }, { status: 400 });
