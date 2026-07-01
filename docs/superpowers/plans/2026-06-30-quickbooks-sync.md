@@ -126,7 +126,7 @@ Sets up vitest (project has none) and the pure, network-free mapping logic. TDD.
 - Modify: `package.json` (add `test` script + vitest devDependency)
 
 **Interfaces:**
-- Produces (used by Task 4):
+- Produces (used by Task 5):
   - `type QboInvoiceLine = { Amount: number; DetailType: "SalesItemLineDetail"; Description: string; SalesItemLineDetail: { ItemRef: { value: string }; Qty: number; UnitPrice: number } }`
   - `parseInvoiceLines(raw: unknown): { name: string; qty: number; rate: number; total: number }[]`
   - `buildInvoiceLines(lines: ReturnType<typeof parseInvoiceLines>, itemId: string): QboInvoiceLine[]`
@@ -363,7 +363,7 @@ Extract token/fetch plumbing so `quickbooks-sync` and `quickbooks-oauth` share i
 
 **Interfaces:**
 - Consumes: `QUICKBOOKS_ENV`, `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` env.
-- Produces (used by Task 4 and the refactored oauth):
+- Produces (used by Task 5 and the refactored oauth):
   - `interface QbConnection { user_id; realm_id; access_token; refresh_token; token_expires_at: string | null; company_name: string | null; qbo_default_item_id?: string | null }`
   - `serviceClient(): SupabaseClient`
   - `loadConnection(svc, userId): Promise<QbConnection | null>`
@@ -574,7 +574,7 @@ git commit -m "refactor(quickbooks): extract shared QBO client module"
 
 ---
 
-### Task 3B: OAuth account-linking hardening (claim flow + state TTL)
+### Task 4: OAuth account-linking hardening (claim flow + state TTL)
 
 Closes the account-linking hijack flagged by security review. The `callback` no
 longer writes `quickbooks_connections` directly; it stores a **pending** grant
@@ -832,14 +832,14 @@ git commit -m "fix(quickbooks): bind OAuth connection to approver via claim toke
 
 ---
 
-### Task 4: `quickbooks-sync` edge function
+### Task 5: `quickbooks-sync` edge function
 
 **Files:**
 - Create: `supabase/functions/quickbooks-sync/index.ts`
 
 **Interfaces:**
 - Consumes: `_shared/cors.ts` (`handleOptions`, `jsonResponse`), `_shared/quickbooks.ts` (`serviceClient`, `loadConnection`, `refreshIfNeeded`, `qboFetch`, `QbConnection`), `_shared/quickbooks-map.ts` (`parseInvoiceLines`, `buildInvoiceLines`, `buildPaymentPayload`).
-- Produces (client contract, used by Task 5): POST body `{ action: "sync_invoice", invoice_id: string }` → `{ ok: true, qbo_invoice_id: string, payments_synced: number }` on success; `{ error: string }` with a non-2xx status on failure.
+- Produces (client contract, used by Task 6): POST body `{ action: "sync_invoice", invoice_id: string }` → `{ ok: true, qbo_invoice_id: string, payments_synced: number }` on success; `{ error: string }` with a non-2xx status on failure.
 
 - [ ] **Step 1: Write the function**
 
@@ -1131,7 +1131,7 @@ git commit -m "feat(quickbooks): quickbooks-sync edge function (sync_invoice)"
 
 ---
 
-### Task 5: Client sync wrapper + Invoice type fields
+### Task 6: Client sync wrapper + Invoice type fields
 
 **Files:**
 - Create: `src/lib/quickbooks-sync.ts`
@@ -1139,7 +1139,7 @@ git commit -m "feat(quickbooks): quickbooks-sync edge function (sync_invoice)"
 
 **Interfaces:**
 - Consumes: `@/integrations/supabase/client` (`supabase.functions.invoke`).
-- Produces (used by Task 6):
+- Produces (used by Task 7):
   - `Invoice` gains `qbo_invoice_id: string | null; qbo_synced_at: string | null; qbo_sync_error: string | null`
   - `syncInvoiceToQuickBooks(invoiceId: string): Promise<{ ok: true; qbo_invoice_id: string; payments_synced: number }>` (throws `Error` on failure)
 
@@ -1210,13 +1210,13 @@ git commit -m "feat(quickbooks): client sync wrapper + Invoice qbo_* fields"
 
 ---
 
-### Task 6: "Sync to QuickBooks" button in InvoiceDetail
+### Task 7: "Sync to QuickBooks" button in InvoiceDetail
 
 **Files:**
 - Modify: `src/pages/InvoiceDetail.tsx`
 
 **Interfaces:**
-- Consumes: `syncInvoiceToQuickBooks` (Task 5), `getQuickBooksStatus` (`src/lib/quickbooks.ts`), the invoice's `qbo_invoice_id` / `qbo_synced_at` / `qbo_sync_error`.
+- Consumes: `syncInvoiceToQuickBooks` (Task 6), `getQuickBooksStatus` (`src/lib/quickbooks.ts`), the invoice's `qbo_invoice_id` / `qbo_synced_at` / `qbo_sync_error`.
 
 - [ ] **Step 1: Add imports**
 
@@ -1309,7 +1309,7 @@ git commit -m "feat(quickbooks): Sync to QuickBooks button on invoice screen"
 
 ---
 
-### Task 7: End-to-end sandbox verification + docs
+### Task 8: End-to-end sandbox verification + docs
 
 **Files:**
 - Modify: `docs/QUICKBOOKS_SETUP.md` (mark Phase 2 built; add sync/apply notes)
@@ -1371,6 +1371,6 @@ git commit -m "docs(quickbooks): mark Phase 2 sync built + apply/deploy notes"
 ## Notes for the implementer
 
 - **QBO `minorversion=65`** is pinned on data-API calls for a stable field set; leave it as written.
-- **Do not** attempt to unit-test the edge function or client — the project has no Deno/browser test harness. Only `quickbooks-map.ts` is unit-tested (Task 2). Everything else is verified via the sandbox pass (Task 7).
+- **Do not** attempt to unit-test the edge function or client — the project has no Deno/browser test harness. Only `quickbooks-map.ts` is unit-tested (Task 2). Everything else is verified via the sandbox pass (Task 8).
 - If `supabase functions deploy` warns `config section [inbucket] is deprecated`, ignore it — pre-existing and harmless.
 - The uncommitted Phase-1 frontend + the localhost link fix already present in the working tree are unrelated to these tasks; leave them for a separate commit unless the reviewer says otherwise.
