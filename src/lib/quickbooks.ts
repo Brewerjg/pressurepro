@@ -46,6 +46,13 @@ export async function connectQuickBooks(): Promise<void> {
   if (!payload?.url) {
     throw new Error("QuickBooks did not return a consent URL");
   }
+  // Mark this browser as the connect initiator so the mount-effect in
+  // QuickBooksCard can gate the claim auto-spend (CSRF guard).
+  try {
+    sessionStorage.setItem("qb_connect_initiated", Date.now().toString());
+  } catch {
+    // sessionStorage unavailable (private mode edge) — claim will require a retry
+  }
   // Web: full-page redirect. Native: in-app browser tab so the operator
   // returns to TurfPro after consenting.
   await openInAppBrowser(payload.url);

@@ -109,7 +109,7 @@ export async function refreshIfNeeded(
     refresh_token: tokens.refresh_token,
     token_expires_at: tokenExpiresAt,
   };
-  await svc
+  const { error: persistErr } = await svc
     .from("quickbooks_connections")
     .update({
       access_token: updated.access_token,
@@ -118,6 +118,7 @@ export async function refreshIfNeeded(
       updated_at: new Date().toISOString(),
     } as never)
     .eq("user_id", conn.user_id);
+  if (persistErr) throw new Error(`Failed to persist refreshed QuickBooks token: ${persistErr.message}`);
   return updated;
 }
 

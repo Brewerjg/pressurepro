@@ -44,12 +44,25 @@ export default function QuickBooksCard() {
         const qb = params.get("quickbooks");
         const token = params.get("token");
         if (qb === "claim" && token) {
+          let initiated = false;
           try {
-            await claimQuickBooks(token);
-            note = "connected";
+            const raw = sessionStorage.getItem("qb_connect_initiated");
+            sessionStorage.removeItem("qb_connect_initiated"); // single-use
+            initiated = !!raw && Date.now() - Number(raw) < 15 * 60 * 1000;
           } catch {
-            note = "error";
+            initiated = false;
           }
+          if (initiated) {
+            try {
+              await claimQuickBooks(token);
+              note = "connected";
+            } catch {
+              note = "error";
+            }
+          }
+          // If not initiated by this browser, silently ignore the token
+          // (do NOT claim) — this closes the forced-connection CSRF. The
+          // params are still stripped below.
         } else if (qb === "connected" || qb === "error") {
           note = qb;
         }

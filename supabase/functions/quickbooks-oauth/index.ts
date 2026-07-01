@@ -11,8 +11,8 @@
 //
 // The actual invoice/payment SYNC into QuickBooks is Phase 2 and is NOT built
 // here. See docs/QUICKBOOKS_SETUP.md for the Phase-2 contract. The
-// `refreshIfNeeded()` helper below is written now (and used by `status`) so
-// Phase 2 can call it before any QBO API request.
+// `refreshIfNeeded()` helper lives in _shared/quickbooks.ts so Phase 2 can
+// call it before any QBO API request.
 //
 // OPERATIONS (dispatched by ?op=... query param OR `action` JSON body):
 //
@@ -23,9 +23,13 @@
 //
 //   callback    (NO AUTH — Intuit redirects the browser here)
 //     Intuit appends ?code, ?state, ?realmId. We look up state→user (and
-//     delete the state), exchange the code for tokens, upsert
-//     quickbooks_connections, then 302-redirect the browser back to the app
-//     at /settings?quickbooks=connected (or =error on failure).
+//     delete the state), exchange the code for tokens, store a PENDING grant
+//     keyed by a one-time claim_token, then 302-redirect the browser to
+//     /settings?quickbooks=claim&token=<claim_token> (or =error on failure).
+//
+//   claim       (AUTH REQUIRED)
+//     Promotes a pending grant into the calling user's quickbooks_connections
+//     row. Consumes the claim_token (single-use). Returns { ok: true }.
 //
 //   status      (AUTH REQUIRED)
 //     Returns { connected, company_name, realm_id } for the current user.
@@ -279,7 +283,7 @@ Deno.serve(async (req) => {
   }
   if (!op) {
     return jsonResponse(
-      { error: "Unknown op (expected authorize, status, or disconnect)" },
+      { error: "Unknown op (expected authorize, status, disconnect, or claim)" },
       { status: 400 },
     );
   }
@@ -404,6 +408,11 @@ Deno.serve(async (req) => {
       if (!claimToken) {
         return jsonResponse({ error: "Missing claim token" }, { status: 400 });
       }
+      // Opportunistic cleanup: drop expired pending grants (hold live tokens).
+      await svc
+        .from("quickbooks_pending_connections")
+        .delete()
+        .lt("expires_at", new Date().toISOString());
       const { data: pending, error: pendErr } = await svc
         .from("quickbooks_pending_connections")
         .select("realm_id, access_token, refresh_token, token_expires_at, expires_at")
