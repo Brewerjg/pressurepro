@@ -165,69 +165,6 @@ async function intuitTokenRequest(
   return await res.json();
 }
 
-// Connection row shape stored in quickbooks_connections.
-interface QbConnection {
-  user_id: string;
-  realm_id: string;
-  access_token: string;
-  refresh_token: string;
-  token_expires_at: string | null;
-  company_name: string | null;
-}
-
-// ---------------------------------------------------------------------------
-// refreshIfNeeded — PHASE 2 token-refresh helper.
-//
-// QBO access tokens live ~1 hour; the refresh_token lives ~100 days and
-// ROTATES on every refresh (Intuit returns a new refresh_token each time),
-// so the new value MUST be persisted. Phase 2's `quickbooks-sync` function
-// should call this immediately before any QBO API request to guarantee a
-// live access token. We refresh when the token is expired or within a 5-min
-// safety window. Persisted refreshes use the service-role client.
-//
-// Returns the connection with a guaranteed-fresh access_token.
-// ---------------------------------------------------------------------------
-async function refreshIfNeeded(
-  conn: QbConnection,
-  svc: ReturnType<typeof serviceClient>,
-): Promise<QbConnection> {
-  const SKEW_MS = 5 * 60 * 1000; // refresh 5 min early
-  const expiresAt = conn.token_expires_at
-    ? new Date(conn.token_expires_at).getTime()
-    : 0;
-  if (expiresAt - SKEW_MS > Date.now()) {
-    return conn; // still fresh
-  }
-
-  const tokens = await intuitTokenRequest({
-    grant_type: "refresh_token",
-    refresh_token: conn.refresh_token,
-  });
-
-  const tokenExpiresAt = new Date(
-    Date.now() + tokens.expires_in * 1000,
-  ).toISOString();
-
-  const updated: QbConnection = {
-    ...conn,
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    token_expires_at: tokenExpiresAt,
-  };
-
-  await svc
-    .from("quickbooks_connections")
-    .update({
-      access_token: updated.access_token,
-      refresh_token: updated.refresh_token,
-      token_expires_at: updated.token_expires_at,
-      updated_at: new Date().toISOString(),
-    } as never)
-    .eq("user_id", conn.user_id);
-
-  return updated;
-}
-
 // Browser redirect back into the app after the Intuit callback.
 function redirectToApp(origin: string, query: string): Response {
   return new Response(null, {
@@ -456,6 +393,3 @@ Deno.serve(async (req) => {
   }
 });
 
-// Referenced by Phase-2 sync; exported via module scope. Marked used here so
-// the helper isn't tree-shaken/flagged before Phase 2 wires it in.
-void refreshIfNeeded;
