@@ -117,10 +117,24 @@ the status card will read **Connected ✓** on next load.
 
 ---
 
-## Phase 2 — invoice / payment sync (NOT built yet)
+## Phase 2 — invoice / payment sync (BUILT)
 
-This is the contract for the next phase, to be implemented as a new
-`quickbooks-sync` edge function. It is **not** part of this change.
+Implemented as the `quickbooks-sync` edge function (op `sync_invoice`). The
+operator taps **Sync to QuickBooks** on an invoice; the function find-or-creates
+the QB customer and a single "Landscaping Services" service item, creates the QB
+invoice once (`invoices.qbo_invoice_id`), and mirrors each non-voided
+`manual_payments` row as a QB Payment (`manual_payments.qbo_payment_id`) —
+idempotent on re-sync.
+
+**Apply / deploy:**
+
+    supabase db query --linked -f supabase/migrations/0030_quickbooks_sync.sql
+    supabase functions deploy quickbooks-sync
+
+Known limitations (v1): voiding an already-synced payment is not reversed in QB;
+editing invoice lines after first sync does not update the QB invoice
+(create-once); cached qbo_* ids are realm-specific and are not cleared on
+disconnect.
 
 **Token freshness.** Phase 2 must call the existing `refreshIfNeeded()` helper
 in `quickbooks-oauth/index.ts` (refresh_token grant against the same Intuit
