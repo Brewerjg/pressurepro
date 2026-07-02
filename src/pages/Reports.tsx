@@ -880,7 +880,7 @@ export default function Reports() {
             />
           </section>
 
-          {qbConnected && (
+          {qbConnected && qbInvoices !== undefined && (
             <div className="mx-4 tp-card p-4 mb-3.5">
               <div className="text-[11px] font-bold uppercase tracking-[0.4px] text-ink-500">
                 QuickBooks

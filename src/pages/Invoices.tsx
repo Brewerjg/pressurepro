@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, FileText, ChevronRight, CheckCircle2 } from "lucide-react";
@@ -71,13 +71,17 @@ export default function Invoices() {
     [openInvoices],
   );
 
+  useEffect(() => {
+    if (!qbConnected && filter === "unsynced") setFilter("unpaid");
+  }, [qbConnected, filter]);
+
   const filtered = useMemo(() => {
     if (!invoices) return [];
     if (filter === "all") return invoices;
     if (filter === "unpaid") return invoices.filter((inv) => inv.status === "open");
     if (filter === "unsynced") return invoices.filter((inv) => qboSyncState(inv) === "unsynced");
     return invoices.filter((inv) => inv.status === "paid");
-  }, [invoices, filter, qbConnected]);
+  }, [invoices, filter]);
 
   const tabs: { key: StatusFilter; label: string }[] = [
     ...STATUS_TABS,
