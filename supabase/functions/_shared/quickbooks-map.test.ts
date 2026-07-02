@@ -3,6 +3,8 @@ import {
   parseInvoiceLines,
   buildInvoiceLines,
   buildPaymentPayload,
+  summarizeQuoteLines,
+  buildQuoteInvoiceLine,
 } from "./quickbooks-map.ts";
 
 describe("parseInvoiceLines", () => {
@@ -53,5 +55,34 @@ describe("buildPaymentPayload", () => {
         { Amount: 150, LinkedTxn: [{ TxnId: "INV42", TxnType: "Invoice" }] },
       ],
     });
+  });
+});
+
+describe("summarizeQuoteLines", () => {
+  it("joins distinct surfaces", () => {
+    expect(
+      summarizeQuoteLines([{ surface: "concrete" }, { surface: "siding" }, { surface: "concrete" }]),
+    ).toBe("concrete, siding");
+  });
+  it("uses the custom label when present", () => {
+    expect(summarizeQuoteLines([{ custom: true, label: "Gutter cleaning" }])).toBe("Gutter cleaning");
+  });
+  it("falls back for empty / non-array input", () => {
+    expect(summarizeQuoteLines([])).toBe("Pressure washing services");
+    expect(summarizeQuoteLines(null)).toBe("Pressure washing services");
+    expect(summarizeQuoteLines("garbage")).toBe("Pressure washing services");
+  });
+});
+
+describe("buildQuoteInvoiceLine", () => {
+  it("builds one line at the quote total, surfaces in the description", () => {
+    expect(buildQuoteInvoiceLine({ total: 450, lines: [{ surface: "concrete" }] }, "ITEM5")).toEqual([
+      {
+        Amount: 450,
+        DetailType: "SalesItemLineDetail",
+        Description: "concrete",
+        SalesItemLineDetail: { ItemRef: { value: "ITEM5" }, Qty: 1, UnitPrice: 450 },
+      },
+    ]);
   });
 });

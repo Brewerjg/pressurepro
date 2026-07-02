@@ -101,3 +101,54 @@ export function buildPaymentPayload(
     ],
   };
 }
+
+/**
+ * Best-effort human summary of a PressurePro quote's surfaces, for the QBO
+ * invoice line description. Uses each line's custom `label` else its `surface`
+ * key (deduped). No SURFACE_META dependency (that's client-only) — raw surface
+ * keys are acceptable here. Falls back when the lines are empty/unparseable.
+ */
+export function summarizeQuoteLines(lines: unknown): string {
+  const FALLBACK = "Pressure washing services";
+  if (!Array.isArray(lines)) return FALLBACK;
+  const names: string[] = [];
+  for (const r of lines) {
+    if (!r || typeof r !== "object") continue;
+    const row = r as Record<string, unknown>;
+    const label =
+      typeof row.label === "string" && row.label.trim() ? row.label.trim() : "";
+    const surface =
+      typeof row.surface === "string" && row.surface.trim()
+        ? row.surface.trim()
+        : "";
+    const name = label || surface;
+    if (name && !names.includes(name)) names.push(name);
+  }
+  return names.length ? names.join(", ") : FALLBACK;
+}
+
+/**
+ * Map a PressurePro quote to a SINGLE QBO invoice line equal to the quote
+ * total. PressurePro line pricing carries mode multipliers/minimums, so
+ * per-surface Qty×UnitPrice can drift from the quote total and QBO rejects the
+ * mismatch — one line = total reconciles exactly. Surfaces live in the
+ * description.
+ */
+export function buildQuoteInvoiceLine(
+  quote: { total: number; lines: unknown },
+  itemId: string,
+): QboInvoiceLine[] {
+  const amount = round2(Number(quote.total) || 0);
+  return [
+    {
+      Amount: amount,
+      DetailType: "SalesItemLineDetail",
+      Description: summarizeQuoteLines(quote.lines),
+      SalesItemLineDetail: {
+        ItemRef: { value: itemId },
+        Qty: 1,
+        UnitPrice: amount,
+      },
+    },
+  ];
+}
