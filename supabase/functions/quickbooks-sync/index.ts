@@ -1,13 +1,13 @@
 // quickbooks-sync
 //
-// QuickBooks Online Phase 2 — push a TurfPro invoice and its payments into the
-// operator's connected QBO company. One op: sync_invoice { invoice_id }.
+// QuickBooks Online Phase 2 — push a billable (a TurfPro invoice OR a
+// PressurePro quote) and its payments into the operator's connected QBO
+// company. Ops: sync_invoice { invoice_id }, sync_quote { quote_id }.
 //
-// Auth: resolves the operator from the Authorization header (JWT-scoped
-// client), like quickbooks-oauth. All QBO/token work uses the service-role
-// client via the shared module. Idempotent by persisted QBO ids:
-//   invoices.qbo_invoice_id (create-once) and manual_payments.qbo_payment_id
-//   (one QBO Payment per non-voided row, skipped once posted).
+// Auth: resolves the operator from the Authorization header. All QBO/token work
+// uses the service-role client. Idempotent by persisted QBO ids: the billable's
+// qbo_invoice_id (create-once) and manual_payments.qbo_payment_id (one QBO
+// Payment per non-voided row, skipped once posted).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 import { handleOptions, jsonResponse } from "../_shared/cors.ts";
@@ -21,7 +21,9 @@ import {
 import {
   parseInvoiceLines,
   buildInvoiceLines,
+  buildQuoteInvoiceLine,
   buildPaymentPayload,
+  type QboInvoiceLine,
 } from "../_shared/quickbooks-map.ts";
 
 const DEFAULT_ITEM_NAME = "Landscaping Services";
@@ -51,7 +53,6 @@ async function resolveDefaultItem(
 ): Promise<string> {
   if (conn.qbo_default_item_id) return conn.qbo_default_item_id;
 
-  // 1) Reuse an existing item with our name if present.
   const found = await qboFetch(
     conn,
     `/query?query=${encodeURIComponent(
@@ -60,7 +61,6 @@ async function resolveDefaultItem(
   );
   let itemId: string | undefined = found?.QueryResponse?.Item?.[0]?.Id;
 
-  // 2) Otherwise create it, referencing the first Income account.
   if (!itemId) {
     const acct = await qboFetch(
       conn,
@@ -93,7 +93,8 @@ async function resolveDefaultItem(
   return itemId;
 }
 
-interface InvoiceRow {
+// Fields shared by both billables (invoice + quote) needed for customer resolution.
+interface BillableRow {
   id: string;
   user_id: string;
   customer_id: string | null;
@@ -101,29 +102,25 @@ interface InvoiceRow {
   customer_email: string | null;
   phone: string | null;
   address: string | null;
-  lines: unknown;
-  qbo_invoice_id: string | null;
 }
 
-/** Find-or-create the QBO Customer for this invoice; cache id when possible. */
+/** Find-or-create the QBO Customer for this billable; cache id when possible. */
 async function resolveCustomer(
   conn: QbConnection,
   svc: ReturnType<typeof serviceClient>,
-  invoice: InvoiceRow,
+  billable: BillableRow,
 ): Promise<string> {
-  // Cached on the customers row?
-  if (invoice.customer_id) {
+  if (billable.customer_id) {
     const { data: cust } = await svc
       .from("customers")
       .select("qbo_customer_id")
-      .eq("id", invoice.customer_id)
+      .eq("id", billable.customer_id)
       .maybeSingle();
     const cached = (cust as { qbo_customer_id?: string } | null)?.qbo_customer_id;
     if (cached) return cached;
   }
 
-  // Match by DisplayName, then email.
-  const name = invoice.customer_name?.trim() || "Customer";
+  const name = billable.customer_name?.trim() || "Customer";
   let match = await qboFetch(
     conn,
     `/query?query=${encodeURIComponent(
@@ -132,22 +129,21 @@ async function resolveCustomer(
   );
   let customerId: string | undefined = match?.QueryResponse?.Customer?.[0]?.Id;
 
-  if (!customerId && invoice.customer_email) {
+  if (!customerId && billable.customer_email) {
     match = await qboFetch(
       conn,
       `/query?query=${encodeURIComponent(
-        `select Id from Customer where PrimaryEmailAddr = '${q(invoice.customer_email)}'`,
+        `select Id from Customer where PrimaryEmailAddr = '${q(billable.customer_email)}'`,
       )}&minorversion=65`,
     );
     customerId = match?.QueryResponse?.Customer?.[0]?.Id;
   }
 
-  // Create if still not found.
   if (!customerId) {
     const body: Record<string, unknown> = { DisplayName: name };
-    if (invoice.customer_email) body.PrimaryEmailAddr = { Address: invoice.customer_email };
-    if (invoice.phone) body.PrimaryPhone = { FreeFormNumber: invoice.phone };
-    if (invoice.address) body.BillAddr = { Line1: invoice.address };
+    if (billable.customer_email) body.PrimaryEmailAddr = { Address: billable.customer_email };
+    if (billable.phone) body.PrimaryPhone = { FreeFormNumber: billable.phone };
+    if (billable.address) body.BillAddr = { Line1: billable.address };
     const created = await qboFetch(conn, `/customer?minorversion=65`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -156,59 +152,42 @@ async function resolveCustomer(
     if (!customerId) throw new Error("Failed to create QuickBooks customer");
   }
 
-  if (invoice.customer_id) {
+  if (billable.customer_id) {
     const { error: custCacheErr } = await svc
       .from("customers")
       .update({ qbo_customer_id: customerId } as never)
-      .eq("id", invoice.customer_id);
+      .eq("id", billable.customer_id);
     if (custCacheErr) console.warn("Failed to cache qbo_customer_id:", custCacheErr.message);
   }
   return customerId;
 }
 
-Deno.serve(async (req) => {
-  const pre = handleOptions(req);
-  if (pre) return pre;
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
-  }
-
-  const body = await req.json().catch(() => ({}));
-
-  const user = await resolveUser(req);
-  if (!user) return jsonResponse({ error: "Unauthorized" }, { status: 401 });
-
-  if (body?.action !== "sync_invoice" || typeof body?.invoice_id !== "string") {
-    return jsonResponse({ error: "Expected { action: 'sync_invoice', invoice_id }" }, { status: 400 });
-  }
-  const invoiceId = body.invoice_id as string;
-
-  const svc = serviceClient();
-
-  // Load the invoice, scoped to this operator.
-  const { data: invData, error: invErr } = await svc
-    .from("invoices")
-    .select("id, user_id, customer_id, customer_name, customer_email, phone, address, lines, qbo_invoice_id")
-    .eq("id", invoiceId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (invErr) return jsonResponse({ error: invErr.message }, { status: 500 });
-  if (!invData) return jsonResponse({ error: "Invoice not found" }, { status: 404 });
-  const invoice = invData as InvoiceRow;
-
+/**
+ * Shared orchestration for both ops. Create-once QBO invoice (guarded by the
+ * billable's existing qbo_invoice_id), mirror non-voided unsynced payments, and
+ * finalize. On any failure, persists the message to `${table}.qbo_sync_error`
+ * and rethrows. Idempotency comes from persisting ids at each step.
+ */
+async function syncBillable(
+  conn: QbConnection,
+  svc: ReturnType<typeof serviceClient>,
+  opts: {
+    table: "invoices" | "quotes";
+    row: BillableRow;
+    existingQboInvoiceId: string | null;
+    paymentMatchColumn: "invoice_id" | "quote_id";
+    buildLines: (itemId: string) => QboInvoiceLine[];
+  },
+): Promise<{ qbo_invoice_id: string; payments_synced: number }> {
+  const { table, row, paymentMatchColumn, buildLines } = opts;
   try {
-    let conn = await loadConnection(svc, user.id);
-    if (!conn) return jsonResponse({ error: "QuickBooks is not connected" }, { status: 400 });
-    conn = await refreshIfNeeded(conn, svc);
-
     const itemId = await resolveDefaultItem(conn, svc);
-    const customerRef = await resolveCustomer(conn, svc, invoice);
+    const customerRef = await resolveCustomer(conn, svc, row);
 
-    // Create the QBO invoice once.
-    let qboInvoiceId = invoice.qbo_invoice_id ?? null;
+    let qboInvoiceId = opts.existingQboInvoiceId ?? null;
     if (!qboInvoiceId) {
-      const lines = buildInvoiceLines(parseInvoiceLines(invoice.lines), itemId);
-      if (lines.length === 0) throw new Error("Invoice has no line items to sync");
+      const lines = buildLines(itemId);
+      if (lines.length === 0) throw new Error("Nothing to sync (no line items)");
       const createdInv = await qboFetch(conn, `/invoice?minorversion=65`, {
         method: "POST",
         body: JSON.stringify({ CustomerRef: { value: customerRef }, Line: lines }),
@@ -216,17 +195,16 @@ Deno.serve(async (req) => {
       qboInvoiceId = createdInv?.Invoice?.Id ?? null;
       if (!qboInvoiceId) throw new Error("Failed to create QuickBooks invoice");
       const { error: invWriteErr } = await svc
-        .from("invoices")
+        .from(table)
         .update({ qbo_invoice_id: qboInvoiceId } as never)
-        .eq("id", invoice.id);
+        .eq("id", row.id);
       if (invWriteErr) throw new Error(`Failed to persist qbo_invoice_id: ${invWriteErr.message}`);
     }
 
-    // Mirror each non-voided, not-yet-synced payment.
     const { data: pays, error: payErr } = await svc
       .from("manual_payments")
       .select("id, amount_cents")
-      .eq("invoice_id", invoice.id)
+      .eq(paymentMatchColumn, row.id)
       .neq("status", "voided")
       .is("qbo_payment_id", null);
     if (payErr) throw new Error(payErr.message);
@@ -249,18 +227,92 @@ Deno.serve(async (req) => {
     }
 
     await svc
-      .from("invoices")
+      .from(table)
       .update({ qbo_synced_at: new Date().toISOString(), qbo_sync_error: null } as never)
-      .eq("id", invoice.id);
+      .eq("id", row.id);
 
-    return jsonResponse({ ok: true, qbo_invoice_id: qboInvoiceId, payments_synced: paymentsSynced });
+    return { qbo_invoice_id: qboInvoiceId, payments_synced: paymentsSynced };
   } catch (e) {
     const message = e instanceof Error ? e.message : "QuickBooks sync failed";
-    await svc
-      .from("invoices")
-      .update({ qbo_sync_error: message } as never)
-      .eq("id", invoice.id);
-    console.error("quickbooks-sync error:", message);
-    return jsonResponse({ error: message }, { status: 500 });
+    await svc.from(table).update({ qbo_sync_error: message } as never).eq("id", row.id);
+    throw new Error(message);
+  }
+}
+
+Deno.serve(async (req) => {
+  const pre = handleOptions(req);
+  if (pre) return pre;
+  if (req.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+
+  const user = await resolveUser(req);
+  if (!user) return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+
+  const svc = serviceClient();
+
+  try {
+    if (body?.action === "sync_invoice") {
+      if (typeof body?.invoice_id !== "string") {
+        return jsonResponse({ error: "Expected { action: 'sync_invoice', invoice_id }" }, { status: 400 });
+      }
+      const { data, error } = await svc
+        .from("invoices")
+        .select("id, user_id, customer_id, customer_name, customer_email, phone, address, lines, qbo_invoice_id")
+        .eq("id", body.invoice_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) return jsonResponse({ error: error.message }, { status: 500 });
+      if (!data) return jsonResponse({ error: "Invoice not found" }, { status: 404 });
+      const row = data as BillableRow & { lines: unknown; qbo_invoice_id: string | null };
+
+      let conn = await loadConnection(svc, user.id);
+      if (!conn) return jsonResponse({ error: "QuickBooks is not connected" }, { status: 400 });
+      conn = await refreshIfNeeded(conn, svc);
+
+      const result = await syncBillable(conn, svc, {
+        table: "invoices",
+        row,
+        existingQboInvoiceId: row.qbo_invoice_id,
+        paymentMatchColumn: "invoice_id",
+        buildLines: (itemId) => buildInvoiceLines(parseInvoiceLines(row.lines), itemId),
+      });
+      return jsonResponse({ ok: true, ...result });
+    }
+
+    if (body?.action === "sync_quote") {
+      if (typeof body?.quote_id !== "string") {
+        return jsonResponse({ error: "Expected { action: 'sync_quote', quote_id }" }, { status: 400 });
+      }
+      const { data, error } = await svc
+        .from("quotes")
+        .select("id, user_id, customer_id, customer_name, customer_email, phone, address, total, lines, qbo_invoice_id")
+        .eq("id", body.quote_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) return jsonResponse({ error: error.message }, { status: 500 });
+      if (!data) return jsonResponse({ error: "Quote not found" }, { status: 404 });
+      const row = data as BillableRow & { total: number; lines: unknown; qbo_invoice_id: string | null };
+
+      let conn = await loadConnection(svc, user.id);
+      if (!conn) return jsonResponse({ error: "QuickBooks is not connected" }, { status: 400 });
+      conn = await refreshIfNeeded(conn, svc);
+
+      const result = await syncBillable(conn, svc, {
+        table: "quotes",
+        row,
+        existingQboInvoiceId: row.qbo_invoice_id,
+        paymentMatchColumn: "quote_id",
+        buildLines: (itemId) =>
+          buildQuoteInvoiceLine({ total: Number(row.total ?? 0), lines: row.lines }, itemId),
+      });
+      return jsonResponse({ ok: true, ...result });
+    }
+
+    return jsonResponse({ error: "Unknown op (expected sync_invoice or sync_quote)" }, { status: 400 });
+  } catch (e) {
+    return jsonResponse({ error: e instanceof Error ? e.message : "QuickBooks sync failed" }, { status: 500 });
   }
 });
