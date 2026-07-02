@@ -34,6 +34,9 @@ import {
   listManualPaymentsLifetime,
   type ManualPayment,
 } from "@/lib/manual-payments";
+import { getQuickBooksStatus } from "@/lib/quickbooks";
+import { qboSyncState } from "@/lib/qbo-sync-state";
+import { listInvoices } from "@/lib/invoices";
 
 // Reports — TurfPro operator KPIs (v2). MRR is the headline (recurring is the
 // lawn-care default per TURFPRO_SPEC.md). v1 windows are still 30/60/90 day;
@@ -807,6 +810,24 @@ export default function Reports() {
 
   const k = useMemo(() => (data ? deriveKPIs(data) : null), [data]);
 
+  const { data: qbStatus } = useQuery({
+    queryKey: ["quickbooks-status"],
+    queryFn: getQuickBooksStatus,
+    staleTime: 5 * 60 * 1000,
+  });
+  const qbConnected = !!qbStatus?.connected;
+
+  const { data: qbInvoices } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: () => listInvoices(APP_ID),
+    enabled: qbConnected,
+  });
+  const qbCounts = useMemo(() => {
+    const c = { synced: 0, error: 0, unsynced: 0 };
+    for (const inv of qbInvoices ?? []) c[qboSyncState(inv)]++;
+    return c;
+  }, [qbInvoices]);
+
   return (
     <div className="pt-3 pb-8">
       {/* Header — same shape as Plans.tsx */}
@@ -858,6 +879,26 @@ export default function Reports() {
               paymentCount={k?.manualPayments30d.paymentCount ?? 0}
             />
           </section>
+
+          {qbConnected && qbInvoices !== undefined && (
+            <div className="mx-4 tp-card p-4 mb-3.5">
+              <div className="text-[11px] font-bold uppercase tracking-[0.4px] text-ink-500">
+                QuickBooks
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="tp-num text-2xl font-bold text-ink-900">{qbCounts.synced}</span>
+                <span className="text-[13px] text-ink-500">synced</span>
+                <span className="text-ink-300">·</span>
+                <span className="tp-num text-2xl font-bold text-ink-900">{qbCounts.unsynced}</span>
+                <span className="text-[13px] text-ink-500">not synced</span>
+              </div>
+              {qbCounts.error > 0 && (
+                <div className="mt-1 text-[12px] font-semibold text-destructive">
+                  {qbCounts.error} sync {qbCounts.error === 1 ? "error" : "errors"}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Payment failures (30d) — destructive-tinted card that links into
               Plans?filter=dunning so the operator can triage failed cards in

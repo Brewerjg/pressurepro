@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, FileText, ChevronRight, CheckCircle2 } from "lucide-react";
@@ -9,6 +9,9 @@ import {
   formatInvoiceNumber,
   type Invoice,
 } from "@/lib/invoices";
+import { getQuickBooksStatus } from "@/lib/quickbooks";
+import { qboSyncState } from "@/lib/qbo-sync-state";
+import { QbSyncChip } from "@/components/invoices/QbSyncChip";
 
 // Invoices list — the surface where TurfPro operators work the bills they've
 // issued from accepted quotes. Mirrors the Quotes list structure/styling: a
@@ -17,7 +20,7 @@ import {
 // (invoices isn't in the generated Database type, so the lib casts at the
 // boundary).
 
-type StatusFilter = "unpaid" | "paid" | "all";
+type StatusFilter = "unpaid" | "paid" | "all" | "unsynced";
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: "unpaid", label: "Unpaid" },
@@ -51,6 +54,13 @@ export default function Invoices() {
     queryFn: () => listInvoices(APP_ID),
   });
 
+  const { data: qbStatus } = useQuery({
+    queryKey: ["quickbooks-status"],
+    queryFn: getQuickBooksStatus,
+    staleTime: 5 * 60 * 1000,
+  });
+  const qbConnected = !!qbStatus?.connected;
+
   // "Open" = status open (still owed). Outstanding $ sums those totals.
   const openInvoices = useMemo(
     () => (invoices ?? []).filter((inv) => inv.status === "open"),
@@ -61,12 +71,22 @@ export default function Invoices() {
     [openInvoices],
   );
 
+  useEffect(() => {
+    if (!qbConnected && filter === "unsynced") setFilter("unpaid");
+  }, [qbConnected, filter]);
+
   const filtered = useMemo(() => {
     if (!invoices) return [];
     if (filter === "all") return invoices;
     if (filter === "unpaid") return invoices.filter((inv) => inv.status === "open");
+    if (filter === "unsynced") return invoices.filter((inv) => qboSyncState(inv) === "unsynced");
     return invoices.filter((inv) => inv.status === "paid");
   }, [invoices, filter]);
+
+  const tabs: { key: StatusFilter; label: string }[] = [
+    ...STATUS_TABS,
+    ...(qbConnected ? [{ key: "unsynced" as const, label: "Unsynced" }] : []),
+  ];
 
   return (
     <div className="pt-3">
@@ -97,7 +117,7 @@ export default function Invoices() {
       {/* Status filter — same segmented control pattern as Quotes / Plans */}
       <section className="mx-4 mb-3">
         <div className="tp-card p-1 flex gap-1">
-          {STATUS_TABS.map((tab) => {
+          {tabs.map((tab) => {
             const isActive = filter === tab.key;
             return (
               <button
@@ -159,7 +179,7 @@ export default function Invoices() {
         ) : (
           <ul className="flex flex-col gap-2.5">
             {filtered.map((inv) => (
-              <InvoiceRowItem key={inv.id} invoice={inv} />
+              <InvoiceRowItem key={inv.id} invoice={inv} qbConnected={qbConnected} />
             ))}
           </ul>
         )}
@@ -168,7 +188,7 @@ export default function Invoices() {
   );
 }
 
-function InvoiceRowItem({ invoice }: { invoice: Invoice }) {
+function InvoiceRowItem({ invoice, qbConnected }: { invoice: Invoice; qbConnected: boolean }) {
   const tone = STATUS_STYLE[invoice.status];
   // Amount due = full total while open, nothing once paid/void.
   const amountDue = invoice.status === "open" ? Number(invoice.total ?? 0) : 0;
@@ -220,6 +240,7 @@ function InvoiceRowItem({ invoice }: { invoice: Invoice }) {
                     Complete
                   </span>
                 )}
+                {qbConnected && <QbSyncChip row={invoice} />}
               </div>
               <div className="text-[11px] text-ink-500 tp-num shrink-0">
                 {fmtDateShort(invoice.created_at)}
