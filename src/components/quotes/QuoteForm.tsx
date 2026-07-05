@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { QuoteLine } from "./types";
-import { defaultExpiresAt, lineTotal, quoteTotal } from "./types";
+import { defaultExpiresAt, quoteTotal } from "./types";
 import { APP_ID } from "@/lib/app-context";
 import { vertical } from "@/vertical";
 import { Section, Field } from "@/components/quotes/FormSection";
@@ -104,7 +104,7 @@ export default function QuoteForm({
         .from("catalog_items")
         .select("*")
         .eq("app", APP_ID)
-        .eq("kind", vertical.quoteLine.catalogKindFilter)
+        .eq("kind", vertical.quoteLine.catalogKindFilter as CatalogItem["kind"])
         .eq("archived", false)
         .order("sort_order");
       if (error) throw error;
