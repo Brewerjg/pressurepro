@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
 
 // The quote-line seam — everything trade-specific about a quote's line items.
-// 0c-1a: concrete lawn QuoteLine shape. 0c-1b loosens it to { id; total; [k]: unknown }
-// and refactors display consumers to describe().
+// 0c-1a: concrete lawn QuoteLine shape. 0c-1b (Task 1) enriches LineDescription
+// and hardens describe/parseLines. QuoteLine loosens to { id; total; [k]: unknown }
+// in the FINAL task of this slice, not here.
 
 export type QuoteLine = {
   id: string;
@@ -22,9 +23,11 @@ export interface CatalogItem {
 }
 
 export interface LineDescription {
-  label: string;
-  detail: string | null;
-  amount: number;
+  label: string;          // service name — table "Service" col + card title
+  detail: string | null;  // card subtitle: qty === 1 ? null : `${qty} × ${rate}`
+  qty: string;            // table "Qty" col  — vertical-formatted (e.g. "3")
+  rate: string;           // table "Rate" col — vertical-formatted ("$45.00" | "—")
+  amount: number;         // line total — consumers format with their own fmtUSD
 }
 
 export interface LineEditorProps {

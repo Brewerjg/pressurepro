@@ -30,10 +30,41 @@ describe("lawnQuoteLine", () => {
   it("parseLines returns [] for non-array input", () => {
     expect(lawnQuoteLine.parseLines(null)).toEqual([]);
   });
-  it("describe: qty 1 → no detail; qty>1 → 'N × $R'", () => {
-    expect(lawnQuoteLine.describe({ id: "a", name: "Mow", qty: 1, rate: 45, total: 45 }))
-      .toEqual({ label: "Mow", detail: null, amount: 45 });
-    expect(lawnQuoteLine.describe({ id: "a", name: "Mow", qty: 3, rate: 45, total: 135 }))
-      .toEqual({ label: "Mow", detail: "3 × $45", amount: 135 });
+  it("describe: qty 1 → detail null but qty/rate/amount still populated", () => {
+    expect(
+      lawnQuoteLine.describe({ id: "a", name: "Mow", qty: 1, rate: 45, total: 45 }),
+    ).toEqual({ label: "Mow", detail: null, qty: "1", rate: "$45.00", amount: 45 });
+  });
+  it("describe: qty > 1 → detail 'N × $R.RR' with formatted rate", () => {
+    expect(
+      lawnQuoteLine.describe({ id: "a", name: "Mow", qty: 3, rate: 45, total: 135 }),
+    ).toEqual({
+      label: "Mow",
+      detail: "3 × $45.00",
+      qty: "3",
+      rate: "$45.00",
+      amount: 135,
+    });
+  });
+  it("parseLines names a custom line from its label", () => {
+    expect(
+      lawnQuoteLine.parseLines([{ id: "x", custom: true, label: "One-off wash", qty: 1, rate: 80, total: 80 }]),
+    ).toEqual([
+      { id: "x", catalog_item_id: undefined, name: "One-off wash", qty: 1, rate: 80, total: 80 },
+    ]);
+  });
+  it("parseLines humanizes a legacy surface into the name", () => {
+    expect(
+      lawnQuoteLine.parseLines([{ surface: "front_walk", rate: 0.5, sqft: 200 }]),
+    ).toEqual([
+      { id: expect.any(String), name: "Front Walk", qty: 200, rate: 0.5, total: 100 },
+    ]);
+  });
+  it("parseLines folds area_sqft into qty when there is no qty key", () => {
+    expect(
+      lawnQuoteLine.parseLines([{ label: "Deck", area_sqft: 150, rate: 2 }]),
+    ).toEqual([
+      { id: expect.any(String), name: "Deck", qty: 150, rate: 2, total: 300 },
+    ]);
   });
 });

@@ -13,24 +13,48 @@ function lawnLineTotal(l: { qty: number; rate: number }): number {
   return Math.round((l.qty ?? 0) * (l.rate ?? 0) * 100) / 100;
 }
 
+// One money formatter for both the rate column and the detail subtitle so they
+// never diverge. `$${n.toFixed(2)}` matches the print tables' existing rate cell.
+function fmtLawnMoney(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+// "front_walk" → "Front Walk". Absorbs QuotePrint/Accept's local surface label logic.
+function humanizeSurface(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Line name precedence — absorbs the legacy label/custom/surface fallbacks the
+// public pages used to do in local `lineLabel` helpers.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lineName(r: any): string {
+  if (r.custom && typeof r.label === "string" && r.label) return r.label;
+  if (typeof r.name === "string" && r.name) return r.name;
+  if (typeof r.label === "string" && r.label) return r.label;
+  if (typeof r.surface === "string" && r.surface) return humanizeSurface(r.surface);
+  return "Service";
+}
+
 function lawnParseLines(raw: unknown): QuoteLine[] {
   if (!Array.isArray(raw)) return [];
   return raw
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((r: any) => {
+    .map((r: any): QuoteLine | null => {
       if (!r || typeof r !== "object") return null;
+      // Legacy pressure-shaped rows carried area in sqft/area_sqft and no qty key.
       const isLegacy =
-        typeof r.sqft === "number" && typeof r.rate === "number" && !("qty" in r);
+        (typeof r.sqft === "number" || typeof r.area_sqft === "number") &&
+        !("qty" in r);
       if (isLegacy) {
-        const qty = Number(r.sqft) || 0;
+        const qty = Number(r.area_sqft) || Number(r.sqft) || 0;
         const rate = Number(r.rate) || 0;
         return {
           id: typeof r.id === "string" ? r.id : crypto.randomUUID(),
-          name: r.label ?? r.surface ?? "Line",
+          name: lineName(r),
           qty,
           rate,
-          total: lawnLineTotal({ qty, rate }),
-        } as QuoteLine;
+          total: typeof r.total === "number" ? r.total : lawnLineTotal({ qty, rate }),
+        };
       }
       const qty = Number(r.qty) || 0;
       const rate = Number(r.rate) || 0;
@@ -38,11 +62,11 @@ function lawnParseLines(raw: unknown): QuoteLine[] {
         id: typeof r.id === "string" ? r.id : crypto.randomUUID(),
         catalog_item_id:
           typeof r.catalog_item_id === "string" ? r.catalog_item_id : undefined,
-        name: typeof r.name === "string" ? r.name : "Line",
+        name: lineName(r),
         qty,
         rate,
         total: typeof r.total === "number" ? r.total : lawnLineTotal({ qty, rate }),
-      } as QuoteLine;
+      };
     })
     .filter((l): l is QuoteLine => l !== null);
 }
@@ -57,7 +81,15 @@ function lawnCatalogToLine(item: CatalogItem): QuoteLine {
 }
 
 function lawnDescribe(l: QuoteLine): LineDescription {
-  return { label: l.name, detail: l.qty === 1 ? null : `${l.qty} × $${l.rate}`, amount: l.total };
+  const qty = String(l.qty);
+  const rate = typeof l.rate === "number" ? fmtLawnMoney(l.rate) : "—";
+  return {
+    label: l.name,
+    detail: l.qty === 1 ? null : `${qty} × ${rate}`,
+    qty,
+    rate,
+    amount: l.total,
+  };
 }
 
 function LawnLineEditor({ lines, catalog, onChange }: LineEditorProps) {
