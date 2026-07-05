@@ -427,10 +427,10 @@ export default function Onboarding() {
       <div className="w-full max-w-md">
         {/* Brand header — mirrors Auth.tsx */}
         <div className="text-center mb-6">
-          <div className="tp-display text-[34px] font-bold text-green-800 tracking-tight">
+          <div className="tp-display text-[34px] font-bold text-brand-800 tracking-tight">
             TurfPro
           </div>
-          <p className="text-sm text-ink-500 mt-1">Let's get you set up.</p>
+          <p className="text-sm text-neutral-500 mt-1">Let's get you set up.</p>
         </div>
 
         {/* Stepper */}
@@ -440,7 +440,7 @@ export default function Onboarding() {
         <div className="tp-card p-5 space-y-4">
           {step === 1 && (
             <Step1
-              icon={<Leaf className="h-5 w-5 text-green-700" strokeWidth={2} />}
+              icon={<Leaf className="h-5 w-5 text-brand-700" strokeWidth={2} />}
               title="Your business"
               subtitle="Takes about 2 minutes. We'll show your local 7-day forecast next."
               yourName={yourName}
@@ -458,7 +458,7 @@ export default function Onboarding() {
 
           {step === 2 && (
             <Step2
-              icon={<Users className="h-5 w-5 text-green-700" strokeWidth={2} />}
+              icon={<Users className="h-5 w-5 text-brand-700" strokeWidth={2} />}
               title="Who's running routes?"
               subtitle="Color-code your crews so the schedule shows who's where."
               crews={crews}
@@ -472,7 +472,7 @@ export default function Onboarding() {
 
           {step === 3 && (
             <Step3
-              icon={<Wrench className="h-5 w-5 text-green-700" strokeWidth={2} />}
+              icon={<Wrench className="h-5 w-5 text-brand-700" strokeWidth={2} />}
               title="Lawn services catalog"
               subtitle="Want us to drop in the standard lawn-care services? You can edit them anytime."
               submitting={seedMutation.isPending}
@@ -487,7 +487,7 @@ export default function Onboarding() {
 
           {step === 4 && (
             <Step4
-              icon={<Sparkles className="h-5 w-5 text-green-700" strokeWidth={2} />}
+              icon={<Sparkles className="h-5 w-5 text-brand-700" strokeWidth={2} />}
               title="Add your first customer"
               subtitle="Optional — you can do this from the Customers tab later."
               custName={custName}
@@ -506,7 +506,7 @@ export default function Onboarding() {
 
           {step === 5 && (
             <Step5
-              icon={<CreditCard className="h-5 w-5 text-green-700" strokeWidth={2} />}
+              icon={<CreditCard className="h-5 w-5 text-brand-700" strokeWidth={2} />}
               status={connectStatus}
               starting={connectStarting}
               finishing={completeMutation.isPending}
@@ -547,7 +547,7 @@ export default function Onboarding() {
             type="button"
             onClick={() => skipMutation.mutate()}
             disabled={skipMutation.isPending}
-            className="inline-flex items-center gap-1.5 text-xs text-ink-500 hover:text-ink-700 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-700 disabled:opacity-60"
           >
             {skipMutation.isPending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -587,9 +587,9 @@ function Stepper({ current }: { current: Step }) {
             <div
               className={cn(
                 "h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold transition-colors",
-                isDone && "bg-green-700 text-white",
-                isCurrent && "bg-green-800 text-white shadow-bronze",
-                !isDone && !isCurrent && "bg-ink-100 text-ink-500",
+                isDone && "bg-brand-700 text-white",
+                isCurrent && "bg-brand-800 text-white shadow-accent",
+                !isDone && !isCurrent && "bg-neutral-100 text-neutral-500",
               )}
             >
               {isDone ? <Check className="h-3.5 w-3.5" strokeWidth={2.6} /> : n}
@@ -599,7 +599,7 @@ function Stepper({ current }: { current: Step }) {
                 className={cn(
                   "h-px transition-colors",
                   connectorWidth,
-                  isDone ? "bg-green-700" : "bg-ink-200",
+                  isDone ? "bg-brand-700" : "bg-neutral-200",
                 )}
               />
             )}
@@ -747,11 +747,11 @@ function Step2(props: {
           type="button"
           onClick={addCrew}
           disabled={crews.length >= MAX_CREWS}
-          className="text-[12px] font-semibold text-green-800 hover:text-green-900 disabled:opacity-40"
+          className="text-[12px] font-semibold text-brand-800 hover:text-brand-900 disabled:opacity-40"
         >
           + Add another crew
         </button>
-        <span className="text-[11px] text-ink-400">
+        <span className="text-[11px] text-neutral-400">
           ({crews.length}/{MAX_CREWS})
         </span>
       </div>
@@ -760,7 +760,7 @@ function Step2(props: {
         type="button"
         onClick={props.onSolo}
         disabled={props.submitting}
-        className="w-full h-10 rounded-xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold hover:bg-ink-50 disabled:opacity-60"
+        className="w-full h-10 rounded-xl border border-neutral-200 bg-card text-neutral-700 text-[13px] font-semibold hover:bg-neutral-50 disabled:opacity-60"
       >
         I work solo
       </button>
@@ -809,7 +809,7 @@ function CrewRow({
         <button
           type="button"
           onClick={onRemove}
-          className="text-[11px] text-ink-500 hover:text-destructive shrink-0"
+          className="text-[11px] text-neutral-500 hover:text-destructive shrink-0"
           aria-label="Remove crew"
         >
           Remove
@@ -836,7 +836,7 @@ function ColorSwatch({
       aria-pressed={selected}
       className={cn(
         "h-7 w-7 rounded-full transition-transform",
-        selected && "ring-2 ring-offset-1 ring-green-700 scale-110",
+        selected && "ring-2 ring-offset-1 ring-brand-700 scale-110",
       )}
       style={{ backgroundColor: color }}
     />
@@ -858,18 +858,18 @@ function Step3(props: {
     <div className="space-y-3.5">
       <StepHeader icon={props.icon} title={props.title} subtitle={props.subtitle} />
 
-      <ul className="rounded-xl bg-green-50/60 border border-green-700/20 p-3 space-y-1.5">
+      <ul className="rounded-xl bg-brand-50/60 border border-brand-700/20 p-3 space-y-1.5">
         {SEED_PREVIEW.map((row) => (
           <li
             key={row.name}
-            className="flex items-center justify-between text-[12.5px] text-ink-700"
+            className="flex items-center justify-between text-[12.5px] text-neutral-700"
           >
             <span className="flex items-center gap-1.5">
-              <span className="h-1 w-1 rounded-full bg-green-700" />
+              <span className="h-1 w-1 rounded-full bg-brand-700" />
               {row.name}
             </span>
             {row.price && (
-              <span className="tp-num font-semibold text-ink-900">{row.price}</span>
+              <span className="tp-num font-semibold text-neutral-900">{row.price}</span>
             )}
           </li>
         ))}
@@ -881,7 +881,7 @@ function Step3(props: {
           type="button"
           onClick={props.onSkip}
           disabled={props.submitting}
-          className="flex-1 h-11 rounded-2xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold hover:bg-ink-50 disabled:opacity-60"
+          className="flex-1 h-11 rounded-2xl border border-neutral-200 bg-card text-neutral-700 text-[13px] font-semibold hover:bg-neutral-50 disabled:opacity-60"
         >
           I'll add my own
         </button>
@@ -957,7 +957,7 @@ function Step4(props: {
           type="button"
           onClick={() => props.onContinue(false)}
           disabled={props.submitting}
-          className="flex-1 h-11 rounded-2xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold hover:bg-ink-50 disabled:opacity-60"
+          className="flex-1 h-11 rounded-2xl border border-neutral-200 bg-card text-neutral-700 text-[13px] font-semibold hover:bg-neutral-50 disabled:opacity-60"
         >
           Skip
         </button>
@@ -996,37 +996,37 @@ function Step5(props: {
       />
 
       {isChecking && (
-        <div className="rounded-xl border border-ink-200 bg-ink-100/40 p-3 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-ink-500" />
-          <span className="text-[12.5px] text-ink-700">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-100/40 p-3 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-neutral-500" />
+          <span className="text-[12.5px] text-neutral-700">
             Checking your Stripe account…
           </span>
         </div>
       )}
 
       {isReady && (
-        <div className="rounded-xl border border-green-700/30 bg-green-50/60 p-3 flex items-center gap-2">
-          <Check className="h-4 w-4 text-green-700" strokeWidth={2.6} />
-          <span className="text-[12.5px] font-semibold text-green-800">
+        <div className="rounded-xl border border-brand-700/30 bg-brand-50/60 p-3 flex items-center gap-2">
+          <Check className="h-4 w-4 text-brand-700" strokeWidth={2.6} />
+          <span className="text-[12.5px] font-semibold text-brand-800">
             Connected ✓ — payouts will flow to your Stripe account.
           </span>
         </div>
       )}
 
       {isIncomplete && (
-        <div className="rounded-xl border border-bronze-500/30 bg-bronze-100/40 p-3">
-          <div className="text-[12.5px] font-semibold text-bronze-700">
+        <div className="rounded-xl border border-accent-500/30 bg-accent-100/40 p-3">
+          <div className="text-[12.5px] font-semibold text-accent-700">
             Almost there — Stripe needs more info.
           </div>
-          <div className="text-[11.5px] text-ink-600 mt-0.5 leading-snug">
+          <div className="text-[11.5px] text-neutral-600 mt-0.5 leading-snug">
             Tap "Connect Stripe" to finish the remaining fields.
           </div>
         </div>
       )}
 
       {!isReady && (
-        <div className="rounded-xl bg-green-50/60 border border-green-700/20 p-3 space-y-1.5">
-          <div className="text-[12.5px] text-ink-700 leading-snug">
+        <div className="rounded-xl bg-brand-50/60 border border-brand-700/20 p-3 space-y-1.5">
+          <div className="text-[12.5px] text-neutral-700 leading-snug">
             You keep <span className="font-semibold">100%</span> of every
             customer payment, on every plan.
           </div>
@@ -1040,7 +1040,7 @@ function Step5(props: {
             type="button"
             onClick={props.onFinish}
             disabled={props.finishing || props.starting}
-            className="flex-1 h-11 rounded-2xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold hover:bg-ink-50 disabled:opacity-60"
+            className="flex-1 h-11 rounded-2xl border border-neutral-200 bg-card text-neutral-700 text-[13px] font-semibold hover:bg-neutral-50 disabled:opacity-60"
           >
             {props.finishing ? (
               <Loader2 className="h-4 w-4 animate-spin mx-auto" />
@@ -1088,14 +1088,14 @@ function StepHeader({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="h-9 w-9 rounded-xl bg-green-50 grid place-items-center shrink-0">
+      <div className="h-9 w-9 rounded-xl bg-brand-50 grid place-items-center shrink-0">
         {icon}
       </div>
       <div className="min-w-0">
-        <h2 className="tp-display text-[18px] font-bold text-ink-900 leading-tight">
+        <h2 className="tp-display text-[18px] font-bold text-neutral-900 leading-tight">
           {title}
         </h2>
-        <p className="text-[12.5px] text-ink-500 mt-0.5">{subtitle}</p>
+        <p className="text-[12.5px] text-neutral-500 mt-0.5">{subtitle}</p>
       </div>
     </div>
   );
@@ -1111,7 +1111,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="block text-[10px] font-bold uppercase tracking-wider text-ink-500"
+      className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500"
     >
       {children}
     </label>
@@ -1136,7 +1136,7 @@ function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={submitting || disabled}
-      className="w-full h-12 rounded-2xl bg-bronze-500 hover:bg-bronze-600 text-white font-bold text-sm shadow-bronze disabled:opacity-60 flex items-center justify-center gap-2"
+      className="w-full h-12 rounded-2xl bg-accent-500 hover:bg-accent-600 text-white font-bold text-sm shadow-accent disabled:opacity-60 flex items-center justify-center gap-2"
     >
       {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : children}
     </button>
@@ -1148,7 +1148,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="h-11 px-4 rounded-2xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold flex items-center gap-1.5 hover:bg-ink-50"
+      className="h-11 px-4 rounded-2xl border border-neutral-200 bg-card text-neutral-700 text-[13px] font-semibold flex items-center gap-1.5 hover:bg-neutral-50"
     >
       <ArrowLeft className="h-4 w-4" strokeWidth={2.2} />
       Back
@@ -1157,4 +1157,4 @@ function BackButton({ onClick }: { onClick: () => void }) {
 }
 
 const inputCls =
-  "mt-1 w-full h-11 rounded-xl border border-ink-200 px-3 bg-card text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700";
+  "mt-1 w-full h-11 rounded-xl border border-neutral-200 px-3 bg-card text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-700/30 focus:border-brand-700";

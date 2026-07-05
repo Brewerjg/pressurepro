@@ -427,6 +427,6 @@ export function verdictColor(verdict: WorkVerdict): string {
       return "bg-[hsl(var(--drought-bg))] text-[hsl(36_80%_35%)]";
     case "good":
     default:
-      return "bg-green-50 text-green-800";
+      return "bg-brand-50 text-brand-800";
   }
 }

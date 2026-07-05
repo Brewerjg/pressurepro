@@ -40,12 +40,12 @@ type QuoteStatus = Database["public"]["Enums"]["quote_status"];
 type QuoteViewRow = Database["public"]["Tables"]["quote_views"]["Row"];
 
 const STATUS_PILL: Record<QuoteStatus, string> = {
-  draft:     "bg-ink-100 text-ink-700",
-  sent:      "bg-bronze-100 text-bronze-700",
-  accepted:  "bg-green-100 text-green-800",
-  scheduled: "bg-green-100 text-green-800",
-  complete:  "bg-green-100 text-green-800",
-  paid:      "bg-green-100 text-green-800",
+  draft:     "bg-neutral-100 text-neutral-700",
+  sent:      "bg-accent-100 text-accent-700",
+  accepted:  "bg-brand-100 text-brand-800",
+  scheduled: "bg-brand-100 text-brand-800",
+  complete:  "bg-brand-100 text-brand-800",
+  paid:      "bg-brand-100 text-brand-800",
 };
 
 const fmtUSD = (n: number) =>
@@ -220,7 +220,7 @@ export default function QuoteDetail() {
   };
 
   if (isLoading) {
-    return <div className="pt-6 px-[22px] text-sm text-ink-500">Loading…</div>;
+    return <div className="pt-6 px-[22px] text-sm text-neutral-500">Loading…</div>;
   }
   if (!quote) {
     return (
@@ -228,11 +228,11 @@ export default function QuoteDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="text-sm text-ink-500 inline-flex items-center gap-1.5 mb-3"
+          className="text-sm text-neutral-500 inline-flex items-center gap-1.5 mb-3"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <div className="tp-card p-5 text-sm text-ink-700">Quote not found.</div>
+        <div className="tp-card p-5 text-sm text-neutral-700">Quote not found.</div>
       </div>
     );
   }
@@ -342,16 +342,16 @@ export default function QuoteDetail() {
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="h-9 w-9 rounded-full border border-ink-200 bg-card flex items-center justify-center"
+            className="h-9 w-9 rounded-full border border-neutral-200 bg-card flex items-center justify-center"
             aria-label="Cancel edit"
           >
-            <ArrowLeft className="h-4 w-4 text-ink-700" strokeWidth={2} />
+            <ArrowLeft className="h-4 w-4 text-neutral-700" strokeWidth={2} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+            <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
               Edit quote
             </div>
-            <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5 truncate">
+            <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5 truncate">
               {quote.customer_name}
             </h1>
           </div>
@@ -416,20 +416,20 @@ export default function QuoteDetail() {
         <button
           type="button"
           onClick={() => navigate("/quotes")}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-ink-500 mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-neutral-500 mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Quotes
         </button>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-bronze-600">
+            <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-accent-600">
               Quote · #{quote.id.slice(0, 4).toUpperCase()}
             </div>
-            <h1 className="tp-display text-[26px] font-bold text-ink-900 mt-0.5 leading-tight truncate">
+            <h1 className="tp-display text-[26px] font-bold text-neutral-900 mt-0.5 leading-tight truncate">
               {quote.customer_name}
             </h1>
             {quote.address && (
-              <div className="text-sm text-ink-500 mt-1 truncate">
+              <div className="text-sm text-neutral-500 mt-1 truncate">
                 {quote.address}
               </div>
             )}
@@ -437,7 +437,7 @@ export default function QuoteDetail() {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="h-10 px-3.5 rounded-[14px] border border-ink-200 bg-card text-ink-700 text-sm font-semibold inline-flex items-center gap-1.5"
+            className="h-10 px-3.5 rounded-[14px] border border-neutral-200 bg-card text-neutral-700 text-sm font-semibold inline-flex items-center gap-1.5"
           >
             <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Edit
           </button>
@@ -448,7 +448,7 @@ export default function QuoteDetail() {
       <section className="mx-4 mb-3">
         <div className="rounded-[18px] bg-gradient-hero-deep text-white p-[18px] relative overflow-hidden">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="text-[10px] font-semibold tracking-[1px] uppercase text-bronze-400">
+            <div className="text-[10px] font-semibold tracking-[1px] uppercase text-accent-400">
               Quote total
             </div>
             <span
@@ -471,7 +471,7 @@ export default function QuoteDetail() {
             {quote.emailed_at ? ` · sent ${fmtDateTime(quote.emailed_at)}` : ""}
           </div>
           {quote.expires_at && (
-            <div className="text-bronze-400 text-[11px] mt-1 tp-num">
+            <div className="text-accent-400 text-[11px] mt-1 tp-num">
               Expires {new Date(quote.expires_at).toLocaleDateString()}
             </div>
           )}
@@ -484,7 +484,7 @@ export default function QuoteDetail() {
           type="button"
           onClick={handleSend}
           disabled={update.isPending}
-          className="rounded-[14px] bg-bronze-500 text-white font-bold text-[13px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          className="rounded-[14px] bg-accent-500 text-white font-bold text-[13px] py-3 shadow-accent hover:bg-accent-600 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
         >
           {update.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -496,7 +496,7 @@ export default function QuoteDetail() {
         <button
           type="button"
           onClick={handlePrint}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
         >
           <Printer className="h-3.5 w-3.5" />
           Print
@@ -504,11 +504,11 @@ export default function QuoteDetail() {
         <button
           type="button"
           onClick={handleCopyLink}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
         >
           {copyState === "copied" ? (
             <>
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-700" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-brand-700" />
               Copied
             </>
           ) : (
@@ -522,7 +522,7 @@ export default function QuoteDetail() {
           type="button"
           onClick={handleDuplicate}
           disabled={duplicateQuote.isPending}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
         >
           {duplicateQuote.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -535,7 +535,7 @@ export default function QuoteDetail() {
           type="button"
           onClick={handleCancel}
           disabled={update.isPending}
-          className="rounded-[14px] border border-ink-200 bg-card text-destructive font-semibold text-[13px] py-3 hover:bg-destructive/5 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          className="rounded-[14px] border border-neutral-200 bg-card text-destructive font-semibold text-[13px] py-3 hover:bg-destructive/5 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
         >
           <X className="h-3.5 w-3.5" /> Cancel quote
         </button>
@@ -549,15 +549,15 @@ export default function QuoteDetail() {
           {invoice ? (
             <Link
               to={`/invoices/${invoice.id}`}
-              className="w-full rounded-[14px] bg-green-800 text-white font-bold text-[14px] py-3.5 shadow-bronze hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-2"
+              className="w-full rounded-[14px] bg-brand-800 text-white font-bold text-[14px] py-3.5 shadow-accent hover:bg-brand-700 transition-colors inline-flex items-center justify-center gap-2"
             >
               <FileText className="h-4 w-4" />
               View invoice {formatInvoiceNumber(invoice.invoice_number)}
               <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
-            <div className="tp-card p-3 flex items-center gap-2 text-[12.5px] text-ink-600">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-ink-400" />
+            <div className="tp-card p-3 flex items-center gap-2 text-[12.5px] text-neutral-600">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
               Preparing invoice…
             </div>
           )}
@@ -574,7 +574,7 @@ export default function QuoteDetail() {
       {(!TWILIO_ENABLED || !RESEND_ENABLED) && (
         <section className="mx-4 mb-3">
           <div className="tp-card p-3 flex flex-col gap-2">
-            <div className="text-[12px] font-semibold text-ink-700">
+            <div className="text-[12px] font-semibold text-neutral-700">
               Send the quote link from your phone or mail app
             </div>
             <MessageCustomerButton
@@ -590,12 +590,12 @@ export default function QuoteDetail() {
       {/* Line items */}
       <section className="mx-4 mb-3">
         <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="tp-display text-[15px] font-bold text-ink-900">
+          <h2 className="tp-display text-[15px] font-bold text-neutral-900">
             Line items
           </h2>
         </div>
         {lines.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">
+          <div className="tp-card p-4 text-sm text-neutral-500">
             No line items.
           </div>
         ) : (
@@ -606,14 +606,14 @@ export default function QuoteDetail() {
                 className="tp-card p-3 flex items-center gap-3"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm text-ink-900 truncate">
+                  <div className="font-semibold text-sm text-neutral-900 truncate">
                     {l.name}
                   </div>
-                  <div className="text-[11px] text-ink-500 tp-num mt-0.5">
+                  <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
                     {l.qty} × {fmtUSD(l.rate)}
                   </div>
                 </div>
-                <div className="tp-num font-bold text-sm text-ink-900 shrink-0">
+                <div className="tp-num font-bold text-sm text-neutral-900 shrink-0">
                   {fmtUSD(l.total)}
                 </div>
               </li>
@@ -626,10 +626,10 @@ export default function QuoteDetail() {
       {quote.notes && (
         <section className="mx-4 mb-3">
           <div className="tp-card p-4">
-            <div className="text-[10px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1">
+            <div className="text-[10px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1">
               Notes
             </div>
-            <p className="text-sm text-ink-700 whitespace-pre-wrap">
+            <p className="text-sm text-neutral-700 whitespace-pre-wrap">
               {quote.notes}
             </p>
           </div>
@@ -639,16 +639,16 @@ export default function QuoteDetail() {
       {/* Recent views — read-only audit trail */}
       <section className="mx-4 mb-3">
         <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="tp-display text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5">
-            <Eye className="h-4 w-4 text-bronze-600" strokeWidth={2.2} />
+          <h2 className="tp-display text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5">
+            <Eye className="h-4 w-4 text-accent-600" strokeWidth={2.2} />
             Recent views
-            <span className="text-ink-500 font-semibold text-xs ml-0.5">
+            <span className="text-neutral-500 font-semibold text-xs ml-0.5">
               ({views?.length ?? 0})
             </span>
           </h2>
         </div>
         {!views || views.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">
+          <div className="tp-card p-4 text-sm text-neutral-500">
             No views yet. Once the customer opens the public link, each open is
             logged here.
           </div>
@@ -660,17 +660,17 @@ export default function QuoteDetail() {
                 className="tp-card p-3 flex items-start justify-between gap-3"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-ink-900 tp-num">
+                  <div className="text-sm font-semibold text-neutral-900 tp-num">
                     {fmtDateTime(v.viewed_at)}
                   </div>
                   {v.user_agent && (
-                    <div className="text-[11px] text-ink-500 truncate mt-0.5">
+                    <div className="text-[11px] text-neutral-500 truncate mt-0.5">
                       {v.user_agent}
                     </div>
                   )}
                 </div>
                 {v.referrer && (
-                  <div className="text-[11px] text-ink-500 truncate max-w-[40%]">
+                  <div className="text-[11px] text-neutral-500 truncate max-w-[40%]">
                     {v.referrer}
                   </div>
                 )}

@@ -220,7 +220,7 @@ export default function CatalogEditor() {
   return (
     <div className="tp-card p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-ink-500">
+        <p className="text-[11px] text-neutral-500">
           Lawn services you offer. Default rate and minimum charge prefill new
           plans &amp; quotes.
         </p>
@@ -230,7 +230,7 @@ export default function CatalogEditor() {
             setAdding((a) => !a);
             setEditingId(null);
           }}
-          className="text-[12px] font-semibold bg-green-800 text-white rounded-full px-3 py-1.5 flex items-center gap-1 hover:bg-green-900 transition-colors shrink-0"
+          className="text-[12px] font-semibold bg-brand-800 text-white rounded-full px-3 py-1.5 flex items-center gap-1 hover:bg-brand-900 transition-colors shrink-0"
         >
           <Plus className="h-3 w-3" /> {adding ? "Close" : "New"}
         </button>
@@ -252,16 +252,16 @@ export default function CatalogEditor() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-ink-500">
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading catalog…
         </div>
       ) : isEmpty ? (
-        <div className="rounded-xl border border-dashed border-ink-200 p-4 text-center">
-          <p className="text-sm font-semibold text-ink-900">
+        <div className="rounded-xl border border-dashed border-neutral-200 p-4 text-center">
+          <p className="text-sm font-semibold text-neutral-900">
             No services in your catalog yet.
           </p>
-          <p className="text-[11px] text-ink-500 mt-1 max-w-[280px] mx-auto">
+          <p className="text-[11px] text-neutral-500 mt-1 max-w-[280px] mx-auto">
             Get started with the canonical lawn-care services (weekly mow, fert
             steps, cleanups, snow). You can edit any of them after.
           </p>
@@ -269,7 +269,7 @@ export default function CatalogEditor() {
             type="button"
             onClick={() => seedMutation.mutate()}
             disabled={seedMutation.isPending}
-            className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-semibold shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-full bg-accent-500 text-white text-[13px] font-semibold shadow-accent hover:bg-accent-600 transition-colors disabled:opacity-60"
           >
             {seedMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -341,13 +341,13 @@ function CatalogRow({
 }) {
   const unit = item.unit ?? "flat";
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-ink-100 p-2.5">
+    <div className="flex items-center gap-2 rounded-xl border border-neutral-100 p-2.5">
       <div className="flex flex-col gap-px shrink-0">
         <button
           type="button"
           onClick={() => onMove(-1)}
           disabled={isFirst}
-          className="h-4 w-4 grid place-items-center text-ink-500 hover:text-ink-900 disabled:opacity-30"
+          className="h-4 w-4 grid place-items-center text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
           aria-label="Move up"
         >
           <ChevronDown className="h-3 w-3 rotate-180" strokeWidth={2.4} />
@@ -356,17 +356,17 @@ function CatalogRow({
           type="button"
           onClick={() => onMove(1)}
           disabled={isLast}
-          className="h-4 w-4 grid place-items-center text-ink-500 hover:text-ink-900 disabled:opacity-30"
+          className="h-4 w-4 grid place-items-center text-neutral-500 hover:text-neutral-900 disabled:opacity-30"
           aria-label="Move down"
         >
           <ChevronDown className="h-3 w-3" strokeWidth={2.4} />
         </button>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-sm text-ink-900 truncate">
+        <div className="font-semibold text-sm text-neutral-900 truncate">
           {item.name}
         </div>
-        <div className="text-[10.5px] uppercase tracking-wider text-ink-500 tp-num">
+        <div className="text-[10.5px] uppercase tracking-wider text-neutral-500 tp-num">
           {fmtUSD(item.default_rate)} {UNIT_LABEL[unit]}
           {item.min_charge > 0 ? ` · min ${fmtUSD(item.min_charge)}` : ""}
         </div>
@@ -374,7 +374,7 @@ function CatalogRow({
       <button
         type="button"
         onClick={onEdit}
-        className="h-8 w-8 rounded-lg text-ink-700 hover:bg-ink-100 flex items-center justify-center"
+        className="h-8 w-8 rounded-lg text-neutral-700 hover:bg-neutral-100 flex items-center justify-center"
         aria-label={`Edit ${item.name}`}
       >
         <Edit3 className="h-4 w-4" />
@@ -430,7 +430,7 @@ function NewItemForm({
   };
 
   return (
-    <div className="rounded-xl border border-green-700/30 bg-green-50 p-3 space-y-2">
+    <div className="rounded-xl border border-brand-700/30 bg-brand-50 p-3 space-y-2">
       <input
         autoFocus
         placeholder="Weekly mow"
@@ -477,7 +477,7 @@ function NewItemForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 bg-ink-100 text-ink-700 rounded-full py-2 text-xs font-bold"
+          className="flex-1 bg-neutral-100 text-neutral-700 rounded-full py-2 text-xs font-bold"
         >
           Cancel
         </button>
@@ -486,7 +486,7 @@ function NewItemForm({
           onClick={submit}
           disabled={submitting}
           className={cn(
-            "flex-1 bg-bronze-500 text-white rounded-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-60",
+            "flex-1 bg-accent-500 text-white rounded-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 shadow-accent hover:bg-accent-600 transition-colors disabled:opacity-60",
           )}
         >
           {submitting && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -527,7 +527,7 @@ function EditItemForm({
   };
 
   return (
-    <div className="rounded-xl border border-green-700/30 bg-green-50 p-3 space-y-2">
+    <div className="rounded-xl border border-brand-700/30 bg-brand-50 p-3 space-y-2">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -564,7 +564,7 @@ function EditItemForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 bg-ink-100 text-ink-700 rounded-full py-2 text-xs font-bold"
+          className="flex-1 bg-neutral-100 text-neutral-700 rounded-full py-2 text-xs font-bold"
         >
           Cancel
         </button>
@@ -572,7 +572,7 @@ function EditItemForm({
           type="button"
           onClick={submit}
           disabled={submitting}
-          className="flex-1 bg-green-800 text-white rounded-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-green-900 transition-colors disabled:opacity-60"
+          className="flex-1 bg-brand-800 text-white rounded-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-brand-900 transition-colors disabled:opacity-60"
         >
           {submitting ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -587,4 +587,4 @@ function EditItemForm({
 }
 
 const formInput =
-  "w-full h-9 rounded-lg border border-ink-200 bg-card px-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700";
+  "w-full h-9 rounded-lg border border-neutral-200 bg-card px-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-700/30 focus:border-brand-700";

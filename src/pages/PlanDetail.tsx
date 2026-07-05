@@ -289,7 +289,7 @@ export default function PlanDetail() {
     return (
       <div className="pt-3">
         <PageBackHeader title="Loading…" />
-        <div className="mx-4 tp-card h-48 animate-pulse bg-ink-100" />
+        <div className="mx-4 tp-card h-48 animate-pulse bg-neutral-100" />
       </div>
     );
   }
@@ -299,12 +299,12 @@ export default function PlanDetail() {
       <div className="pt-3">
         <PageBackHeader title="Plan not found" />
         <div className="mx-4 tp-card p-6 text-center">
-          <p className="text-sm text-ink-700">
+          <p className="text-sm text-neutral-700">
             {error instanceof Error ? error.message : "This plan no longer exists."}
           </p>
           <Link
             to="/plans"
-            className="inline-block mt-3 text-[12.5px] font-semibold text-green-800 hover:underline"
+            className="inline-block mt-3 text-[12.5px] font-semibold text-brand-800 hover:underline"
           >
             Back to all plans
           </Link>
@@ -395,7 +395,7 @@ export default function PlanDetail() {
         <div className="rounded-[18px] bg-gradient-hero-deep text-white p-[18px] relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-[10px] font-semibold tracking-[1px] uppercase text-bronze-400">
+              <div className="text-[10px] font-semibold tracking-[1px] uppercase text-accent-400">
                 Next charge
               </div>
               <div className="font-bold text-lg mt-1">
@@ -442,7 +442,7 @@ export default function PlanDetail() {
               type="button"
               onClick={() => setStatus("paused")}
               disabled={isCanceled || updatePlan.isPending}
-              className="rounded-xl bg-ink-100 text-ink-800 font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:bg-ink-200 transition-colors disabled:opacity-50"
+              className="rounded-xl bg-neutral-100 text-neutral-800 font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:bg-neutral-200 transition-colors disabled:opacity-50"
             >
               <Pause className="h-3.5 w-3.5" /> Pause
             </button>
@@ -451,7 +451,7 @@ export default function PlanDetail() {
               type="button"
               onClick={() => setStatus("active")}
               disabled={isCanceled || updatePlan.isPending}
-              className="rounded-xl bg-green-800 text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:bg-green-700 transition-colors disabled:opacity-50"
+              className="rounded-xl bg-brand-800 text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 hover:bg-brand-700 transition-colors disabled:opacity-50"
             >
               <Play className="h-3.5 w-3.5" /> Resume
             </button>
@@ -468,7 +468,7 @@ export default function PlanDetail() {
             type="button"
             onClick={() => setEditing((v) => !v)}
             disabled={updatePlan.isPending}
-            className="rounded-xl bg-bronze-500 text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-50"
+            className="rounded-xl bg-accent-500 text-white font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 shadow-accent hover:bg-accent-600 transition-colors disabled:opacity-50"
           >
             <Edit3 className="h-3.5 w-3.5" /> {editing ? "Close" : "Edit"}
           </button>
@@ -493,8 +493,8 @@ export default function PlanDetail() {
           className={cn(
             "w-full rounded-xl border font-semibold text-[12.5px] py-2.5 flex items-center justify-center gap-1.5 transition-colors",
             paymentFormOpen
-              ? "bg-bronze-100 border-bronze-400 text-bronze-700"
-              : "bg-card border-bronze-400 text-bronze-700 hover:bg-bronze-50",
+              ? "bg-accent-100 border-accent-400 text-accent-700"
+              : "bg-card border-accent-400 text-accent-700 hover:bg-accent-50",
           )}
         >
           <DollarSign className="h-3.5 w-3.5" />
@@ -538,17 +538,17 @@ export default function PlanDetail() {
         .tp-input {
           width: 100%;
           background: hsl(var(--card));
-          border: 1px solid hsl(var(--ink-200));
+          border: 1px solid hsl(var(--neutral-200));
           border-radius: 12px;
           padding: 10px 12px;
           font-size: 14px;
-          color: hsl(var(--ink-900));
+          color: hsl(var(--neutral-900));
           font-family: inherit;
         }
         .tp-input:focus {
           outline: none;
-          border-color: hsl(var(--green-800));
-          box-shadow: 0 0 0 3px hsl(var(--green-100));
+          border-color: hsl(var(--brand-800));
+          box-shadow: 0 0 0 3px hsl(var(--brand-100));
         }
       `}</style>
     </div>
@@ -572,22 +572,22 @@ function PageBackHeader({
     <header className="px-[22px] pb-[18px] flex items-start gap-3">
       <Link
         to="/plans"
-        className="h-9 w-9 rounded-full border border-ink-200 bg-card flex items-center justify-center mt-0.5"
+        className="h-9 w-9 rounded-full border border-neutral-200 bg-card flex items-center justify-center mt-0.5"
         aria-label="Back to plans"
       >
-        <ArrowLeft className="h-4 w-4 text-ink-700" strokeWidth={2} />
+        <ArrowLeft className="h-4 w-4 text-neutral-700" strokeWidth={2} />
       </Link>
       <div className="min-w-0 flex-1">
         {eyebrow && (
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             {eyebrow}
           </div>
         )}
-        <h1 className="tp-display text-xl font-bold text-ink-900 mt-0.5 truncate">
+        <h1 className="tp-display text-xl font-bold text-neutral-900 mt-0.5 truncate">
           {title}
         </h1>
         {subtitle && (
-          <div className="text-[12px] text-ink-500 mt-0.5 truncate">{subtitle}</div>
+          <div className="text-[12px] text-neutral-500 mt-0.5 truncate">{subtitle}</div>
         )}
       </div>
       {right && <div className="mt-1 shrink-0">{right}</div>}
@@ -607,11 +607,11 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
   return (
     <section className="tp-card p-4">
       <div className="flex items-start justify-between mb-3">
-        <h2 className="text-[14px] font-semibold text-ink-900">Schedule</h2>
+        <h2 className="text-[14px] font-semibold text-neutral-900">Schedule</h2>
         <button
           type="button"
           onClick={onEdit}
-          className="text-[12px] font-semibold text-green-800 hover:underline"
+          className="text-[12px] font-semibold text-brand-800 hover:underline"
         >
           Edit
         </button>
@@ -626,15 +626,15 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
       </dl>
 
       {services.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-ink-200">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+        <div className="mt-4 pt-3 border-t border-neutral-200">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
             Services
           </div>
           <div className="flex flex-wrap gap-1.5">
             {services.map((s) => (
               <span
                 key={s}
-                className="px-2.5 py-1 rounded-full bg-green-50 text-green-800 text-[11.5px] font-semibold"
+                className="px-2.5 py-1 rounded-full bg-brand-50 text-brand-800 text-[11.5px] font-semibold"
               >
                 {s}
               </span>
@@ -644,15 +644,15 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
       )}
 
       {seasonPause.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-ink-200">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+        <div className="mt-3 pt-3 border-t border-neutral-200">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
             Seasonal pauses
           </div>
           <div className="flex flex-wrap gap-1.5">
             {seasonPause.map((s) => (
               <span
                 key={s}
-                className="px-2.5 py-1 rounded-full bg-bronze-100 text-bronze-700 text-[11.5px] font-semibold capitalize"
+                className="px-2.5 py-1 rounded-full bg-accent-100 text-accent-700 text-[11.5px] font-semibold capitalize"
               >
                 {s}
               </span>
@@ -667,10 +667,10 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500">
+      <dt className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500">
         {label}
       </dt>
-      <dd className="text-[13.5px] font-semibold text-ink-900 mt-0.5">{value}</dd>
+      <dd className="text-[13.5px] font-semibold text-neutral-900 mt-0.5">{value}</dd>
     </div>
   );
 }
@@ -727,11 +727,11 @@ function EditCard({
   return (
     <section className="tp-card p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold text-ink-900">Edit plan</h2>
+        <h2 className="text-[14px] font-semibold text-neutral-900">Edit plan</h2>
         <button
           type="button"
           onClick={onCancel}
-          className="text-[12px] font-semibold text-ink-500 hover:text-ink-700"
+          className="text-[12px] font-semibold text-neutral-500 hover:text-neutral-700"
         >
           Cancel
         </button>
@@ -750,8 +750,8 @@ function EditCard({
                 className={cn(
                   "py-2 rounded-xl text-[12.5px] font-semibold transition-colors border",
                   on
-                    ? "border-green-800 bg-green-800 text-white"
-                    : "border-ink-200 bg-card text-ink-700 hover:border-green-700",
+                    ? "border-brand-800 bg-brand-800 text-white"
+                    : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
                 )}
               >
                 {FREQUENCY_LABEL[f]}
@@ -774,8 +774,8 @@ function EditCard({
                 className={cn(
                   "py-2 rounded-[10px] text-[11.5px] font-semibold transition-colors",
                   on
-                    ? "bg-green-800 text-white"
-                    : "bg-ink-100 text-ink-700 hover:bg-green-50",
+                    ? "bg-brand-800 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
                 )}
               >
                 {label}
@@ -811,8 +811,8 @@ function EditCard({
                   className={cn(
                     "py-2 rounded-xl text-[12px] font-semibold transition-colors border",
                     on
-                      ? "border-green-800 bg-green-800 text-white"
-                      : "border-ink-200 bg-card text-ink-700 hover:border-green-700",
+                      ? "border-brand-800 bg-brand-800 text-white"
+                      : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
                   )}
                 >
                   {m}mo
@@ -827,7 +827,7 @@ function EditCard({
         <FieldLabel>Next charge</FieldLabel>
         <div className="relative">
           <Calendar
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
             strokeWidth={2}
           />
           <input
@@ -852,8 +852,8 @@ function EditCard({
                 className={cn(
                   "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors border capitalize",
                   on
-                    ? "bg-bronze-100 text-bronze-700 border-transparent"
-                    : "bg-card text-ink-700 border-ink-200 hover:border-green-700",
+                    ? "bg-accent-100 text-accent-700 border-transparent"
+                    : "bg-card text-neutral-700 border-neutral-200 hover:border-brand-700",
                 )}
               >
                 {s}
@@ -867,7 +867,7 @@ function EditCard({
         type="button"
         onClick={submit}
         disabled={isSaving}
-        className="w-full rounded-full bg-bronze-500 text-white font-bold text-[14px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+        className="w-full rounded-full bg-accent-500 text-white font-bold text-[14px] py-3 shadow-accent hover:bg-accent-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
       >
         {isSaving ? (
           <>
@@ -885,7 +885,7 @@ function EditCard({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+    <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
       {children}
     </div>
   );
@@ -904,34 +904,34 @@ function ChargeHistoryCard({ chargeHistory }: { chargeHistory: Json }) {
   return (
     <section className="tp-card p-4">
       <div className="flex items-center gap-2 mb-3">
-        <CreditCard className="h-4 w-4 text-green-800" />
-        <h2 className="text-[14px] font-semibold text-ink-900">Recent charges</h2>
+        <CreditCard className="h-4 w-4 text-brand-800" />
+        <h2 className="text-[14px] font-semibold text-neutral-900">Recent charges</h2>
       </div>
       {recent.length === 0 ? (
-        <p className="text-[12.5px] text-ink-500">
+        <p className="text-[12.5px] text-neutral-500">
           No charges recorded yet. Once billing fires, the last five will appear here.
         </p>
       ) : (
-        <ul className="divide-y divide-ink-200">
+        <ul className="divide-y divide-neutral-200">
           {recent.map((c, i) => (
             <li
               key={i}
               className="py-2.5 flex items-center justify-between text-[13px]"
             >
-              <span className="text-ink-700">{fmtDateShort(c.date)}</span>
-              <span className="tp-num font-semibold text-ink-900">
+              <span className="text-neutral-700">{fmtDateShort(c.date)}</span>
+              <span className="tp-num font-semibold text-neutral-900">
                 {typeof c.amount === "number" ? fmtUSD(c.amount) : "—"}
               </span>
               <span
                 className={cn(
                   "px-2 py-[2px] rounded-full text-[10.5px] font-bold uppercase tracking-[0.4px]",
                   c.status === "paid"
-                    ? "bg-green-100 text-green-800"
+                    ? "bg-brand-100 text-brand-800"
                     : c.status === "failed"
                       ? "bg-[hsl(var(--destructive-bg))] text-destructive"
                       : typeof c.status === "string" && c.status.startsWith("manual:")
-                        ? "bg-bronze-100 text-bronze-700"
-                        : "bg-ink-100 text-ink-700",
+                        ? "bg-accent-100 text-accent-700"
+                        : "bg-neutral-100 text-neutral-700",
                 )}
               >
                 {typeof c.status === "string" && c.status.startsWith("manual:")
@@ -1078,8 +1078,8 @@ function DunningBanner({
 
 function StatusPill({ status }: { status: PlanStatus }) {
   const styles = {
-    active: "bg-green-100 text-green-800",
-    paused: "bg-ink-100 text-ink-700",
+    active: "bg-brand-100 text-brand-800",
+    paused: "bg-neutral-100 text-neutral-700",
     canceled: "bg-[hsl(var(--destructive-bg))] text-destructive",
   } as const;
   return (
@@ -1146,11 +1146,11 @@ function PlanManualPaymentForm({
   return (
     <section className="tp-card p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold text-ink-900">Record payment</h2>
+        <h2 className="text-[14px] font-semibold text-neutral-900">Record payment</h2>
         <button
           type="button"
           onClick={onCancel}
-          className="text-[12px] font-semibold text-ink-500 hover:text-ink-700"
+          className="text-[12px] font-semibold text-neutral-500 hover:text-neutral-700"
         >
           Cancel
         </button>
@@ -1169,8 +1169,8 @@ function PlanManualPaymentForm({
                 className={cn(
                   "py-2 rounded-xl text-[12px] font-semibold transition-colors border",
                   on
-                    ? "border-bronze-500 bg-bronze-500 text-white"
-                    : "border-ink-200 bg-card text-ink-700 hover:border-bronze-400",
+                    ? "border-accent-500 bg-accent-500 text-white"
+                    : "border-neutral-200 bg-card text-neutral-700 hover:border-accent-400",
                 )}
               >
                 {METHOD_LABEL[m]}
@@ -1217,7 +1217,7 @@ function PlanManualPaymentForm({
         type="button"
         onClick={submit}
         disabled={submitting}
-        className="w-full rounded-full bg-bronze-500 text-white font-bold text-[14px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+        className="w-full rounded-full bg-accent-500 text-white font-bold text-[14px] py-3 shadow-accent hover:bg-accent-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
       >
         {submitting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

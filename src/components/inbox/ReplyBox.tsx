@@ -109,9 +109,9 @@ export default function ReplyBox({
   // Messages app for the reply.
   if (!TWILIO_ENABLED) {
     return (
-      <div className="tp-card p-3 flex items-start gap-2 text-[12px] text-ink-700">
+      <div className="tp-card p-3 flex items-start gap-2 text-[12px] text-neutral-700">
         <MessageSquare
-          className="h-4 w-4 shrink-0 text-ink-500"
+          className="h-4 w-4 shrink-0 text-neutral-500"
           strokeWidth={2}
         />
         <span>
@@ -151,13 +151,13 @@ export default function ReplyBox({
         placeholder="Type a reply…"
         rows={2}
         maxLength={500}
-        className="w-full resize-none bg-transparent outline-none text-[14px] leading-relaxed text-ink-900 placeholder:text-ink-500 px-1 py-1 max-h-[140px]"
+        className="w-full resize-none bg-transparent outline-none text-[14px] leading-relaxed text-neutral-900 placeholder:text-neutral-500 px-1 py-1 max-h-[140px]"
       />
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[10px] text-ink-500 tp-num">
+        <div className="text-[10px] text-neutral-500 tp-num">
           {body.length} chars · {segments} segment{segments === 1 ? "" : "s"}
           {segments > 1 && (
-            <span className="ml-1 text-bronze-700 font-semibold">
+            <span className="ml-1 text-accent-700 font-semibold">
               (billed as {segments})
             </span>
           )}
@@ -166,7 +166,7 @@ export default function ReplyBox({
           type="button"
           onClick={() => handleSend(false)}
           disabled={!canSend || overLength}
-          className="inline-flex items-center gap-1.5 bg-green-700 text-white px-3.5 py-1.5 rounded-full font-bold text-sm shadow-bronze disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-800 transition-colors"
+          className="inline-flex items-center gap-1.5 bg-brand-700 text-white px-3.5 py-1.5 rounded-full font-bold text-sm shadow-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-800 transition-colors"
         >
           {sending ? (
             <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.4} />
@@ -183,7 +183,7 @@ export default function ReplyBox({
         </div>
       )}
       {info && (
-        <div className="text-[12px] text-bronze-700">{info}</div>
+        <div className="text-[12px] text-accent-700">{info}</div>
       )}
     </div>
   );

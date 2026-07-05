@@ -198,14 +198,14 @@ export default function MessagingPreferences() {
   return (
     <div className="tp-card p-4 space-y-3">
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-ink-500">
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading preferences…
         </div>
       ) : (
         <>
           {(RESEND_ENABLED || TWILIO_ENABLED) && (
-            <p className="text-[12.5px] text-ink-700 leading-relaxed">
+            <p className="text-[12.5px] text-neutral-700 leading-relaxed">
               Pick which automatic customer messages go out and on which
               channel.
               {RESEND_ENABLED ? " Email is great for longer copy." : ""}
@@ -225,23 +225,23 @@ export default function MessagingPreferences() {
             <>
               <div
                 className={cn(
-                  "grid gap-3 items-center pt-1 pb-1 border-b border-ink-100",
+                  "grid gap-3 items-center pt-1 pb-1 border-b border-neutral-100",
                   RESEND_ENABLED && TWILIO_ENABLED
                     ? "grid-cols-[1fr_auto_auto]"
                     : "grid-cols-[1fr_auto]",
                 )}
               >
-                <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">
+                <div className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">
                   Message
                 </div>
                 {RESEND_ENABLED && (
-                  <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
+                  <div className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
                     <Mail className="h-3 w-3" strokeWidth={2.2} />
                     Email
                   </div>
                 )}
                 {TWILIO_ENABLED && (
-                  <div className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
+                  <div className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide w-12 text-center inline-flex items-center justify-center gap-1">
                     <MessageSquare className="h-3 w-3" strokeWidth={2.2} />
                     SMS
                   </div>
@@ -272,7 +272,7 @@ export default function MessagingPreferences() {
               API keys to configure. Campaigns are the exception (they
               stay on Resend for fan-out scale). */}
           {!RESEND_ENABLED && (
-            <div className="mt-3 px-3 py-2.5 rounded-xl bg-green-50 border border-green-100 text-[11.5px] text-ink-700 leading-snug">
+            <div className="mt-3 px-3 py-2.5 rounded-xl bg-brand-50 border border-brand-100 text-[11.5px] text-neutral-700 leading-snug">
               Customer emails are sent from your own mail app — no setup
               required. Use the "Message customer" buttons inside each
               stop, quote, or plan to compose a pre-filled email and
@@ -283,7 +283,7 @@ export default function MessagingPreferences() {
           {/* Same story for SMS — operator's own phone is the transport,
               no Twilio dispatcher, no quiet-hours, no per-message cost. */}
           {!TWILIO_ENABLED && (
-            <div className="mt-2 px-3 py-2.5 rounded-xl bg-green-50 border border-green-100 text-[11.5px] text-ink-700 leading-snug">
+            <div className="mt-2 px-3 py-2.5 rounded-xl bg-brand-50 border border-brand-100 text-[11.5px] text-neutral-700 leading-snug">
               Customer texts are sent from your own phone via your
               Messages app — no setup required. Use the "Message
               customer" buttons inside each stop, quote, or plan to
@@ -294,11 +294,11 @@ export default function MessagingPreferences() {
           {/* Quiet hours — gates ALL SMS sends. Only meaningful when
               Twilio auto-send is on. */}
           {TWILIO_ENABLED && (
-            <div className="pt-3 border-t border-ink-100 space-y-2">
-              <div className="text-[12px] font-semibold text-ink-900 uppercase tracking-wide">
+            <div className="pt-3 border-t border-neutral-100 space-y-2">
+              <div className="text-[12px] font-semibold text-neutral-900 uppercase tracking-wide">
                 SMS quiet hours
               </div>
-              <p className="text-[11.5px] text-ink-500 leading-snug">
+              <p className="text-[11.5px] text-neutral-500 leading-snug">
                 We'll only send SMS inside this window. Texts triggered
                 outside the window are held back, so we don't ping a customer
                 at 6am.
@@ -310,7 +310,7 @@ export default function MessagingPreferences() {
                   onChange={(h) => setQuietHour("sms_quiet_start_hour", h)}
                   disabled={saveMutation.isPending}
                 />
-                <span className="text-[12px] text-ink-500">to</span>
+                <span className="text-[12px] text-neutral-500">to</span>
                 <HourSelect
                   label="To"
                   value={draft.sms_quiet_end_hour}
@@ -326,8 +326,8 @@ export default function MessagingPreferences() {
               the Supabase project secrets yet. We can't actually check
               from the client; the message is intentionally soft. */}
           {TWILIO_ENABLED && anySmsOn && (
-            <div className="mt-2 px-3 py-2 rounded-xl bg-bronze-50 border border-bronze-200 text-[11.5px] text-ink-700 inline-flex items-start gap-2">
-              <Info className="h-3.5 w-3.5 mt-[2px] text-bronze-500 shrink-0" strokeWidth={2} />
+            <div className="mt-2 px-3 py-2 rounded-xl bg-accent-50 border border-accent-200 text-[11.5px] text-neutral-700 inline-flex items-start gap-2">
+              <Info className="h-3.5 w-3.5 mt-[2px] text-accent-500 shrink-0" strokeWidth={2} />
               <span>
                 SMS will start delivering once Twilio is wired in your
                 Supabase project secrets
@@ -342,7 +342,7 @@ export default function MessagingPreferences() {
 
           <div className="flex items-center gap-2 pt-1 min-h-[18px]">
             {savedFlash && (
-              <span className="text-[11px] font-semibold text-green-700 inline-flex items-center gap-1">
+              <span className="text-[11px] font-semibold text-brand-700 inline-flex items-center gap-1">
                 <Mail className="h-3 w-3" strokeWidth={2.2} />
                 Saved
               </span>
@@ -390,15 +390,15 @@ function ChannelRow({
   return (
     <div
       className={cn(
-        "grid gap-3 items-center py-2 border-t border-ink-100 first:border-t-0",
+        "grid gap-3 items-center py-2 border-t border-neutral-100 first:border-t-0",
         showEmail && showSms
           ? "grid-cols-[1fr_auto_auto]"
           : "grid-cols-[1fr_auto]",
       )}
     >
       <div className="min-w-0">
-        <div className="text-[13.5px] font-semibold text-ink-900">{label}</div>
-        <div className="text-[11.5px] text-ink-500 leading-snug">{blurb}</div>
+        <div className="text-[13.5px] font-semibold text-neutral-900">{label}</div>
+        <div className="text-[11.5px] text-neutral-500 leading-snug">{blurb}</div>
       </div>
       {showEmail && (
         <MiniSwitch
@@ -441,7 +441,7 @@ function MiniSwitch({
       onClick={onChange}
       className={cn(
         "relative shrink-0 h-6 w-11 rounded-full transition-colors disabled:opacity-60",
-        value ? "bg-green-700" : "bg-ink-200",
+        value ? "bg-brand-700" : "bg-neutral-200",
       )}
     >
       <span
@@ -467,14 +467,14 @@ function HourSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5">
-      <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">
+      <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         disabled={disabled}
-        className="rounded-lg border border-ink-200 bg-white px-2 py-1 text-[12.5px] font-semibold text-ink-900 disabled:opacity-60"
+        className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-[12.5px] font-semibold text-neutral-900 disabled:opacity-60"
       >
         {HOURS.map((h) => (
           <option key={h} value={h}>

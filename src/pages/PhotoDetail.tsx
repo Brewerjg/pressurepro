@@ -139,7 +139,7 @@ export default function PhotoDetail() {
   });
 
   if (isLoading) {
-    return <div className="pt-6 px-[22px] text-sm text-ink-500">Loading…</div>;
+    return <div className="pt-6 px-[22px] text-sm text-neutral-500">Loading…</div>;
   }
   if (!data) {
     return (
@@ -147,11 +147,11 @@ export default function PhotoDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="text-sm text-ink-500 inline-flex items-center gap-1.5 mb-3"
+          className="text-sm text-neutral-500 inline-flex items-center gap-1.5 mb-3"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <div className="tp-card p-5 text-sm text-ink-700">Photo pair not found.</div>
+        <div className="tp-card p-5 text-sm text-neutral-700">Photo pair not found.</div>
       </div>
     );
   }
@@ -163,17 +163,17 @@ export default function PhotoDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-ink-500 mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-neutral-500 mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
-        <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-bronze-600">
+        <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-accent-600">
           Photo pair
         </div>
-        <h1 className="tp-display text-[22px] font-bold text-ink-900 mt-0.5 leading-tight">
+        <h1 className="tp-display text-[22px] font-bold text-neutral-900 mt-0.5 leading-tight">
           {data.address || "Untitled"}
         </h1>
-        <div className="text-[11px] text-ink-500 mt-1 inline-flex items-center gap-1">
+        <div className="text-[11px] text-neutral-500 mt-1 inline-flex items-center gap-1">
           <Calendar className="h-3 w-3" />
           {new Date(data.created_at).toLocaleString(undefined, {
             year: "numeric",
@@ -197,39 +197,39 @@ export default function PhotoDetail() {
           {data.property_id && (
             <Link
               to={`/properties/${data.property_id}`}
-              className="flex items-center gap-3 p-3.5 active:bg-ink-100 transition-colors border-b border-ink-200"
+              className="flex items-center gap-3 p-3.5 active:bg-neutral-100 transition-colors border-b border-neutral-200"
             >
-              <div className="h-9 w-9 rounded-[10px] bg-green-100 text-green-800 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-[10px] bg-brand-100 text-brand-800 flex items-center justify-center">
                 <MapPin className="h-4 w-4" strokeWidth={2.2} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-500">
                   Property
                 </div>
-                <div className="text-sm font-bold text-ink-900 truncate">
+                <div className="text-sm font-bold text-neutral-900 truncate">
                   {data.address || "Open property"}
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-ink-400" strokeWidth={2.2} />
+              <ChevronRight className="h-4 w-4 text-neutral-400" strokeWidth={2.2} />
             </Link>
           )}
           {data.customer_id && (
             <Link
               to={`/customers/${data.customer_id}`}
-              className="flex items-center gap-3 p-3.5 active:bg-ink-100 transition-colors"
+              className="flex items-center gap-3 p-3.5 active:bg-neutral-100 transition-colors"
             >
-              <div className="h-9 w-9 rounded-[10px] bg-bronze-100 text-bronze-700 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-[10px] bg-accent-100 text-accent-700 flex items-center justify-center">
                 <UserIcon className="h-4 w-4" strokeWidth={2.2} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-500">
                   Customer
                 </div>
-                <div className="text-sm font-bold text-ink-900 truncate">
+                <div className="text-sm font-bold text-neutral-900 truncate">
                   {data.customer_name || "Open customer"}
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-ink-400" strokeWidth={2.2} />
+              <ChevronRight className="h-4 w-4 text-neutral-400" strokeWidth={2.2} />
             </Link>
           )}
         </div>
@@ -239,12 +239,12 @@ export default function PhotoDetail() {
         <div className="tp-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-[10px] bg-ink-100 text-ink-700 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-[10px] bg-neutral-100 text-neutral-700 flex items-center justify-center">
                 <Eye className="h-4 w-4" strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-bold text-ink-900">Share to gallery</div>
-                <div className="text-[11px] text-ink-500">
+                <div className="text-sm font-bold text-neutral-900">Share to gallery</div>
+                <div className="text-[11px] text-neutral-500">
                   {shareToGallery
                     ? "Visible on the public property gallery"
                     : "Private — only you can see this pair"}
@@ -258,7 +258,7 @@ export default function PhotoDetail() {
               onClick={() => togglePublicGallery.mutate(!shareToGallery)}
               disabled={togglePublicGallery.isPending}
               className={`relative h-6 w-10 rounded-full transition-colors disabled:opacity-60 ${
-                shareToGallery ? "bg-green-700" : "bg-ink-200"
+                shareToGallery ? "bg-brand-700" : "bg-neutral-200"
               }`}
             >
               <span
@@ -272,7 +272,7 @@ export default function PhotoDetail() {
             <Link
               to={`/g/${data.property_id}`}
               className={`mt-3 inline-flex items-center gap-1 text-[11px] font-bold ${
-                shareToGallery ? "text-green-800" : "text-ink-400"
+                shareToGallery ? "text-brand-800" : "text-neutral-400"
               }`}
             >
               View property gallery
@@ -311,18 +311,18 @@ function Pane({
   url: string | null;
 }) {
   return (
-    <div className="relative rounded-[16px] overflow-hidden bg-ink-100 aspect-[3/4]">
+    <div className="relative rounded-[16px] overflow-hidden bg-neutral-100 aspect-[3/4]">
       {url ? (
         <img src={url} alt={label} className="absolute inset-0 w-full h-full object-cover" />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-ink-500">
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-neutral-500">
           Missing {label.toLowerCase()}
         </div>
       )}
       <span
         className={[
           "absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-          tone === "ink" ? "bg-ink-900/80 text-white" : "bg-green-800 text-white",
+          tone === "ink" ? "bg-neutral-900/80 text-white" : "bg-brand-800 text-white",
         ].join(" ")}
       >
         {label}

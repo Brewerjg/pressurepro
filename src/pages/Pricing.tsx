@@ -293,15 +293,15 @@ export default function Pricing() {
     <div className="min-h-screen bg-background">
       <header className="px-5 pt-6 pb-4 flex items-center justify-between max-w-5xl mx-auto">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-[10px] bg-green-800 text-bronze-400 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-[10px] bg-brand-800 text-accent-400 flex items-center justify-center">
             <Leaf className="h-[18px] w-[18px]" strokeWidth={2.2} />
           </div>
-          <div className="font-display font-extrabold text-lg text-ink-900">TurfPro</div>
+          <div className="font-display font-extrabold text-lg text-neutral-900">TurfPro</div>
         </Link>
         {!user && !authLoading && (
           <Link
             to="/auth"
-            className="text-sm font-semibold text-ink-700 hover:text-ink-900"
+            className="text-sm font-semibold text-neutral-700 hover:text-neutral-900"
           >
             Sign in
           </Link>
@@ -310,17 +310,17 @@ export default function Pricing() {
 
       <main className="max-w-5xl mx-auto px-4 pt-2 pb-16">
         <div className="text-center mb-7">
-          <h1 className="font-display text-[28px] sm:text-[32px] font-bold text-ink-900">
+          <h1 className="font-display text-[28px] sm:text-[32px] font-bold text-neutral-900">
             Pick your plan
           </h1>
-          <p className="text-[13px] sm:text-sm text-ink-500 mt-2">
+          <p className="text-[13px] sm:text-sm text-neutral-500 mt-2">
             Built for lawn-care crews. Cancel anytime.
           </p>
         </div>
 
         {/* Cycle toggle */}
         <div className="flex justify-center mb-7">
-          <div className="inline-flex gap-1 p-1 bg-ink-100 rounded-full">
+          <div className="inline-flex gap-1 p-1 bg-neutral-100 rounded-full">
             {(["monthly", "yearly"] as const).map((c) => (
               <button
                 key={c}
@@ -329,13 +329,13 @@ export default function Pricing() {
                 className={cn(
                   "px-4 py-2 rounded-full text-xs font-extrabold transition-colors flex items-center gap-1.5",
                   cycle === c
-                    ? "bg-card text-ink-900 shadow-card"
-                    : "text-ink-500",
+                    ? "bg-card text-neutral-900 shadow-card"
+                    : "text-neutral-500",
                 )}
               >
                 {c === "monthly" ? "Monthly" : "Yearly"}
                 {c === "yearly" && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-bronze-500 text-white text-[10px] font-extrabold tracking-wide">
+                  <span className="px-1.5 py-0.5 rounded-full bg-accent-500 text-white text-[10px] font-extrabold tracking-wide">
                     -17%
                   </span>
                 )}
@@ -369,7 +369,7 @@ export default function Pricing() {
           ))}
         </div>
 
-        <p className="text-center text-[12px] text-ink-500 mt-10">
+        <p className="text-center text-[12px] text-neutral-500 mt-10">
           Prices in USD. Stripe handles payment securely — we never see your card.
         </p>
       </main>
@@ -408,13 +408,13 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
   return (
     <div className={cardClass}>
       {isFeatured && (
-        <div className="absolute -top-2.5 left-5 inline-flex items-center gap-1 bg-bronze-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-bronze">
+        <div className="absolute -top-2.5 left-5 inline-flex items-center gap-1 bg-accent-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-accent">
           <Sparkles className="h-3 w-3" strokeWidth={2.5} />
           Recommended
         </div>
       )}
       {isPayg && (
-        <div className="absolute -top-2.5 left-5 inline-flex items-center gap-1 bg-bronze-400 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em]">
+        <div className="absolute -top-2.5 left-5 inline-flex items-center gap-1 bg-accent-400 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em]">
           Best for starting out
         </div>
       )}
@@ -424,7 +424,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           <h3
             className={cn(
               "font-display font-black text-xl",
-              isFeatured ? "text-white" : "text-ink-900",
+              isFeatured ? "text-white" : "text-neutral-900",
             )}
           >
             {tier.name}
@@ -432,7 +432,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           <p
             className={cn(
               "text-[12px]",
-              isFeatured ? "text-[#cfead8]" : "text-ink-500",
+              isFeatured ? "text-[#cfead8]" : "text-neutral-500",
             )}
           >
             {tier.tagline}
@@ -444,7 +444,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           <div
             className={cn(
               "font-display font-bold text-[30px] leading-none",
-              isFeatured ? "text-white" : "text-ink-900",
+              isFeatured ? "text-white" : "text-neutral-900",
             )}
           >
             ${cycleData.price}
@@ -452,7 +452,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           <span
             className={cn(
               "text-[11px] font-semibold",
-              isFeatured ? "text-[#cfead8]" : "text-ink-500",
+              isFeatured ? "text-[#cfead8]" : "text-neutral-500",
             )}
           >
             /{cycle === "monthly" ? "mo" : "yr"}
@@ -465,7 +465,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
         <p
           className={cn(
             "text-[12px] font-extrabold -mt-2 mb-3",
-            isFeatured ? "text-bronze-400" : "text-success",
+            isFeatured ? "text-accent-400" : "text-success",
           )}
         >
           {tier.yearly.saveLabel}
@@ -478,13 +478,13 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
             key={h}
             className={cn(
               "flex items-start gap-2 text-[13px]",
-              isFeatured ? "text-white/90" : "text-ink-700",
+              isFeatured ? "text-white/90" : "text-neutral-700",
             )}
           >
             <Check
               className={cn(
                 "h-4 w-4 shrink-0 mt-0.5",
-                isFeatured ? "text-bronze-400" : "text-green-600",
+                isFeatured ? "text-accent-400" : "text-brand-600",
               )}
               strokeWidth={3}
             />
@@ -497,7 +497,7 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
         <button
           type="button"
           disabled
-          className="w-full h-12 rounded-[14px] bg-green-600 text-white font-extrabold text-sm cursor-default"
+          className="w-full h-12 rounded-[14px] bg-brand-600 text-white font-extrabold text-sm cursor-default"
         >
           Current plan
         </button>
@@ -509,8 +509,8 @@ function TierCard({ tier, cycle, isCurrent, busy, disabled, onSelect }: TierCard
           className={cn(
             "w-full h-12 rounded-[14px] font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100",
             isFeatured
-              ? "bg-bronze-500 text-white shadow-bronze hover:bg-bronze-600"
-              : "border-[1.5px] border-ink-200 bg-card text-ink-900 hover:bg-ink-100",
+              ? "bg-accent-500 text-white shadow-accent hover:bg-accent-600"
+              : "border-[1.5px] border-neutral-200 bg-card text-neutral-900 hover:bg-neutral-100",
           )}
         >
           {busy ? (

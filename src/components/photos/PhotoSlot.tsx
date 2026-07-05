@@ -29,12 +29,12 @@ export function PhotoSlot({
         className={[
           "relative aspect-[3/4] w-full rounded-[16px] overflow-hidden border-2 transition-all",
           previewUrl
-            ? "border-ink-200"
-            : "border-dashed bg-ink-100",
+            ? "border-neutral-200"
+            : "border-dashed bg-neutral-100",
           active && !previewUrl
             ? isBefore
-              ? "border-green-700 bg-green-50"
-              : "border-bronze-500 bg-bronze-100/40"
+              ? "border-brand-700 bg-brand-50"
+              : "border-accent-500 bg-accent-100/40"
             : "",
           processing ? "opacity-60" : "active:scale-[0.98]",
         ].join(" ")}
@@ -46,11 +46,11 @@ export function PhotoSlot({
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink-500">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-neutral-500">
             <div
               className={[
                 "h-12 w-12 rounded-2xl flex items-center justify-center",
-                isBefore ? "bg-green-100 text-green-800" : "bg-bronze-100 text-bronze-600",
+                isBefore ? "bg-brand-100 text-brand-800" : "bg-accent-100 text-accent-600",
               ].join(" ")}
             >
               <Camera className="h-6 w-6" strokeWidth={1.8} />
@@ -63,13 +63,13 @@ export function PhotoSlot({
         <span
           className={[
             "absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-            isBefore ? "bg-ink-900/80 text-white" : "bg-green-800 text-white",
+            isBefore ? "bg-neutral-900/80 text-white" : "bg-brand-800 text-white",
           ].join(" ")}
         >
           {label}
         </span>
         {processing && (
-          <div className="absolute inset-0 bg-background/70 flex items-center justify-center text-xs font-bold text-ink-700">
+          <div className="absolute inset-0 bg-background/70 flex items-center justify-center text-xs font-bold text-neutral-700">
             Processing…
           </div>
         )}
@@ -78,7 +78,7 @@ export function PhotoSlot({
         <button
           type="button"
           onClick={onCapture}
-          className="mt-1.5 text-[11px] font-semibold text-ink-500 inline-flex items-center justify-center gap-1 hover:text-ink-700"
+          className="mt-1.5 text-[11px] font-semibold text-neutral-500 inline-flex items-center justify-center gap-1 hover:text-neutral-700"
         >
           <RefreshCw className="h-3 w-3" strokeWidth={2.2} />
           Retake

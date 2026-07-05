@@ -56,13 +56,13 @@ type ChemRow = {
 
 const TYPE_STYLE: Record<ApplicationType, { dot: string; chip: string; label: string }> = {
   fertilizer: {
-    dot: "bg-green-700",
-    chip: "bg-green-50 text-green-800",
+    dot: "bg-brand-700",
+    chip: "bg-brand-50 text-brand-800",
     label: "Fertilizer",
   },
   herbicide: {
-    dot: "bg-bronze-600",
-    chip: "bg-bronze-100 text-bronze-700",
+    dot: "bg-accent-600",
+    chip: "bg-accent-100 text-accent-700",
     label: "Herbicide",
   },
   pesticide: {
@@ -76,13 +76,13 @@ const TYPE_STYLE: Record<ApplicationType, { dot: string; chip: string; label: st
     label: "Fungicide",
   },
   lime: {
-    dot: "bg-ink-700",
-    chip: "bg-ink-100 text-ink-700",
+    dot: "bg-neutral-700",
+    chip: "bg-neutral-100 text-neutral-700",
     label: "Lime",
   },
   other: {
-    dot: "bg-ink-500",
-    chip: "bg-ink-100 text-ink-700",
+    dot: "bg-neutral-500",
+    chip: "bg-neutral-100 text-neutral-700",
     label: "Other",
   },
 };
@@ -266,13 +266,13 @@ export default function ChemicalLog() {
       {/* Header */}
       <header className="px-[22px] pb-[14px] flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             Regulatory record
           </div>
-          <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight mt-0.5">
+          <h1 className="tp-display text-[28px] font-bold text-neutral-900 leading-tight mt-0.5">
             Chemical log
           </h1>
-          <div className="text-[12px] text-ink-500 mt-1 tp-num">
+          <div className="text-[12px] text-neutral-500 mt-1 tp-num">
             {ytdQuery.isLoading
               ? "Loading…"
               : `${ytdQuery.data ?? 0} application${ytdQuery.data === 1 ? "" : "s"} year-to-date`}
@@ -283,7 +283,7 @@ export default function ChemicalLog() {
             type="button"
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="h-9 px-3 rounded-full border border-ink-200 bg-card flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-100 disabled:opacity-50"
+            className="h-9 px-3 rounded-full border border-neutral-200 bg-card flex items-center gap-1.5 text-[12.5px] font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" strokeWidth={2} />
             CSV
@@ -291,7 +291,7 @@ export default function ChemicalLog() {
           <button
             type="button"
             onClick={() => setShowAdd((v) => !v)}
-            className="h-9 px-3 rounded-full bg-bronze-500 text-white flex items-center gap-1.5 text-[12.5px] font-bold shadow-bronze hover:bg-bronze-600 transition-colors"
+            className="h-9 px-3 rounded-full bg-accent-500 text-white flex items-center gap-1.5 text-[12.5px] font-bold shadow-accent hover:bg-accent-600 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
             Add
@@ -322,7 +322,7 @@ export default function ChemicalLog() {
                 onClick={() => setRange(r.key)}
                 className={cn(
                   "flex-1 py-2 rounded-[12px] text-[12px] font-semibold transition-colors",
-                  on ? "bg-green-800 text-white" : "text-ink-700 hover:bg-ink-100",
+                  on ? "bg-brand-800 text-white" : "text-neutral-700 hover:bg-neutral-100",
                 )}
               >
                 {r.label}
@@ -349,14 +349,14 @@ export default function ChemicalLog() {
                 className={cn(
                   "px-2.5 py-1.5 rounded-full text-[11.5px] font-semibold flex items-center gap-1.5 transition-colors",
                   on
-                    ? "bg-green-800 text-white"
-                    : "bg-ink-100 text-ink-700 hover:bg-ink-200",
+                    ? "bg-brand-800 text-white"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200",
                 )}
               >
                 <span
                   className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    on ? "bg-bronze-400" : style.dot,
+                    on ? "bg-accent-400" : style.dot,
                   )}
                 />
                 {t.label}
@@ -366,7 +366,7 @@ export default function ChemicalLog() {
         </div>
         <div className="mt-2.5 relative">
           <Search
-            className="h-3.5 w-3.5 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2"
+            className="h-3.5 w-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2"
             strokeWidth={2}
           />
           <input
@@ -374,16 +374,16 @@ export default function ChemicalLog() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by product, address, applicator…"
-            className="w-full bg-card border border-ink-200 rounded-full pl-8 pr-9 py-2 text-[12.5px] text-ink-900 placeholder:text-ink-400"
+            className="w-full bg-card border border-neutral-200 rounded-full pl-8 pr-9 py-2 text-[12.5px] text-neutral-900 placeholder:text-neutral-400"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-full hover:bg-ink-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-full hover:bg-neutral-100"
               aria-label="Clear search"
             >
-              <X className="h-3 w-3 text-ink-500" strokeWidth={2} />
+              <X className="h-3 w-3 text-neutral-500" strokeWidth={2} />
             </button>
           )}
         </div>
@@ -394,7 +394,7 @@ export default function ChemicalLog() {
         {rowsQuery.error ? (
           <div className="tp-card p-6 text-center">
             <p className="text-sm text-destructive">Couldn't load applications.</p>
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               {rowsQuery.error instanceof Error
                 ? rowsQuery.error.message
                 : "Unknown error"}
@@ -405,7 +405,7 @@ export default function ChemicalLog() {
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="tp-card p-3.5 h-[112px] animate-pulse bg-ink-100"
+                className="tp-card p-3.5 h-[112px] animate-pulse bg-neutral-100"
               />
             ))}
           </ul>
@@ -423,7 +423,7 @@ export default function ChemicalLog() {
         )}
 
         {filtered.length > 0 && (
-          <div className="text-center text-[11px] text-ink-400 mt-4 pb-2">
+          <div className="text-center text-[11px] text-neutral-400 mt-4 pb-2">
             Showing {filtered.length} record{filtered.length === 1 ? "" : "s"}
           </div>
         )}
@@ -447,7 +447,7 @@ function TypeChip({
       onClick={onClick}
       className={cn(
         "px-2.5 py-1.5 rounded-full text-[11.5px] font-semibold transition-colors",
-        on ? "bg-green-800 text-white" : "bg-ink-100 text-ink-700 hover:bg-ink-200",
+        on ? "bg-brand-800 text-white" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200",
       )}
     >
       {children}
@@ -475,21 +475,21 @@ function LogRow({ row }: { row: ChemRow }) {
   return (
     <li className="tp-card p-3.5">
       <div className="flex items-start gap-3">
-        <div className="h-[34px] w-[34px] rounded-[10px] bg-green-50 text-green-800 grid place-items-center shrink-0">
+        <div className="h-[34px] w-[34px] rounded-[10px] bg-brand-50 text-brand-800 grid place-items-center shrink-0">
           <Beaker className="h-4 w-4" strokeWidth={1.9} />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-[14px] font-semibold text-ink-900 truncate">
+              <div className="text-[14px] font-semibold text-neutral-900 truncate">
                 {row.product_name}
               </div>
               {row.epa_reg_number && (
-                <div className="text-[10.5px] text-ink-500 tp-num">
+                <div className="text-[10.5px] text-neutral-500 tp-num">
                   EPA {row.epa_reg_number}
                   {row.active_ingredient && (
-                    <span className="text-ink-400"> · {row.active_ingredient}</span>
+                    <span className="text-neutral-400"> · {row.active_ingredient}</span>
                   )}
                 </div>
               )}
@@ -507,27 +507,27 @@ function LogRow({ row }: { row: ChemRow }) {
           {row.properties?.address && (
             <Link
               to={`/properties/${row.properties.id}`}
-              className="block text-[11.5px] text-ink-700 font-semibold mt-1 truncate hover:underline"
+              className="block text-[11.5px] text-neutral-700 font-semibold mt-1 truncate hover:underline"
             >
               {row.properties.address}
             </Link>
           )}
 
-          <div className="flex items-center flex-wrap gap-1.5 mt-1.5 text-[11px] text-ink-500">
+          <div className="flex items-center flex-wrap gap-1.5 mt-1.5 text-[11px] text-neutral-500">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" strokeWidth={2} />
               {fmtDateTime(row.applied_at)}
             </span>
             {inits && (
               <>
-                <span className="text-ink-300">·</span>
-                <span className="font-semibold text-ink-700 tp-num">{inits}</span>
+                <span className="text-neutral-300">·</span>
+                <span className="font-semibold text-neutral-700 tp-num">{inits}</span>
               </>
             )}
           </div>
 
           {rateLine && (
-            <div className="text-[11.5px] text-ink-700 mt-1 tp-num">{rateLine}</div>
+            <div className="text-[11.5px] text-neutral-700 mt-1 tp-num">{rateLine}</div>
           )}
 
           {(row.temperature_f != null ||
@@ -536,24 +536,24 @@ function LogRow({ row }: { row: ChemRow }) {
             row.signs_posted) && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {row.temperature_f != null && (
-                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-ink-100 text-ink-700 text-[10.5px] font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-neutral-100 text-neutral-700 text-[10.5px] font-semibold">
                   <Thermometer className="h-2.5 w-2.5" />
                   <span className="tp-num">{row.temperature_f}</span>°F
                 </span>
               )}
               {row.wind_mph != null && (
-                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-ink-100 text-ink-700 text-[10.5px] font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-neutral-100 text-neutral-700 text-[10.5px] font-semibold">
                   <Wind className="h-2.5 w-2.5" />
                   <span className="tp-num">{row.wind_mph}</span> mph
                 </span>
               )}
               {row.customer_notified && (
-                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-green-50 text-green-800 text-[10.5px] font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-brand-50 text-brand-800 text-[10.5px] font-semibold">
                   <ClipboardCheck className="h-2.5 w-2.5" /> Notified
                 </span>
               )}
               {row.signs_posted && (
-                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-bronze-100 text-bronze-700 text-[10.5px] font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-accent-100 text-accent-700 text-[10.5px] font-semibold">
                   Signs posted
                 </span>
               )}
@@ -561,7 +561,7 @@ function LogRow({ row }: { row: ChemRow }) {
           )}
 
           {row.notes && (
-            <div className="text-[11px] text-ink-500 mt-1.5 italic line-clamp-2">
+            <div className="text-[11px] text-neutral-500 mt-1.5 italic line-clamp-2">
               {row.notes}
             </div>
           )}
@@ -574,13 +574,13 @@ function LogRow({ row }: { row: ChemRow }) {
 function EmptyState({ hasAny, onAdd }: { hasAny: boolean; onAdd: () => void }) {
   return (
     <div className="tp-card p-6 text-center">
-      <div className="mx-auto h-12 w-12 rounded-full bg-green-50 text-green-700 grid place-items-center mb-3">
+      <div className="mx-auto h-12 w-12 rounded-full bg-brand-50 text-brand-700 grid place-items-center mb-3">
         <ClipboardCheck className="h-5 w-5" strokeWidth={1.8} />
       </div>
-      <div className="text-[15px] font-semibold text-ink-900">
+      <div className="text-[15px] font-semibold text-neutral-900">
         {hasAny ? "Nothing matches that filter" : "No applications logged yet"}
       </div>
-      <p className="text-xs text-ink-500 mt-1.5 max-w-[280px] mx-auto leading-relaxed">
+      <p className="text-xs text-neutral-500 mt-1.5 max-w-[280px] mx-auto leading-relaxed">
         {hasAny
           ? "Loosen the filter or switch to all-time to see older records."
           : "This is the regulatory record most US states require for pesticide, herbicide, and fertilizer applications. Save from the calculator or add one directly."}
@@ -589,7 +589,7 @@ function EmptyState({ hasAny, onAdd }: { hasAny: boolean; onAdd: () => void }) {
         <button
           type="button"
           onClick={onAdd}
-          className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-green-800 text-white text-[13px] font-bold hover:bg-green-700 transition-colors"
+          className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-brand-800 text-white text-[13px] font-bold hover:bg-brand-700 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2.5} /> Add application
         </button>

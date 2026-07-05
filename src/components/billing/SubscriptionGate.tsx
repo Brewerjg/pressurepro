@@ -87,20 +87,20 @@ export default function SubscriptionGate({ message, className }: Props) {
         "rounded-2xl p-3.5 flex items-center gap-3",
         isUrgent
           ? "bg-destructive/10 border border-destructive/30"
-          : "bg-bronze-100 border border-bronze-400/40",
+          : "bg-accent-100 border border-accent-400/40",
         className,
       )}
     >
       <div
         className={cn(
           "h-9 w-9 rounded-full grid place-items-center shrink-0",
-          isUrgent ? "bg-destructive/20 text-destructive" : "bg-bronze-500 text-white",
+          isUrgent ? "bg-destructive/20 text-destructive" : "bg-accent-500 text-white",
         )}
       >
         <Lock className="h-4 w-4" strokeWidth={2.2} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-ink-900 leading-tight">
+        <div className="text-[13px] font-semibold text-neutral-900 leading-tight">
           {copy}
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function SubscriptionGate({ message, className }: Props) {
           "inline-flex items-center gap-1 text-[12px] font-extrabold px-3 py-2 rounded-full shrink-0",
           isUrgent
             ? "bg-destructive text-destructive-foreground"
-            : "bg-bronze-500 text-white shadow-bronze hover:bg-bronze-600",
+            : "bg-accent-500 text-white shadow-accent hover:bg-accent-600",
         )}
       >
         {state.kind === "expired" ? "Reactivate" : "View plans"}

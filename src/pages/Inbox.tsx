@@ -277,32 +277,32 @@ function ThreadList({ userId }: { userId: string | null }) {
     <div className="pt-3">
       <header className="px-[22px] pb-[18px] flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             {totalUnread > 0
               ? `${totalUnread} unread`
               : `${threads.length} thread${threads.length === 1 ? "" : "s"}`}
           </div>
-          <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">
+          <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">
             Inbox
           </h1>
         </div>
       </header>
 
       {loading && (
-        <div className="text-sm text-ink-500 text-center py-6">Loading…</div>
+        <div className="text-sm text-neutral-500 text-center py-6">Loading…</div>
       )}
 
       {!loading && threads.length === 0 && (
         <section className="mx-4">
           <div className="tp-card p-8 text-center">
             <InboxIcon
-              className="h-10 w-10 mx-auto text-ink-400"
+              className="h-10 w-10 mx-auto text-neutral-400"
               strokeWidth={1.6}
             />
-            <h3 className="tp-display text-lg mt-3 text-ink-900">
+            <h3 className="tp-display text-lg mt-3 text-neutral-900">
               No messages yet
             </h3>
-            <p className="text-sm text-ink-500 mt-1">
+            <p className="text-sm text-neutral-500 mt-1">
               Customer replies to your texts show up here. You can send a
               new SMS from a customer's detail page or from RouteMode.
             </p>
@@ -467,25 +467,25 @@ function ThreadView({
         <Link
           to="/inbox"
           aria-label="Back to inbox"
-          className="h-9 w-9 rounded-full bg-ink-100 text-ink-700 flex items-center justify-center hover:bg-ink-200 transition-colors"
+          className="h-9 w-9 rounded-full bg-neutral-100 text-neutral-700 flex items-center justify-center hover:bg-neutral-200 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.4} />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="tp-display text-lg font-bold text-ink-900 truncate">
+          <h1 className="tp-display text-lg font-bold text-neutral-900 truncate">
             {isUnknown ? "Unknown senders" : customer?.name ?? "Loading…"}
           </h1>
           {!isUnknown && customer?.phone && (
             <Link
               to={`/customers/${customer.id}`}
-              className="text-[11px] text-ink-500 flex items-center gap-1 hover:text-ink-700 transition-colors"
+              className="text-[11px] text-neutral-500 flex items-center gap-1 hover:text-neutral-700 transition-colors"
             >
               <Phone className="h-3 w-3" strokeWidth={2} />
               {customer.phone}
             </Link>
           )}
           {isUnknown && (
-            <div className="text-[11px] text-ink-500">
+            <div className="text-[11px] text-neutral-500">
               Replies from phones not matched to a customer.
             </div>
           )}
@@ -493,17 +493,17 @@ function ThreadView({
       </header>
 
       {loading && (
-        <div className="text-sm text-ink-500 text-center py-6">Loading…</div>
+        <div className="text-sm text-neutral-500 text-center py-6">Loading…</div>
       )}
 
       {!loading && messages.length === 0 && (
         <section className="mx-4 mb-3">
           <div className="tp-card p-6 text-center">
             <MessageSquare
-              className="h-8 w-8 mx-auto text-ink-400"
+              className="h-8 w-8 mx-auto text-neutral-400"
               strokeWidth={1.6}
             />
-            <p className="text-sm text-ink-500 mt-2">
+            <p className="text-sm text-neutral-500 mt-2">
               No messages in this thread yet.
             </p>
           </div>
@@ -519,7 +519,7 @@ function ThreadView({
           return (
             <div key={m.id} className="space-y-0.5">
               {isUnknown && inboundRow && (
-                <div className="text-[10px] text-ink-500 px-2 tp-num">
+                <div className="text-[10px] text-neutral-500 px-2 tp-num">
                   from {inboundRow.from_phone}
                 </div>
               )}
@@ -534,7 +534,7 @@ function ThreadView({
           unverified phone with no STOP-list checking. */}
       <section className="mx-4 sticky bottom-3">
         {isUnknown ? (
-          <div className="tp-card p-3 text-[12px] text-ink-500 text-center">
+          <div className="tp-card p-3 text-[12px] text-neutral-500 text-center">
             Match this number to a customer to reply.
           </div>
         ) : (

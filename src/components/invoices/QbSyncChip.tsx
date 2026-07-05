@@ -20,7 +20,7 @@ export function QbSyncChip({
       title={synced ? "Synced to QuickBooks" : "QuickBooks sync failed"}
       className={cn(
         "inline-flex items-center gap-0.5 px-2 py-[2px] rounded-full text-[10.5px] font-bold uppercase tracking-[0.4px] shrink-0",
-        synced ? "bg-green-100 text-green-800" : "bg-destructive/15 text-destructive",
+        synced ? "bg-brand-100 text-brand-800" : "bg-destructive/15 text-destructive",
         className,
       )}
     >

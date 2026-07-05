@@ -237,7 +237,7 @@ export default function Auth() {
 
         <form onSubmit={onSubmit} className="tp-card p-5 space-y-4 bg-card/95 backdrop-blur-sm shadow-xl">
           <div>
-            <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+            <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
               Email
             </label>
             <input
@@ -247,13 +247,13 @@ export default function Auth() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full h-11 rounded-xl border border-ink-200 px-3 bg-card text-ink-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+              className="mt-1 w-full h-11 rounded-xl border border-neutral-200 px-3 bg-card text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
             />
           </div>
 
           {mode !== "forgot" && (
             <div>
-              <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+              <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 Password
               </label>
               <input
@@ -264,7 +264,7 @@ export default function Auth() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full h-11 rounded-xl border border-ink-200 px-3 bg-card text-ink-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="mt-1 w-full h-11 rounded-xl border border-neutral-200 px-3 bg-card text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
               />
               {mode === "sign-in" && (
                 <button
@@ -273,7 +273,7 @@ export default function Auth() {
                     setMode("forgot");
                     clearMessages();
                   }}
-                  className="mt-2 text-xs text-ink-500 hover:text-ink-700"
+                  className="mt-2 text-xs text-neutral-500 hover:text-neutral-700"
                 >
                   Forgot password?
                 </button>
@@ -282,12 +282,12 @@ export default function Auth() {
           )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
-          {info && <p className="text-sm text-green-700">{info}</p>}
+          {info && <p className="text-sm text-brand-700">{info}</p>}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full h-12 rounded-2xl bg-bronze-500 hover:bg-bronze-600 text-white font-bold text-sm shadow-bronze disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-2xl bg-accent-500 hover:bg-accent-600 text-white font-bold text-sm shadow-accent disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "sign-in"
@@ -304,7 +304,7 @@ export default function Auth() {
                 setMode("sign-in");
                 clearMessages();
               }}
-              className="w-full text-xs text-ink-500 hover:text-ink-700"
+              className="w-full text-xs text-neutral-500 hover:text-neutral-700"
             >
               Back to sign in
             </button>
@@ -315,7 +315,7 @@ export default function Auth() {
                 setMode(mode === "sign-in" ? "sign-up" : "sign-in");
                 clearMessages();
               }}
-              className="w-full text-xs text-ink-500 hover:text-ink-700"
+              className="w-full text-xs text-neutral-500 hover:text-neutral-700"
             >
               {mode === "sign-in" ? "No account? Sign up" : "Already have an account? Sign in"}
             </button>
@@ -327,16 +327,16 @@ export default function Auth() {
           {GOOGLE_SIGNIN_ENABLED && mode !== "forgot" && (
             <>
               <div className="flex items-center gap-3 pt-1">
-                <div className="h-px flex-1 bg-ink-100" />
-                <span className="text-[11px] uppercase tracking-wide text-ink-400">or</span>
-                <div className="h-px flex-1 bg-ink-100" />
+                <div className="h-px flex-1 bg-neutral-100" />
+                <span className="text-[11px] uppercase tracking-wide text-neutral-400">or</span>
+                <div className="h-px flex-1 bg-neutral-100" />
               </div>
 
               <button
                 type="button"
                 onClick={signInWithGoogle}
                 disabled={googleLoading}
-                className="w-full h-12 rounded-2xl border border-ink-200 bg-card hover:bg-ink-50 text-ink-900 font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-2xl border border-neutral-200 bg-card hover:bg-neutral-50 text-neutral-900 font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {googleLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -350,11 +350,11 @@ export default function Auth() {
         </form>
 
         {mode !== "forgot" && (
-          <div className="mt-4 pt-4 border-t border-ink-100">
+          <div className="mt-4 pt-4 border-t border-neutral-100">
             <button
               onClick={createDemoAccount}
               disabled={creatingDemo}
-              className="w-full h-12 rounded-2xl bg-green-700 hover:bg-green-800 text-white font-bold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-2xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {creatingDemo && <Loader2 className="h-4 w-4 animate-spin" />}
               Try Demo (No signup required)

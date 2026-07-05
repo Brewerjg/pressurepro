@@ -270,7 +270,7 @@ export default function MessageCustomerButton({
         {showText && state.sms_url && (
           <a
             href={state.sms_url}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-bronze-500 text-white text-[12.5px] font-semibold shadow-bronze hover:bg-bronze-600 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-accent-500 text-white text-[12.5px] font-semibold shadow-accent hover:bg-accent-600 transition-colors"
           >
             <Phone className="h-3.5 w-3.5" strokeWidth={2.2} />
             {resolvedTextLabel}
@@ -279,7 +279,7 @@ export default function MessageCustomerButton({
         {showEmail && state.mailto_url && (
           <a
             href={state.mailto_url}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-green-800 text-white text-[12.5px] font-semibold shadow-bronze hover:bg-green-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-800 text-white text-[12.5px] font-semibold shadow-accent hover:bg-brand-700 transition-colors"
           >
             <Mail className="h-3.5 w-3.5" strokeWidth={2.2} />
             {resolvedEmailLabel}
@@ -292,8 +292,8 @@ export default function MessageCustomerButton({
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[12.5px] font-semibold transition-colors",
               copied
-                ? "bg-green-100 border-green-300 text-green-800"
-                : "bg-card border-ink-200 text-ink-700 hover:bg-ink-100",
+                ? "bg-brand-100 border-brand-300 text-brand-800"
+                : "bg-card border-neutral-200 text-neutral-700 hover:bg-neutral-100",
             )}
           >
             {copied ? (
@@ -311,20 +311,20 @@ export default function MessageCustomerButton({
         )}
       </div>
       {noContact ? (
-        <div className="text-[11px] text-ink-500 inline-flex items-center gap-1">
+        <div className="text-[11px] text-neutral-500 inline-flex items-center gap-1">
           <AlertCircle className="h-3 w-3" strokeWidth={2} />
           Add phone or email to customer record
         </div>
       ) : (
         <>
           {noPhone && (
-            <div className="text-[11px] text-ink-500 inline-flex items-center gap-1">
+            <div className="text-[11px] text-neutral-500 inline-flex items-center gap-1">
               <AlertCircle className="h-3 w-3" strokeWidth={2} />
               No phone on file
             </div>
           )}
           {noEmail && (
-            <div className="text-[11px] text-ink-500 inline-flex items-center gap-1">
+            <div className="text-[11px] text-neutral-500 inline-flex items-center gap-1">
               <AlertCircle className="h-3 w-3" strokeWidth={2} />
               No email on file
             </div>
@@ -340,9 +340,9 @@ export default function MessageCustomerButton({
 // =====================================================================
 const IDLE_BUTTON_CLASS: Record<MessageCustomerButtonVariant, string> = {
   primary:
-    "inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-green-800 text-white text-[13.5px] font-semibold shadow-bronze hover:bg-green-700 transition-colors",
+    "inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-brand-800 text-white text-[13.5px] font-semibold shadow-accent hover:bg-brand-700 transition-colors",
   secondary:
-    "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-green-800 bg-card text-green-800 text-[13px] font-semibold hover:bg-green-50 transition-colors",
+    "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-brand-800 bg-card text-brand-800 text-[13px] font-semibold hover:bg-brand-50 transition-colors",
   inline:
-    "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-card border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 transition-colors",
+    "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-card border border-neutral-200 text-neutral-700 text-[12.5px] font-semibold hover:bg-neutral-100 transition-colors",
 };

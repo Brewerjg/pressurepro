@@ -56,48 +56,48 @@ export default function ThreadRow({ thread, isFirst }: Props) {
   return (
     <Link
       to={target}
-      className={`flex items-center gap-3 p-3 active:bg-ink-100 transition-colors ${
-        isFirst ? "" : "border-t border-ink-200"
+      className={`flex items-center gap-3 p-3 active:bg-neutral-100 transition-colors ${
+        isFirst ? "" : "border-t border-neutral-200"
       }`}
     >
       {/* Avatar / icon. Unknown senders get a distinct treatment. */}
       {thread.customerId ? (
-        <div className="h-10 w-10 rounded-[12px] bg-green-100 text-green-800 flex items-center justify-center font-extrabold text-xs shrink-0">
+        <div className="h-10 w-10 rounded-[12px] bg-brand-100 text-brand-800 flex items-center justify-center font-extrabold text-xs shrink-0">
           {initials(thread.displayName)}
         </div>
       ) : (
-        <div className="h-10 w-10 rounded-[12px] bg-bronze-100 text-bronze-700 flex items-center justify-center shrink-0">
+        <div className="h-10 w-10 rounded-[12px] bg-accent-100 text-accent-700 flex items-center justify-center shrink-0">
           <HelpCircle className="h-5 w-5" strokeWidth={2} />
         </div>
       )}
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <div className="font-bold text-sm text-ink-900 truncate flex-1 min-w-0">
+          <div className="font-bold text-sm text-neutral-900 truncate flex-1 min-w-0">
             {thread.displayName}
           </div>
-          <div className="text-[11px] text-ink-500 tp-num shrink-0">
+          <div className="text-[11px] text-neutral-500 tp-num shrink-0">
             {fmtRelative(thread.lastActivityAt)}
           </div>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <div className="text-[12px] text-ink-700 truncate flex-1 min-w-0 flex items-center gap-1">
+          <div className="text-[12px] text-neutral-700 truncate flex-1 min-w-0 flex items-center gap-1">
             {thread.lastDirection === "outbound" && (
               <MessageSquare
-                className="h-3 w-3 shrink-0 text-ink-400"
+                className="h-3 w-3 shrink-0 text-neutral-400"
                 strokeWidth={2}
               />
             )}
             <span className="truncate">{thread.preview}</span>
           </div>
           {thread.unreadCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-bronze-500 text-white text-[10px] font-extrabold tp-num shrink-0">
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-accent-500 text-white text-[10px] font-extrabold tp-num shrink-0">
               {thread.unreadCount}
             </span>
           )}
         </div>
       </div>
-      <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2} />
+      <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={2} />
     </Link>
   );
 }

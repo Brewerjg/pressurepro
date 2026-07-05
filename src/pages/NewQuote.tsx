@@ -121,16 +121,16 @@ export default function NewQuote() {
       <header className="px-[22px] pb-[18px] flex items-center gap-3">
         <Link
           to="/quotes"
-          className="h-9 w-9 rounded-full border border-ink-200 bg-card flex items-center justify-center"
+          className="h-9 w-9 rounded-full border border-neutral-200 bg-card flex items-center justify-center"
           aria-label="Back to quotes"
         >
-          <ArrowLeft className="h-4 w-4 text-ink-700" strokeWidth={2} />
+          <ArrowLeft className="h-4 w-4 text-neutral-700" strokeWidth={2} />
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             One-off job
           </div>
-          <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">
+          <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">
             New quote
           </h1>
         </div>

@@ -68,15 +68,15 @@ const ICON_FOR: Record<TimelineKind, LucideIcon> = {
 // Tailwind tint per kind. Keeps the rows visually parsable when scrolling
 // fast through a long feed.
 const TINT_FOR: Record<TimelineKind, string> = {
-  customer_note: "bg-bronze-100 text-bronze-600",
-  visit: "bg-green-100 text-green-800",
-  chem: "bg-green-50 text-green-800",
-  payment: "bg-green-100 text-green-800",
-  quote: "bg-bronze-100 text-bronze-600",
-  sms_out: "bg-ink-100 text-ink-700",
-  sms_in: "bg-green-50 text-green-800",
-  email: "bg-ink-100 text-ink-700",
-  charge: "bg-green-100 text-green-800",
+  customer_note: "bg-accent-100 text-accent-600",
+  visit: "bg-brand-100 text-brand-800",
+  chem: "bg-brand-50 text-brand-800",
+  payment: "bg-brand-100 text-brand-800",
+  quote: "bg-accent-100 text-accent-600",
+  sms_out: "bg-neutral-100 text-neutral-700",
+  sms_in: "bg-brand-50 text-brand-800",
+  email: "bg-neutral-100 text-neutral-700",
+  charge: "bg-brand-100 text-brand-800",
 };
 
 const fmtUSD = (n: number) =>
@@ -346,12 +346,12 @@ export function NotesTimeline({ customer_id }: NotesTimelineProps) {
   });
 
   if (isLoading) {
-    return <div className="tp-card p-4 text-sm text-ink-500">Loading activity…</div>;
+    return <div className="tp-card p-4 text-sm text-neutral-500">Loading activity…</div>;
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="tp-card p-4 text-sm text-ink-500">
+      <div className="tp-card p-4 text-sm text-neutral-500">
         No activity yet. Visits, payments, texts, emails, and notes will appear
         here as they happen.
       </div>
@@ -373,17 +373,17 @@ export function NotesTimeline({ customer_id }: NotesTimelineProps) {
               <Icon className="h-4 w-4" strokeWidth={2.2} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-ink-900 leading-snug">
+              <div className="text-[13px] font-semibold text-neutral-900 leading-snug">
                 {ev.title}
               </div>
               {ev.body && (
-                <div className="text-[12px] text-ink-700 leading-snug mt-0.5 whitespace-pre-wrap">
+                <div className="text-[12px] text-neutral-700 leading-snug mt-0.5 whitespace-pre-wrap">
                   {ev.body}
                 </div>
               )}
             </div>
             {ev.date && (
-              <div className="text-[10.5px] uppercase tracking-[0.4px] text-ink-500 shrink-0 mt-0.5">
+              <div className="text-[10.5px] uppercase tracking-[0.4px] text-neutral-500 shrink-0 mt-0.5">
                 {fmtRelDate(ev.date)}
               </div>
             )}

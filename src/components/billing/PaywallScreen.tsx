@@ -113,16 +113,16 @@ export default function PaywallScreen() {
       <div className="min-h-screen bg-background">
         <header className="px-5 pt-6 pb-4 flex items-center justify-between max-w-3xl mx-auto">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-[10px] bg-green-800 text-bronze-400 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-[10px] bg-brand-800 text-accent-400 flex items-center justify-center">
               <Leaf className="h-[18px] w-[18px]" strokeWidth={2.2} />
             </div>
-            <div className="font-display font-extrabold text-lg text-ink-900">
+            <div className="font-display font-extrabold text-lg text-neutral-900">
               TurfPro
             </div>
           </div>
           <Link
             to="/"
-            className="text-sm font-semibold text-ink-700 hover:text-ink-900"
+            className="text-sm font-semibold text-neutral-700 hover:text-neutral-900"
           >
             Home
           </Link>
@@ -130,14 +130,14 @@ export default function PaywallScreen() {
 
         <main className="max-w-3xl mx-auto px-4 pt-2 pb-16">
           <section className="mx-auto max-w-xl text-center pt-2 pb-7">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-bronze-100 border border-bronze-400/40 text-bronze-700 text-[11px] font-extrabold uppercase tracking-[0.08em] mb-4">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-100 border border-accent-400/40 text-accent-700 text-[11px] font-extrabold uppercase tracking-[0.08em] mb-4">
               <Lock className="h-3 w-3" strokeWidth={2.6} />
               Trial ended
             </div>
-            <h1 className="tp-display text-[28px] sm:text-[34px] font-bold text-ink-900 leading-[1.1]">
+            <h1 className="tp-display text-[28px] sm:text-[34px] font-bold text-neutral-900 leading-[1.1]">
               Your free trial has ended.
             </h1>
-            <p className="text-[14px] sm:text-[15px] text-ink-500 mt-3 leading-snug">
+            <p className="text-[14px] sm:text-[15px] text-neutral-500 mt-3 leading-snug">
               Pick a plan to keep running routes, plans, and reports. Your
               customers and history are safe — they'll be right where you
               left them.
@@ -146,12 +146,12 @@ export default function PaywallScreen() {
 
           <section className="mx-auto max-w-xl">
             {offeringsLoading ? (
-              <div className="tp-card rounded-[20px] p-6 flex items-center justify-center gap-2 text-ink-500 text-[14px]">
+              <div className="tp-card rounded-[20px] p-6 flex items-center justify-center gap-2 text-neutral-500 text-[14px]">
                 <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={2.4} />
                 Loading plans…
               </div>
             ) : !packages || packages.length === 0 ? (
-              <div className="tp-card rounded-[20px] p-6 text-center text-ink-500 text-[14px]">
+              <div className="tp-card rounded-[20px] p-6 text-center text-neutral-500 text-[14px]">
                 Plans aren't available right now. Pull to refresh or try again
                 in a moment.
               </div>
@@ -176,16 +176,16 @@ export default function PaywallScreen() {
                       className="tp-card rounded-[14px] p-4 flex items-center justify-between text-left active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100"
                     >
                       <div className="flex flex-col">
-                        <span className="font-display font-black text-[15px] text-ink-900">
+                        <span className="font-display font-black text-[15px] text-neutral-900">
                           {title}
                         </span>
                         {priceString && (
-                          <span className="text-[13px] font-semibold text-ink-500 mt-0.5">
+                          <span className="text-[13px] font-semibold text-neutral-500 mt-0.5">
                             {priceString}
                           </span>
                         )}
                       </div>
-                      <span className="inline-flex items-center gap-1.5 h-10 px-4 rounded-[14px] bg-bronze-500 text-white font-extrabold text-[14px] shadow-bronze">
+                      <span className="inline-flex items-center gap-1.5 h-10 px-4 rounded-[14px] bg-accent-500 text-white font-extrabold text-[14px] shadow-accent">
                         {isPurchasing ? (
                           <RefreshCw
                             className="h-4 w-4 animate-spin"
@@ -215,7 +215,7 @@ export default function PaywallScreen() {
                 type="button"
                 onClick={handleRestore}
                 disabled={restoring || !!purchasingId}
-                className="text-[13px] font-bold text-green-700 hover:text-green-800 underline underline-offset-2 disabled:opacity-60"
+                className="text-[13px] font-bold text-brand-700 hover:text-brand-800 underline underline-offset-2 disabled:opacity-60"
               >
                 {restoring ? "Restoring…" : "Restore purchases"}
               </button>
@@ -223,7 +223,7 @@ export default function PaywallScreen() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="inline-flex items-center gap-2 text-[13px] font-bold text-ink-700 hover:text-ink-900 disabled:opacity-60"
+                className="inline-flex items-center gap-2 text-[13px] font-bold text-neutral-700 hover:text-neutral-900 disabled:opacity-60"
               >
                 <RefreshCw
                   className={cn("h-4 w-4", refreshing && "animate-spin")}
@@ -234,7 +234,7 @@ export default function PaywallScreen() {
             </div>
           </section>
 
-          <p className="text-center text-[12px] text-ink-500 mt-7">
+          <p className="text-center text-[12px] text-neutral-500 mt-7">
             Routes, Plans, and Reports unlock the moment your subscription
             is active. Customers, photos, and settings stay available either
             way.
@@ -249,16 +249,16 @@ export default function PaywallScreen() {
       {/* Header — bare brand chip, no AppShell tab bar on this screen */}
       <header className="px-5 pt-6 pb-4 flex items-center justify-between max-w-3xl mx-auto">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-[10px] bg-green-800 text-bronze-400 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-[10px] bg-brand-800 text-accent-400 flex items-center justify-center">
             <Leaf className="h-[18px] w-[18px]" strokeWidth={2.2} />
           </div>
-          <div className="font-display font-extrabold text-lg text-ink-900">
+          <div className="font-display font-extrabold text-lg text-neutral-900">
             TurfPro
           </div>
         </div>
         <Link
           to="/"
-          className="text-sm font-semibold text-ink-700 hover:text-ink-900"
+          className="text-sm font-semibold text-neutral-700 hover:text-neutral-900"
         >
           Home
         </Link>
@@ -267,14 +267,14 @@ export default function PaywallScreen() {
       <main className="max-w-3xl mx-auto px-4 pt-2 pb-16">
         {/* Lockout headline */}
         <section className="mx-auto max-w-xl text-center pt-2 pb-7">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-bronze-100 border border-bronze-400/40 text-bronze-700 text-[11px] font-extrabold uppercase tracking-[0.08em] mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-100 border border-accent-400/40 text-accent-700 text-[11px] font-extrabold uppercase tracking-[0.08em] mb-4">
             <Lock className="h-3 w-3" strokeWidth={2.6} />
             Trial ended
           </div>
-          <h1 className="tp-display text-[28px] sm:text-[34px] font-bold text-ink-900 leading-[1.1]">
+          <h1 className="tp-display text-[28px] sm:text-[34px] font-bold text-neutral-900 leading-[1.1]">
             Your free trial has ended.
           </h1>
-          <p className="text-[14px] sm:text-[15px] text-ink-500 mt-3 leading-snug">
+          <p className="text-[14px] sm:text-[15px] text-neutral-500 mt-3 leading-snug">
             Pick a plan to keep running routes, plans, and reports. Your
             customers and history are safe — they'll be right where you
             left them.
@@ -296,7 +296,7 @@ export default function PaywallScreen() {
                 )}
               >
                 {isFeatured && (
-                  <div className="absolute -top-2.5 left-4 inline-flex items-center gap-1 bg-bronze-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-bronze">
+                  <div className="absolute -top-2.5 left-4 inline-flex items-center gap-1 bg-accent-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-accent">
                     <Sparkles className="h-3 w-3" strokeWidth={2.5} />
                     Recommended
                   </div>
@@ -306,7 +306,7 @@ export default function PaywallScreen() {
                   <h3
                     className={cn(
                       "font-display font-black text-lg",
-                      isFeatured ? "text-white" : "text-ink-900",
+                      isFeatured ? "text-white" : "text-neutral-900",
                     )}
                   >
                     {tier.name}
@@ -315,7 +315,7 @@ export default function PaywallScreen() {
                     <span
                       className={cn(
                         "font-display font-bold text-[22px] leading-none",
-                        isFeatured ? "text-white" : "text-ink-900",
+                        isFeatured ? "text-white" : "text-neutral-900",
                       )}
                     >
                       ${tier.monthly.price}
@@ -323,7 +323,7 @@ export default function PaywallScreen() {
                     <span
                       className={cn(
                         "text-[11px] font-semibold ml-0.5",
-                        isFeatured ? "text-[#cfead8]" : "text-ink-500",
+                        isFeatured ? "text-[#cfead8]" : "text-neutral-500",
                       )}
                     >
                       /mo
@@ -333,7 +333,7 @@ export default function PaywallScreen() {
                 <p
                   className={cn(
                     "text-[12px] mb-2.5",
-                    isFeatured ? "text-[#cfead8]" : "text-ink-500",
+                    isFeatured ? "text-[#cfead8]" : "text-neutral-500",
                   )}
                 >
                   {tier.tagline}
@@ -345,13 +345,13 @@ export default function PaywallScreen() {
                       key={h}
                       className={cn(
                         "flex items-start gap-2 text-[12.5px]",
-                        isFeatured ? "text-white/90" : "text-ink-700",
+                        isFeatured ? "text-white/90" : "text-neutral-700",
                       )}
                     >
                       <Check
                         className={cn(
                           "h-3.5 w-3.5 shrink-0 mt-0.5",
-                          isFeatured ? "text-bronze-400" : "text-green-600",
+                          isFeatured ? "text-accent-400" : "text-brand-600",
                         )}
                         strokeWidth={3}
                       />
@@ -368,7 +368,7 @@ export default function PaywallScreen() {
         <div className="flex flex-col sm:flex-row gap-2.5 max-w-xl mx-auto">
           <Link
             to="/pricing"
-            className="flex-1 h-12 rounded-[14px] bg-bronze-500 text-white font-extrabold text-[15px] shadow-bronze hover:bg-bronze-600 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-[14px] bg-accent-500 text-white font-extrabold text-[15px] shadow-accent hover:bg-accent-600 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
           >
             See plans
             <ArrowRight className="h-4 w-4" strokeWidth={2.6} />
@@ -377,7 +377,7 @@ export default function PaywallScreen() {
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex-1 h-12 rounded-[14px] border-[1.5px] border-ink-200 bg-card text-ink-900 font-extrabold text-[14px] hover:bg-ink-100 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
+            className="flex-1 h-12 rounded-[14px] border-[1.5px] border-neutral-200 bg-card text-neutral-900 font-extrabold text-[14px] hover:bg-neutral-100 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
           >
             <RefreshCw
               className={cn(
@@ -390,7 +390,7 @@ export default function PaywallScreen() {
           </button>
         </div>
 
-        <p className="text-center text-[12px] text-ink-500 mt-5">
+        <p className="text-center text-[12px] text-neutral-500 mt-5">
           Routes, Plans, and Reports unlock the moment your subscription
           is active. Customers, photos, and settings stay available either
           way.

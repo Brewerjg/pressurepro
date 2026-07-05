@@ -136,21 +136,21 @@ export default function SubscriptionCard() {
 
   // Plan summary header — shared by web + native renders.
   const planSummary = (
-    <div className="rounded-xl border border-ink-100 p-3 bg-ink-100/40">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500">
+    <div className="rounded-xl border border-neutral-100 p-3 bg-neutral-100/40">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
         Current plan
       </div>
       {loading ? (
-        <div className="text-sm text-ink-500 mt-1">Loading…</div>
+        <div className="text-sm text-neutral-500 mt-1">Loading…</div>
       ) : (
         <div className="mt-1">
-          <div className="text-sm font-semibold text-ink-900">{planName}</div>
+          <div className="text-sm font-semibold text-neutral-900">{planName}</div>
           {trialLabel ? (
-            <div className="text-[11px] text-bronze-700 font-semibold mt-0.5">
+            <div className="text-[11px] text-accent-700 font-semibold mt-0.5">
               {trialLabel}
             </div>
           ) : trialExpired && !hasActiveSubscription ? (
-            <div className="text-[11px] text-ink-500 mt-0.5">
+            <div className="text-[11px] text-neutral-500 mt-0.5">
               Your free trial has ended.
             </div>
           ) : null}
@@ -164,7 +164,7 @@ export default function SubscriptionCard() {
     return (
       <div className="tp-card p-4 space-y-3">
         {planSummary}
-        <p className="text-[12.5px] text-ink-700 leading-relaxed">
+        <p className="text-[12.5px] text-neutral-700 leading-relaxed">
           Subscriptions are managed in the TurfPro mobile app. Open the app on
           your phone to change plans, update billing, or cancel.
         </p>
@@ -192,7 +192,7 @@ export default function SubscriptionCard() {
           type="button"
           onClick={handleManage}
           disabled={busy}
-          className="w-full h-10 rounded-[14px] border-[1.5px] border-ink-200 bg-card text-ink-900 font-semibold text-sm hover:bg-ink-100 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
+          className="w-full h-10 rounded-[14px] border-[1.5px] border-neutral-200 bg-card text-neutral-900 font-semibold text-sm hover:bg-neutral-100 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
         >
           {managing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -207,16 +207,16 @@ export default function SubscriptionCard() {
 
       {/* Change tier — show the other paid tier(s) as upgrade/downgrade CTAs. */}
       <div className="space-y-2">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
           {hasActiveSubscription ? "Change plan" : "Choose a plan"}
         </div>
         {offeringsLoading ? (
-          <div className="rounded-[14px] border border-ink-100 p-3 flex items-center justify-center gap-2 text-ink-500 text-[13px]">
+          <div className="rounded-[14px] border border-neutral-100 p-3 flex items-center justify-center gap-2 text-neutral-500 text-[13px]">
             <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={2.4} />
             Loading plans…
           </div>
         ) : switchPackages.length === 0 ? (
-          <div className="rounded-[14px] border border-ink-100 p-3 text-[12.5px] text-ink-500 leading-snug">
+          <div className="rounded-[14px] border border-neutral-100 p-3 text-[12.5px] text-neutral-500 leading-snug">
             No other plans are available right now. Try again in a moment.
           </div>
         ) : (
@@ -238,19 +238,19 @@ export default function SubscriptionCard() {
                 type="button"
                 onClick={() => handlePurchase(pkg)}
                 disabled={busy}
-                className="w-full rounded-[14px] border border-ink-100 p-3 flex items-center justify-between text-left active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100"
+                className="w-full rounded-[14px] border border-neutral-100 p-3 flex items-center justify-between text-left active:scale-[0.98] transition-transform disabled:opacity-60 disabled:active:scale-100"
               >
                 <div className="flex flex-col">
-                  <span className="font-display font-black text-[14px] text-ink-900">
+                  <span className="font-display font-black text-[14px] text-neutral-900">
                     {title}
                   </span>
                   {priceString && (
-                    <span className="text-[12px] font-semibold text-ink-500 mt-0.5">
+                    <span className="text-[12px] font-semibold text-neutral-500 mt-0.5">
                       {priceString}
                     </span>
                   )}
                 </div>
-                <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-[14px] bg-bronze-500 text-white font-extrabold text-[13px] shadow-bronze">
+                <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-[14px] bg-accent-500 text-white font-extrabold text-[13px] shadow-accent">
                   {isPurchasing ? (
                     <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={2.6} />
                   ) : (
@@ -274,7 +274,7 @@ export default function SubscriptionCard() {
         type="button"
         onClick={handleRestore}
         disabled={busy}
-        className="w-full text-[13px] font-bold text-green-700 hover:text-green-800 underline underline-offset-2 disabled:opacity-60 flex items-center justify-center gap-1.5 pt-1"
+        className="w-full text-[13px] font-bold text-brand-700 hover:text-brand-800 underline underline-offset-2 disabled:opacity-60 flex items-center justify-center gap-1.5 pt-1"
       >
         {restoring ? (
           <>

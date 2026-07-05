@@ -105,7 +105,7 @@ export default function ResetPassword() {
         <div className="tp-card p-5 space-y-4 bg-card/95 backdrop-blur-sm shadow-xl">
           {status === "checking" && (
             <div className="py-6 grid place-items-center">
-              <Loader2 className="h-6 w-6 animate-spin text-green-700" />
+              <Loader2 className="h-6 w-6 animate-spin text-brand-700" />
             </div>
           )}
 
@@ -116,7 +116,7 @@ export default function ResetPassword() {
               </p>
               <Link
                 to="/auth"
-                className="inline-block text-sm font-semibold text-green-700 hover:text-green-800"
+                className="inline-block text-sm font-semibold text-brand-700 hover:text-brand-800"
               >
                 Back to sign in
               </Link>
@@ -125,10 +125,10 @@ export default function ResetPassword() {
 
           {status === "done" && (
             <div className="space-y-3 text-center py-2">
-              <p className="text-sm text-green-700 font-semibold">
+              <p className="text-sm text-brand-700 font-semibold">
                 Password updated. Signing you in…
               </p>
-              <Loader2 className="h-5 w-5 animate-spin text-green-700 mx-auto" />
+              <Loader2 className="h-5 w-5 animate-spin text-brand-700 mx-auto" />
             </div>
           )}
 
@@ -137,7 +137,7 @@ export default function ResetPassword() {
               <div>
                 <label
                   htmlFor="new-password"
-                  className="text-xs font-semibold uppercase tracking-wide text-ink-500"
+                  className="text-xs font-semibold uppercase tracking-wide text-neutral-500"
                 >
                   New password
                 </label>
@@ -149,13 +149,13 @@ export default function ResetPassword() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full h-11 rounded-xl border border-ink-200 px-3 bg-card text-ink-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className="mt-1 w-full h-11 rounded-xl border border-neutral-200 px-3 bg-card text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
                 />
               </div>
               <div>
                 <label
                   htmlFor="confirm-password"
-                  className="text-xs font-semibold uppercase tracking-wide text-ink-500"
+                  className="text-xs font-semibold uppercase tracking-wide text-neutral-500"
                 >
                   Confirm password
                 </label>
@@ -167,7 +167,7 @@ export default function ResetPassword() {
                   minLength={6}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  className="mt-1 w-full h-11 rounded-xl border border-ink-200 px-3 bg-card text-ink-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className="mt-1 w-full h-11 rounded-xl border border-neutral-200 px-3 bg-card text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
                 />
               </div>
 
@@ -176,7 +176,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-12 rounded-2xl bg-bronze-500 hover:bg-bronze-600 text-white font-bold text-sm shadow-bronze disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-2xl bg-accent-500 hover:bg-accent-600 text-white font-bold text-sm shadow-accent disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Update password

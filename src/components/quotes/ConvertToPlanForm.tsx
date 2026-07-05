@@ -304,14 +304,14 @@ export default function ConvertToPlanForm({
       {/* Header — single line so operators immediately understand this is
           the conversion surface, not the read-only quote summary above. */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5">
-          <Repeat className="h-4 w-4 text-green-800" strokeWidth={2.2} />
+        <h2 className="text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5">
+          <Repeat className="h-4 w-4 text-brand-800" strokeWidth={2.2} />
           Create recurring plan from this quote
         </h2>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-500 hover:text-ink-700"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-neutral-500 hover:text-neutral-700"
         >
           <X className="h-3.5 w-3.5" strokeWidth={2.4} />
           Cancel
@@ -320,12 +320,12 @@ export default function ConvertToPlanForm({
 
       {/* ── Section 1: which quote items recur ─────────────────────── */}
       <section className="space-y-2">
-        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500">
+        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500">
           Which quote items should recur?
         </div>
-        <ul className="rounded-2xl border border-ink-200 bg-card overflow-hidden divide-y divide-ink-200">
+        <ul className="rounded-2xl border border-neutral-200 bg-card overflow-hidden divide-y divide-neutral-200">
           {items.length === 0 && (
-            <li className="px-3.5 py-4 text-[12.5px] text-ink-500 italic">
+            <li className="px-3.5 py-4 text-[12.5px] text-neutral-500 italic">
               No items yet — add one from your catalog or as a custom row below.
             </li>
           )}
@@ -340,8 +340,8 @@ export default function ConvertToPlanForm({
                   className={cn(
                     "w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors",
                     item.isRecurring
-                      ? "bg-green-50/40 hover:bg-green-50"
-                      : "bg-card hover:bg-ink-100/60",
+                      ? "bg-brand-50/40 hover:bg-brand-50"
+                      : "bg-card hover:bg-neutral-100/60",
                   )}
                 >
                   {/* Custom checkbox — bigger tap target than a native input,
@@ -350,8 +350,8 @@ export default function ConvertToPlanForm({
                     className={cn(
                       "flex items-center justify-center h-5 w-5 rounded-md border-2 shrink-0 transition-colors",
                       item.isRecurring
-                        ? "bg-green-800 border-green-800"
-                        : "bg-card border-ink-300",
+                        ? "bg-brand-800 border-brand-800"
+                        : "bg-card border-neutral-300",
                     )}
                     aria-hidden
                   >
@@ -366,24 +366,24 @@ export default function ConvertToPlanForm({
                     <span
                       className={cn(
                         "text-[13.5px] font-semibold truncate",
-                        item.isRecurring ? "text-ink-900" : "text-ink-600",
+                        item.isRecurring ? "text-neutral-900" : "text-neutral-600",
                       )}
                     >
                       {item.name}
                     </span>
                     {showOneTimeBadge && (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full bg-ink-100 text-ink-600 text-[10px] font-bold uppercase tracking-[0.3px]">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full bg-neutral-100 text-neutral-600 text-[10px] font-bold uppercase tracking-[0.3px]">
                         <Ban className="h-2.5 w-2.5" strokeWidth={2.6} />
                         one-time
                       </span>
                     )}
                     {item.source === "catalog" && (
-                      <span className="px-1.5 py-[1px] rounded-full bg-bronze-100 text-bronze-700 text-[9.5px] font-bold uppercase tracking-[0.3px]">
+                      <span className="px-1.5 py-[1px] rounded-full bg-accent-100 text-accent-700 text-[9.5px] font-bold uppercase tracking-[0.3px]">
                         catalog
                       </span>
                     )}
                     {item.source === "custom" && (
-                      <span className="px-1.5 py-[1px] rounded-full bg-bronze-100 text-bronze-700 text-[9.5px] font-bold uppercase tracking-[0.3px]">
+                      <span className="px-1.5 py-[1px] rounded-full bg-accent-100 text-accent-700 text-[9.5px] font-bold uppercase tracking-[0.3px]">
                         custom
                       </span>
                     )}
@@ -391,7 +391,7 @@ export default function ConvertToPlanForm({
                   <div
                     className={cn(
                       "tp-num text-[13.5px] font-bold shrink-0",
-                      item.isRecurring ? "text-ink-900" : "text-ink-500",
+                      item.isRecurring ? "text-neutral-900" : "text-neutral-500",
                     )}
                   >
                     {fmtUSD(item.rate)}
@@ -412,7 +412,7 @@ export default function ConvertToPlanForm({
                           removeItem(item.id);
                         }
                       }}
-                      className="ml-1 h-6 w-6 rounded-full bg-ink-100 hover:bg-destructive/10 text-ink-500 hover:text-destructive flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                      className="ml-1 h-6 w-6 rounded-full bg-neutral-100 hover:bg-destructive/10 text-neutral-500 hover:text-destructive flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                     >
                       <X className="h-3 w-3" strokeWidth={2.6} />
                     </span>
@@ -435,8 +435,8 @@ export default function ConvertToPlanForm({
             className={cn(
               "flex-1 inline-flex items-center justify-center gap-1 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
               catalogOpen
-                ? "border-green-800 bg-green-50 text-green-800"
-                : "border-ink-200 bg-card text-ink-700 hover:border-green-700",
+                ? "border-brand-800 bg-brand-50 text-brand-800"
+                : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
             )}
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -451,8 +451,8 @@ export default function ConvertToPlanForm({
             className={cn(
               "flex-1 inline-flex items-center justify-center gap-1 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
               customOpen
-                ? "border-green-800 bg-green-50 text-green-800"
-                : "border-ink-200 bg-card text-ink-700 hover:border-green-700",
+                ? "border-brand-800 bg-brand-50 text-brand-800"
+                : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
             )}
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -461,33 +461,33 @@ export default function ConvertToPlanForm({
         </div>
 
         {catalogOpen && (
-          <div className="rounded-2xl border border-ink-200 bg-card p-3 space-y-2">
+          <div className="rounded-2xl border border-neutral-200 bg-card p-3 space-y-2">
             <input
               type="text"
               value={catalogQuery}
               onChange={(e) => setCatalogQuery(e.target.value)}
               placeholder="Search catalog…"
-              className="w-full px-3 py-2 rounded-xl border border-ink-200 bg-card text-ink-900 text-[12.5px] focus:outline-none focus:border-green-800"
+              className="w-full px-3 py-2 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-[12.5px] focus:outline-none focus:border-brand-800"
               autoFocus
             />
             <div className="max-h-44 overflow-y-auto">
               {filteredCatalog.length === 0 ? (
-                <div className="text-[11.5px] text-ink-500 italic px-1 py-2">
+                <div className="text-[11.5px] text-neutral-500 italic px-1 py-2">
                   No matching catalog items.
                 </div>
               ) : (
-                <ul className="divide-y divide-ink-200">
+                <ul className="divide-y divide-neutral-200">
                   {filteredCatalog.map((c) => (
                     <li key={c.id}>
                       <button
                         type="button"
                         onClick={() => addFromCatalog(c)}
-                        className="w-full flex items-center justify-between gap-2 py-2 px-1 hover:bg-green-50 rounded-md transition-colors"
+                        className="w-full flex items-center justify-between gap-2 py-2 px-1 hover:bg-brand-50 rounded-md transition-colors"
                       >
-                        <span className="text-[12.5px] font-semibold text-ink-900 truncate">
+                        <span className="text-[12.5px] font-semibold text-neutral-900 truncate">
                           {c.name}
                         </span>
-                        <span className="tp-num text-[12px] text-ink-500 font-bold shrink-0">
+                        <span className="tp-num text-[12px] text-neutral-500 font-bold shrink-0">
                           {typeof c.default_rate === "number"
                             ? fmtUSD(c.default_rate)
                             : "—"}
@@ -502,18 +502,18 @@ export default function ConvertToPlanForm({
         )}
 
         {customOpen && (
-          <div className="rounded-2xl border border-ink-200 bg-card p-3 space-y-2">
+          <div className="rounded-2xl border border-neutral-200 bg-card p-3 space-y-2">
             <div className="flex gap-2">
               <input
                 type="text"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="Service name"
-                className="flex-1 px-3 py-2 rounded-xl border border-ink-200 bg-card text-ink-900 text-[12.5px] focus:outline-none focus:border-green-800"
+                className="flex-1 px-3 py-2 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-[12.5px] focus:outline-none focus:border-brand-800"
                 autoFocus
               />
               <div className="relative w-28">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-500 text-sm">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">
                   $
                 </span>
                 <input
@@ -524,7 +524,7 @@ export default function ConvertToPlanForm({
                   value={customRate}
                   onChange={(e) => setCustomRate(e.target.value)}
                   placeholder="0.00"
-                  className="w-full pl-6 pr-2 py-2 rounded-xl border border-ink-200 bg-card text-ink-900 text-[12.5px] focus:outline-none focus:border-green-800"
+                  className="w-full pl-6 pr-2 py-2 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-[12.5px] focus:outline-none focus:border-brand-800"
                 />
               </div>
             </div>
@@ -532,7 +532,7 @@ export default function ConvertToPlanForm({
               type="button"
               onClick={addCustom}
               disabled={!customName.trim() || !(Number(customRate) > 0)}
-              className="w-full py-2 rounded-xl bg-green-800 text-white text-[12px] font-bold disabled:opacity-50"
+              className="w-full py-2 rounded-xl bg-brand-800 text-white text-[12px] font-bold disabled:opacity-50"
             >
               Add to plan
             </button>
@@ -541,30 +541,30 @@ export default function ConvertToPlanForm({
       </section>
 
       {/* ── Section 2: per-visit total (auto-summed, override-able) ── */}
-      <section className="rounded-2xl bg-green-50/60 border border-green-100 p-3.5">
+      <section className="rounded-2xl bg-brand-50/60 border border-brand-100 p-3.5">
         <div className="flex items-baseline justify-between">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-green-800">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-brand-800">
             Per-visit total
           </div>
           {rateOverride !== null && (
-            <span className="px-1.5 py-[1px] rounded-full bg-bronze-100 text-bronze-700 text-[9.5px] font-bold uppercase tracking-[0.3px]">
+            <span className="px-1.5 py-[1px] rounded-full bg-accent-100 text-accent-700 text-[9.5px] font-bold uppercase tracking-[0.3px]">
               custom rate
             </span>
           )}
         </div>
         <div className="flex items-baseline gap-3 mt-1">
-          <div className="tp-display tp-num text-[30px] font-bold text-green-900 leading-none">
+          <div className="tp-display tp-num text-[30px] font-bold text-brand-900 leading-none">
             {fmtUSD(effectiveRate)}
           </div>
           <button
             type="button"
             onClick={openOverride}
-            className="text-[11.5px] font-semibold text-green-800 underline decoration-dotted underline-offset-2 hover:text-green-700"
+            className="text-[11.5px] font-semibold text-brand-800 underline decoration-dotted underline-offset-2 hover:text-brand-700"
           >
             {rateOverride !== null ? "edit override" : "override $___"}
           </button>
         </div>
-        <div className="text-[11px] text-ink-600 mt-1">
+        <div className="text-[11px] text-neutral-600 mt-1">
           {rateOverride !== null
             ? "Manual rate — auto-sum ignored."
             : `Auto-summed from ${checkedCount} checked item${
@@ -574,7 +574,7 @@ export default function ConvertToPlanForm({
         {overrideOpen && (
           <div className="mt-2 flex gap-2 items-center">
             <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">
                 $
               </span>
               <input
@@ -585,14 +585,14 @@ export default function ConvertToPlanForm({
                 value={overrideDraft}
                 onChange={(e) => setOverrideDraft(e.target.value)}
                 placeholder="0.00"
-                className="w-full pl-7 pr-3 py-2 rounded-xl border border-ink-200 bg-card text-ink-900 text-sm focus:outline-none focus:border-green-800"
+                className="w-full pl-7 pr-3 py-2 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-sm focus:outline-none focus:border-brand-800"
                 autoFocus
               />
             </div>
             <button
               type="button"
               onClick={applyOverride}
-              className="px-3 py-2 rounded-xl bg-green-800 text-white text-[12px] font-bold"
+              className="px-3 py-2 rounded-xl bg-brand-800 text-white text-[12px] font-bold"
             >
               Apply
             </button>
@@ -600,7 +600,7 @@ export default function ConvertToPlanForm({
               <button
                 type="button"
                 onClick={clearOverride}
-                className="px-3 py-2 rounded-xl border border-ink-200 bg-card text-ink-700 text-[12px] font-semibold"
+                className="px-3 py-2 rounded-xl border border-neutral-200 bg-card text-neutral-700 text-[12px] font-semibold"
               >
                 Clear
               </button>
@@ -612,7 +612,7 @@ export default function ConvertToPlanForm({
       {/* ── Section 3: cadence + day ──────────────────────────────── */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
             How often
           </div>
           <div className="grid grid-cols-4 gap-1.5">
@@ -629,8 +629,8 @@ export default function ConvertToPlanForm({
                   className={cn(
                     "py-2 rounded-xl text-[11.5px] font-bold transition-colors border",
                     on
-                      ? "border-green-800 bg-green-800 text-white"
-                      : "border-ink-200 bg-card text-ink-700 hover:border-green-700",
+                      ? "border-brand-800 bg-brand-800 text-white"
+                      : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
                   )}
                 >
                   {f.label}
@@ -640,7 +640,7 @@ export default function ConvertToPlanForm({
           </div>
         </div>
         <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
             Day
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -658,8 +658,8 @@ export default function ConvertToPlanForm({
                   className={cn(
                     "py-2 rounded-[10px] text-[11.5px] font-bold transition-colors",
                     on
-                      ? "bg-green-800 text-white"
-                      : "bg-ink-100 text-ink-700 hover:bg-green-50",
+                      ? "bg-brand-800 text-white"
+                      : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
                   )}
                 >
                   {label}
@@ -672,7 +672,7 @@ export default function ConvertToPlanForm({
 
       {/* ── Section 4: how the card gets charged ─────────────────── */}
       <section className="space-y-2">
-        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500">
+        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500">
           How the card gets charged
         </div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -686,8 +686,8 @@ export default function ConvertToPlanForm({
                 className={cn(
                   "py-2 rounded-xl text-[11.5px] font-bold transition-colors border",
                   on
-                    ? "border-green-800 bg-green-800 text-white"
-                    : "border-ink-200 bg-card text-ink-700 hover:border-green-700",
+                    ? "border-brand-800 bg-brand-800 text-white"
+                    : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
                 )}
               >
                 {b.label}
@@ -698,7 +698,7 @@ export default function ConvertToPlanForm({
         <div className="flex items-center gap-2 pt-1">
           <label
             htmlFor="convert-start-date"
-            className="text-[12px] font-semibold text-ink-700 shrink-0"
+            className="text-[12px] font-semibold text-neutral-700 shrink-0"
           >
             Start:
           </label>
@@ -707,31 +707,31 @@ export default function ConvertToPlanForm({
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-xl border border-ink-200 bg-card text-ink-900 text-[13px] focus:outline-none focus:border-green-800"
+            className="flex-1 px-3 py-2 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-[13px] focus:outline-none focus:border-brand-800"
           />
         </div>
       </section>
 
       {/* ── Billing preview card ─────────────────────────────────── */}
-      <section className="rounded-2xl border-2 border-green-800 bg-gradient-to-br from-green-50 to-card p-3.5">
-        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-green-800 mb-1.5">
+      <section className="rounded-2xl border-2 border-brand-800 bg-gradient-to-br from-brand-50 to-card p-3.5">
+        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-brand-800 mb-1.5">
           Billing preview
         </div>
         {effectiveRate > 0 ? (
           <>
-            <div className="text-[12.5px] text-ink-700 tp-num leading-snug">
+            <div className="text-[12.5px] text-neutral-700 tp-num leading-snug">
               {fmtUSD(effectiveRate)}/visit × {billingPreview.visitsLabel} ×{" "}
               {intervalMonths} {intervalMonths === 1 ? "month" : "months"}
             </div>
-            <div className="tp-display tp-num text-[22px] font-bold text-green-900 leading-tight mt-1">
+            <div className="tp-display tp-num text-[22px] font-bold text-brand-900 leading-tight mt-1">
               = {fmtUSD(billingPreview.total)} per {billingPreview.periodName}
             </div>
-            <div className="text-[11.5px] text-ink-600 mt-1.5">
-              First charge: <span className="font-semibold text-ink-900">{firstChargeLabel}</span>
+            <div className="text-[11.5px] text-neutral-600 mt-1.5">
+              First charge: <span className="font-semibold text-neutral-900">{firstChargeLabel}</span>
             </div>
           </>
         ) : (
-          <div className="text-[12px] text-ink-500 italic">
+          <div className="text-[12px] text-neutral-500 italic">
             Check at least one item — or enter a rate override — to see the
             billing total.
           </div>
@@ -744,8 +744,8 @@ export default function ConvertToPlanForm({
           className={cn(
             "mt-0.5 flex items-center justify-center h-4.5 w-4.5 rounded border-2 shrink-0 transition-colors",
             sendCardLink
-              ? "bg-green-800 border-green-800"
-              : "bg-card border-ink-300",
+              ? "bg-brand-800 border-brand-800"
+              : "bg-card border-neutral-300",
           )}
           style={{ height: "1.1rem", width: "1.1rem" }}
           aria-hidden
@@ -760,9 +760,9 @@ export default function ConvertToPlanForm({
           checked={sendCardLink}
           onChange={(e) => setSendCardLink(e.target.checked)}
         />
-        <span className="text-[12.5px] text-ink-700 leading-snug">
+        <span className="text-[12.5px] text-neutral-700 leading-snug">
           After creation, text the customer a "save card" link
-          <span className="block text-[10.5px] text-ink-500 mt-0.5">
+          <span className="block text-[10.5px] text-neutral-500 mt-0.5">
             Sends email + SMS with a portal link they can use to add a payment
             method.
           </span>
@@ -779,7 +779,7 @@ export default function ConvertToPlanForm({
         type="button"
         onClick={handleSubmit}
         disabled={!canSubmit}
-        className="w-full rounded-full bg-green-800 text-white font-bold text-[14px] py-3.5 hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-full bg-brand-800 text-white font-bold text-[14px] py-3.5 hover:bg-brand-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

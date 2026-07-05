@@ -58,17 +58,17 @@ const ShortLink = () => {
             <p className="text-sm text-muted-foreground mt-1">{error}</p>
             <Link
               to="/"
-              className="inline-block mt-4 text-sm font-semibold text-green-800 hover:underline"
+              className="inline-block mt-4 text-sm font-semibold text-brand-800 hover:underline"
             >
               Go home →
             </Link>
           </>
         ) : (
           <>
-            <div className="h-12 w-12 mx-auto rounded-full bg-green-50 text-green-800 flex items-center justify-center">
+            <div className="h-12 w-12 mx-auto rounded-full bg-brand-50 text-brand-800 flex items-center justify-center">
               <Leaf className="h-6 w-6" />
             </div>
-            <Loader2 className="h-5 w-5 animate-spin mx-auto text-green-800 mt-4" />
+            <Loader2 className="h-5 w-5 animate-spin mx-auto text-brand-800 mt-4" />
             <p className="text-sm text-muted-foreground mt-3">Opening link…</p>
           </>
         )}

@@ -147,7 +147,7 @@ const Accept = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-green-800" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-800" />
       </div>
     );
   }
@@ -305,13 +305,13 @@ const Accept = () => {
   return (
     <div className="min-h-screen bg-background">
       <BrandHeader business={business.business}>
-        <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-bronze-400">
+        <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-accent-400">
           QUOTE #{shortId} · {issueDate.toUpperCase()}
         </div>
         <h1 className="font-display text-[30px] text-white mt-1.5">Hi {firstName},</h1>
         <p className="text-white/75 text-sm mt-1.5">Here's your quote for {q.address}.</p>
         <div className="mt-5">
-          <div className="tp-display tp-num text-[64px] leading-none text-bronze-400 font-extrabold">
+          <div className="tp-display tp-num text-[64px] leading-none text-accent-400 font-extrabold">
             {fmtUSD(total)}
           </div>
           <div className="text-white/70 text-xs mt-1.5">
@@ -348,22 +348,22 @@ const Accept = () => {
                   }
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-ink-900">{lineLabel(l)}</div>
+                    <div className="font-bold text-sm text-neutral-900">{lineLabel(l)}</div>
                     {subtitle && (
                       <div className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</div>
                     )}
                   </div>
-                  <span className="tp-num font-bold text-sm text-ink-900">
+                  <span className="tp-num font-bold text-sm text-neutral-900">
                     {fmtUSD(lineAmount(l))}
                   </span>
                 </div>
               );
             })}
-            <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-green-50">
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-green-800">
+            <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-brand-50">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-brand-800">
                 Total
               </div>
-              <div className="tp-num font-extrabold text-base text-green-900">{fmtUSD(total)}</div>
+              <div className="tp-num font-extrabold text-base text-brand-900">{fmtUSD(total)}</div>
             </div>
           </div>
         </section>
@@ -372,10 +372,10 @@ const Accept = () => {
         {q.recurring_months && (
           <section
             className="tp-card p-3.5 mt-4"
-            style={{ background: "linear-gradient(135deg, hsl(var(--green-50)), hsl(var(--card)))" }}
+            style={{ background: "linear-gradient(135deg, hsl(var(--brand-50)), hsl(var(--card)))" }}
           >
             <div className="flex items-center gap-2.5 mb-1.5">
-              <Repeat className="h-[18px] w-[18px] text-green-800" />
+              <Repeat className="h-[18px] w-[18px] text-brand-800" />
               <div className="font-extrabold text-sm">Keep it green year-round</div>
             </div>
             <div className="text-xs text-muted-foreground">
@@ -400,7 +400,7 @@ const Accept = () => {
                 onChange={e => setSignedName(e.target.value)}
                 placeholder={q.customer_name}
                 autoComplete="name"
-                className="w-full h-14 px-3.5 rounded-xl border-[1.5px] border-border bg-card font-display text-[22px] font-bold text-foreground focus:border-green-800 outline-none"
+                className="w-full h-14 px-3.5 rounded-xl border-[1.5px] border-border bg-card font-display text-[22px] font-bold text-foreground focus:border-brand-800 outline-none"
                 style={{ fontFamily: "'Caveat', 'Archivo', cursive" }}
               />
               <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug flex items-center gap-1.5">
@@ -412,7 +412,7 @@ const Accept = () => {
             <button
               onClick={accept}
               disabled={accepting || !signedName.trim()}
-              className="w-full h-14 rounded-2xl bg-bronze-500 text-green-900 font-bold text-[15px] shadow-bronze flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+              className="w-full h-14 rounded-2xl bg-accent-500 text-brand-900 font-bold text-[15px] shadow-accent flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
             >
               {accepting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" strokeWidth={2.6} />}
               Approve &amp; schedule
@@ -450,7 +450,7 @@ const Accept = () => {
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div className="text-sm">
-                <div className="font-extrabold text-ink-900">Quote approved</div>
+                <div className="font-extrabold text-neutral-900">Quote approved</div>
                 <div className="text-muted-foreground text-xs mt-0.5">
                   Thanks{signedName ? `, ${signedName.split(" ")[0]}` : ""} — we'll be in touch
                   to schedule your service.
@@ -465,8 +465,8 @@ const Accept = () => {
                 </h2>
                 <div className="tp-card p-4">
                   <div className="flex items-baseline justify-between mb-1">
-                    <span className="text-sm font-bold text-ink-900">Deposit</span>
-                    <span className="tp-num font-extrabold text-lg text-green-900">
+                    <span className="text-sm font-bold text-neutral-900">Deposit</span>
+                    <span className="tp-num font-extrabold text-lg text-brand-900">
                       {fmtUSD(q.deposit_amount ?? 0)}
                     </span>
                   </div>
@@ -477,7 +477,7 @@ const Accept = () => {
                   <button
                     onClick={payDeposit}
                     disabled={payLoading}
-                    className="w-full h-12 rounded-2xl bg-green-800 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+                    className="w-full h-12 rounded-2xl bg-brand-800 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
                   >
                     {payLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -494,7 +494,7 @@ const Accept = () => {
             )}
 
             {hasDeposit && depositPaid && (
-              <section className="tp-card p-3.5 mt-4 text-sm text-green-800 font-bold flex items-center gap-2">
+              <section className="tp-card p-3.5 mt-4 text-sm text-brand-800 font-bold flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" /> Deposit received — you're on the route.
               </section>
             )}
@@ -511,11 +511,11 @@ const Accept = () => {
                   checked={recurringRequested}
                   onChange={(e) => toggleRecurring(e.target.checked)}
                   disabled={recurringSaving}
-                  className="mt-0.5 h-4 w-4 rounded border-border accent-green-800"
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-brand-800"
                 />
                 <span className="text-sm">
-                  <span className="flex items-center gap-1.5 font-bold text-ink-900">
-                    <Repeat className="h-3.5 w-3.5 text-green-800" />
+                  <span className="flex items-center gap-1.5 font-bold text-neutral-900">
+                    <Repeat className="h-3.5 w-3.5 text-brand-800" />
                     Make this a recurring service
                   </span>
                   <span className="block text-[11.5px] text-muted-foreground mt-0.5 leading-snug">
@@ -529,7 +529,7 @@ const Accept = () => {
             <div className="mt-4 text-center">
               <Link
                 to={`/review/${q.id}`}
-                className="text-sm font-semibold text-green-800 hover:underline"
+                className="text-sm font-semibold text-brand-800 hover:underline"
               >
                 Leave a review after your service →
               </Link>
@@ -541,7 +541,7 @@ const Accept = () => {
           {q.expires_at && !isExpired && !accepted && (
             <>Quote expires {new Date(q.expires_at).toLocaleDateString()}<br /></>
           )}
-          Powered by <span className="font-semibold text-green-800">TurfPro</span>
+          Powered by <span className="font-semibold text-brand-800">TurfPro</span>
         </div>
       </main>
     </div>

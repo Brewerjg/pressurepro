@@ -208,16 +208,16 @@ export default function SaveApplicationForm({
   return (
     <div
       className={cn(
-        variant === "embedded" ? "tp-card" : "rounded-[16px] border border-ink-100 bg-card",
+        variant === "embedded" ? "tp-card" : "rounded-[16px] border border-neutral-100 bg-card",
         "p-4",
       )}
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-bronze-600">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-accent-600">
             Compliance record
           </div>
-          <h3 className="tp-display text-[16px] font-bold text-ink-900 mt-0.5">
+          <h3 className="tp-display text-[16px] font-bold text-neutral-900 mt-0.5">
             Save to chemical log
           </h3>
         </div>
@@ -225,7 +225,7 @@ export default function SaveApplicationForm({
           <button
             type="button"
             onClick={onCancel}
-            className="text-[12px] font-semibold text-ink-500 hover:text-ink-700"
+            className="text-[12px] font-semibold text-neutral-500 hover:text-neutral-700"
           >
             Cancel
           </button>
@@ -237,12 +237,12 @@ export default function SaveApplicationForm({
         {!propertyId && (
           <Field label="Property">
             {propsQuery.isLoading ? (
-              <div className="text-[12px] text-ink-500">Loading properties…</div>
+              <div className="text-[12px] text-neutral-500">Loading properties…</div>
             ) : (
               <select
                 value={chosenPropertyId ?? ""}
                 onChange={(e) => setChosenPropertyId(e.target.value || null)}
-                className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900"
+                className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900"
               >
                 <option value="">— No property —</option>
                 {(propsQuery.data ?? []).map((p) => (
@@ -256,9 +256,9 @@ export default function SaveApplicationForm({
         )}
 
         {propertyId && propertyName && (
-          <div className="text-[11.5px] text-ink-500">
+          <div className="text-[11.5px] text-neutral-500">
             Logging against{" "}
-            <span className="text-ink-900 font-semibold">{propertyName}</span>
+            <span className="text-neutral-900 font-semibold">{propertyName}</span>
           </div>
         )}
 
@@ -275,8 +275,8 @@ export default function SaveApplicationForm({
                   className={cn(
                     "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors",
                     on
-                      ? "bg-green-800 text-white"
-                      : "bg-ink-100 text-ink-700 hover:bg-ink-200",
+                      ? "bg-brand-800 text-white"
+                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200",
                   )}
                 >
                   {t.label}
@@ -293,7 +293,7 @@ export default function SaveApplicationForm({
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
               placeholder="e.g. Lesco Pro 24-0-11"
-              className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900"
+              className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900"
             />
           </Field>
 
@@ -304,7 +304,7 @@ export default function SaveApplicationForm({
                 value={epa}
                 onChange={(e) => setEpa(e.target.value)}
                 placeholder="e.g. 538-298"
-                className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900 tp-num"
+                className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900 tp-num"
               />
             </Field>
             <Field label="Active ingredient" hint="optional">
@@ -313,7 +313,7 @@ export default function SaveApplicationForm({
                 value={activeIngredient}
                 onChange={(e) => setActiveIngredient(e.target.value)}
                 placeholder="e.g. 2,4-D"
-                className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900"
+                className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900"
               />
             </Field>
           </div>
@@ -325,7 +325,7 @@ export default function SaveApplicationForm({
                 value={applicatorName}
                 onChange={(e) => setApplicatorName(e.target.value)}
                 placeholder="Name"
-                className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900"
+                className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900"
               />
             </Field>
             <Field label="License #" hint="optional">
@@ -334,7 +334,7 @@ export default function SaveApplicationForm({
                 value={applicatorLicense}
                 onChange={(e) => setApplicatorLicense(e.target.value)}
                 placeholder="State license"
-                className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900 tp-num"
+                className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900 tp-num"
               />
             </Field>
           </div>
@@ -344,11 +344,11 @@ export default function SaveApplicationForm({
         {(prefill?.rate_amount != null ||
           prefill?.total_amount != null ||
           prefill?.area_sqft != null) && (
-          <div className="rounded-[12px] bg-ink-100 px-3 py-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-ink-700">
+          <div className="rounded-[12px] bg-neutral-100 px-3 py-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-neutral-700">
             {prefill?.rate_amount != null && (
               <span>
-                <span className="text-ink-500">Rate</span>{" "}
-                <span className="tp-num font-semibold text-ink-900">
+                <span className="text-neutral-500">Rate</span>{" "}
+                <span className="tp-num font-semibold text-neutral-900">
                   {prefill.rate_amount}
                 </span>{" "}
                 {prefill.rate_unit ?? ""}
@@ -356,8 +356,8 @@ export default function SaveApplicationForm({
             )}
             {prefill?.total_amount != null && (
               <span>
-                <span className="text-ink-500">Total</span>{" "}
-                <span className="tp-num font-semibold text-ink-900">
+                <span className="text-neutral-500">Total</span>{" "}
+                <span className="tp-num font-semibold text-neutral-900">
                   {prefill.total_amount}
                 </span>{" "}
                 {prefill.total_unit ?? ""}
@@ -365,8 +365,8 @@ export default function SaveApplicationForm({
             )}
             {prefill?.area_sqft != null && (
               <span>
-                <span className="text-ink-500">Area</span>{" "}
-                <span className="tp-num font-semibold text-ink-900">
+                <span className="text-neutral-500">Area</span>{" "}
+                <span className="tp-num font-semibold text-neutral-900">
                   {prefill.area_sqft.toLocaleString()}
                 </span>{" "}
                 ft²
@@ -377,8 +377,8 @@ export default function SaveApplicationForm({
 
         {/* Weather — spray apps only */}
         {needsWeather && (
-          <div className="rounded-[12px] border border-ink-100 p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500 mb-2">
+          <div className="rounded-[12px] border border-neutral-100 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500 mb-2">
               Weather at application
             </div>
             <div className="grid grid-cols-2 gap-2.5">
@@ -395,7 +395,7 @@ export default function SaveApplicationForm({
                   value={tempF}
                   onChange={(e) => setTempF(e.target.value)}
                   placeholder="72"
-                  className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900 tp-num"
+                  className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900 tp-num"
                 />
               </Field>
               <Field
@@ -411,7 +411,7 @@ export default function SaveApplicationForm({
                   value={windMph}
                   onChange={(e) => setWindMph(e.target.value)}
                   placeholder="5"
-                  className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900 tp-num"
+                  className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900 tp-num"
                 />
               </Field>
             </div>
@@ -422,7 +422,7 @@ export default function SaveApplicationForm({
                   value={conditions}
                   onChange={(e) => setConditions(e.target.value)}
                   placeholder="e.g. clear, light breeze"
-                  className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900"
+                  className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900"
                 />
               </Field>
             </div>
@@ -451,7 +451,7 @@ export default function SaveApplicationForm({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Anything else worth recording"
-            className="w-full bg-card border border-ink-200 rounded-[10px] px-3 py-2 text-[13.5px] text-ink-900 resize-none"
+            className="w-full bg-card border border-neutral-200 rounded-[10px] px-3 py-2 text-[13.5px] text-neutral-900 resize-none"
           />
         </Field>
 
@@ -464,7 +464,7 @@ export default function SaveApplicationForm({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-3 rounded-[14px] bg-card border border-ink-200 text-ink-900 font-semibold text-[13.5px]"
+              className="flex-1 py-3 rounded-[14px] bg-card border border-neutral-200 text-neutral-900 font-semibold text-[13.5px]"
             >
               Cancel
             </button>
@@ -476,8 +476,8 @@ export default function SaveApplicationForm({
             className={cn(
               "flex-[2] py-3 rounded-[14px] font-bold text-[14px] text-white inline-flex items-center justify-center gap-2 transition-colors",
               save.isPending || !productName.trim()
-                ? "bg-green-800/60"
-                : "bg-green-800 hover:bg-green-700",
+                ? "bg-brand-800/60"
+                : "bg-brand-800 hover:bg-brand-700",
             )}
           >
             <Check className="h-4 w-4" strokeWidth={2.4} />
@@ -501,10 +501,10 @@ function Field({
   return (
     <label className="block">
       <div className="flex items-center justify-between px-1 pb-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
           {label}
         </span>
-        {hint && <span className="text-[10.5px] text-ink-400">{hint}</span>}
+        {hint && <span className="text-[10.5px] text-neutral-400">{hint}</span>}
       </div>
       {children}
     </label>
@@ -527,14 +527,14 @@ function Toggle({
       className={cn(
         "flex items-center justify-between px-3 py-2.5 rounded-[12px] border transition-colors",
         checked
-          ? "bg-green-50 border-green-100"
-          : "bg-card border-ink-100 hover:border-ink-200",
+          ? "bg-brand-50 border-brand-100"
+          : "bg-card border-neutral-100 hover:border-neutral-200",
       )}
     >
       <span
         className={cn(
           "text-[13px] font-semibold",
-          checked ? "text-green-800" : "text-ink-700",
+          checked ? "text-brand-800" : "text-neutral-700",
         )}
       >
         {label}
@@ -542,7 +542,7 @@ function Toggle({
       <span
         className={cn(
           "h-5 w-9 rounded-full relative transition-colors",
-          checked ? "bg-green-700" : "bg-ink-200",
+          checked ? "bg-brand-700" : "bg-neutral-200",
         )}
       >
         <span

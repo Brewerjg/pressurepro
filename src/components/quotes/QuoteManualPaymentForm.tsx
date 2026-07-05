@@ -59,20 +59,20 @@ export default function QuoteManualPaymentForm({
   return (
     <div className="tp-card p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold text-ink-900">
+        <h2 className="text-[14px] font-semibold text-neutral-900">
           Record payment
         </h2>
         <button
           type="button"
           onClick={onCancel}
-          className="text-[12px] font-semibold text-ink-500 hover:text-ink-700"
+          className="text-[12px] font-semibold text-neutral-500 hover:text-neutral-700"
         >
           Cancel
         </button>
       </div>
 
       <div>
-        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+        <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
           Method
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -86,8 +86,8 @@ export default function QuoteManualPaymentForm({
                 className={cn(
                   "py-2 rounded-xl text-[12px] font-semibold transition-colors border",
                   on
-                    ? "border-bronze-500 bg-bronze-500 text-white"
-                    : "border-ink-200 bg-card text-ink-700 hover:border-bronze-400",
+                    ? "border-accent-500 bg-accent-500 text-white"
+                    : "border-neutral-200 bg-card text-neutral-700 hover:border-accent-400",
                 )}
               >
                 {METHOD_LABEL[m]}
@@ -99,7 +99,7 @@ export default function QuoteManualPaymentForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
             Amount
           </div>
           <input
@@ -109,12 +109,12 @@ export default function QuoteManualPaymentForm({
             min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-card text-ink-900 text-sm focus:outline-none focus:border-green-800"
+            className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-sm focus:outline-none focus:border-brand-800"
           />
         </div>
         {method === "check" && (
           <div>
-            <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
               Check #
             </div>
             <input
@@ -122,7 +122,7 @@ export default function QuoteManualPaymentForm({
               value={checkNumber}
               onChange={(e) => setCheckNumber(e.target.value)}
               placeholder="optional"
-              className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-card text-ink-900 text-sm focus:outline-none focus:border-green-800"
+              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 bg-card text-neutral-900 text-sm focus:outline-none focus:border-brand-800"
             />
           </div>
         )}
@@ -138,7 +138,7 @@ export default function QuoteManualPaymentForm({
         type="button"
         onClick={submit}
         disabled={submitting}
-        className="w-full rounded-full bg-bronze-500 text-white font-bold text-[14px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+        className="w-full rounded-full bg-accent-500 text-white font-bold text-[14px] py-3 shadow-accent hover:bg-accent-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
       >
         {submitting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

@@ -151,7 +151,7 @@ const Review = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-green-800" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-800" />
       </div>
     );
   }
@@ -188,7 +188,7 @@ const Review = () => {
         {isHigh && submitted.googleReviewUrl && (
           <div
             className="tp-card p-4 mt-6 max-w-sm w-full text-center"
-            style={{ background: "linear-gradient(135deg, hsl(var(--bronze-100)), hsl(var(--card)))" }}
+            style={{ background: "linear-gradient(135deg, hsl(var(--accent-100)), hsl(var(--card)))" }}
           >
             <div className="text-2xl mb-1.5">🌱</div>
             <div className="font-extrabold text-sm mb-1">
@@ -199,7 +199,7 @@ const Review = () => {
             </p>
             <button
               onClick={onClickGoogle}
-              className="w-full h-12 rounded-2xl bg-green-800 text-white font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              className="w-full h-12 rounded-2xl bg-brand-800 text-white font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
               Leave a Google review <ExternalLink className="h-4 w-4" />
             </button>
@@ -216,7 +216,7 @@ const Review = () => {
     <div className="min-h-screen bg-background">
       <BrandHeader business={businessName}>
         <h1 className="font-display text-[32px] text-white">
-          How did we do, <span className="text-bronze-400">{firstName}?</span>
+          How did we do, <span className="text-accent-400">{firstName}?</span>
         </h1>
         <p className="text-white/70 text-sm mt-2">Your feedback helps us get better.</p>
       </BrandHeader>
@@ -238,8 +238,8 @@ const Review = () => {
                 >
                   <Star
                     className="h-[42px] w-[42px]"
-                    fill={filled ? "hsl(var(--bronze-500))" : "transparent"}
-                    color={filled ? "hsl(var(--bronze-500))" : "hsl(var(--border))"}
+                    fill={filled ? "hsl(var(--accent-500))" : "transparent"}
+                    color={filled ? "hsl(var(--accent-500))" : "hsl(var(--border))"}
                     strokeWidth={1.5}
                   />
                 </button>
@@ -269,7 +269,7 @@ const Review = () => {
                   ? `A few words for ${businessName || "the team"}…`
                   : "Tell us what went wrong — only the team will see this."
               }
-              className="w-full px-3.5 py-3 rounded-xl border-[1.5px] border-border bg-card text-sm font-medium text-foreground focus:border-green-800 outline-none resize-none"
+              className="w-full px-3.5 py-3 rounded-xl border-[1.5px] border-border bg-card text-sm font-medium text-foreground focus:border-brand-800 outline-none resize-none"
             />
           </div>
         )}
@@ -279,7 +279,7 @@ const Review = () => {
             <button
               onClick={submit}
               disabled={submitting}
-              className="w-full h-14 rounded-2xl bg-bronze-500 text-green-900 font-bold text-[15px] shadow-bronze flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+              className="w-full h-14 rounded-2xl bg-accent-500 text-brand-900 font-bold text-[15px] shadow-accent flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
             >
               {submitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

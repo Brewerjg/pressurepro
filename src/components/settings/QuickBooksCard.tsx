@@ -113,8 +113,8 @@ export default function QuickBooksCard() {
   if (loading) {
     return (
       <div className="tp-card p-4 flex items-center gap-3">
-        <Loader2 className="h-4 w-4 animate-spin text-ink-400" />
-        <span className="text-[12px] text-ink-500">Loading QuickBooks…</span>
+        <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+        <span className="text-[12px] text-neutral-500">Loading QuickBooks…</span>
       </div>
     );
   }
@@ -124,14 +124,14 @@ export default function QuickBooksCard() {
     return (
       <div className="tp-card p-4 space-y-2.5">
         <div className="flex items-center gap-3">
-          <span className="h-9 w-9 rounded-lg bg-green-100 text-green-800 grid place-items-center shrink-0">
+          <span className="h-9 w-9 rounded-lg bg-brand-100 text-brand-800 grid place-items-center shrink-0">
             <Check className="h-4 w-4" strokeWidth={2.6} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13.5px] font-semibold text-green-800">
+            <div className="text-[13.5px] font-semibold text-brand-800">
               Connected ✓
             </div>
-            <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5 truncate">
+            <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5 truncate">
               {status.company_name
                 ? `Linked to ${status.company_name}.`
                 : "Your QuickBooks company is linked."}
@@ -142,7 +142,7 @@ export default function QuickBooksCard() {
           type="button"
           onClick={onDisconnect}
           disabled={busy}
-          className="w-full h-10 rounded-xl border border-ink-200 text-sm font-semibold text-ink-700 hover:bg-ink-100 disabled:opacity-60 flex items-center justify-center gap-2"
+          className="w-full h-10 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Disconnect"}
         </button>
@@ -157,14 +157,14 @@ export default function QuickBooksCard() {
   return (
     <div className="tp-card p-4 space-y-2.5">
       <div className="flex items-start gap-3">
-        <span className="h-9 w-9 rounded-lg bg-bronze-100 text-bronze-700 grid place-items-center shrink-0">
+        <span className="h-9 w-9 rounded-lg bg-accent-100 text-accent-700 grid place-items-center shrink-0">
           <Calculator className="h-4 w-4" strokeWidth={2.2} />
         </span>
         <div className="flex-1 min-w-0">
-          <div className="text-[13.5px] font-semibold text-ink-900">
+          <div className="text-[13.5px] font-semibold text-neutral-900">
             QuickBooks Online
           </div>
-          <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+          <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5">
             Connect your QuickBooks company so invoices and payments can sync
             automatically.
           </div>
@@ -174,7 +174,7 @@ export default function QuickBooksCard() {
         type="button"
         onClick={onConnect}
         disabled={busy}
-        className="w-full h-10 rounded-xl bg-bronze-500 hover:bg-bronze-600 text-white font-semibold text-sm shadow-bronze disabled:opacity-60 flex items-center justify-center gap-2"
+        className="w-full h-10 rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-semibold text-sm shadow-accent disabled:opacity-60 flex items-center justify-center gap-2"
       >
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -186,7 +186,7 @@ export default function QuickBooksCard() {
         )}
       </button>
       {redirectNote === "connected" && (
-        <p className="text-[11px] font-semibold text-green-700">
+        <p className="text-[11px] font-semibold text-brand-700">
           QuickBooks connected.
         </p>
       )}

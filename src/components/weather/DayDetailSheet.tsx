@@ -116,40 +116,40 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
         onClick={stop}
       >
         {/* Header — sticky close button, day name + date, big condition icon. */}
-        <div className="relative px-5 pt-5 pb-4 border-b border-ink-100">
+        <div className="relative px-5 pt-5 pb-4 border-b border-neutral-100">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 h-9 w-9 rounded-full bg-ink-100 grid place-items-center text-ink-700 hover:bg-ink-200"
+            className="absolute top-4 right-4 h-9 w-9 rounded-full bg-neutral-100 grid place-items-center text-neutral-700 hover:bg-neutral-200"
             aria-label="Close"
           >
             <X className="h-4 w-4" strokeWidth={2} />
           </button>
 
-          <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
             {isTodayDate(day.date) ? "Today" : "Forecast"}
           </div>
-          <h2 className="tp-display text-2xl font-bold text-ink-900 mt-0.5 pr-10">
+          <h2 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5 pr-10">
             {formatLongDate(day.date)}
           </h2>
 
           <div className="flex items-center gap-4 mt-4">
-            <div className="text-green-800">
+            <div className="text-brand-800">
               <ConditionIcon condition={day.condition} className="h-14 w-14" />
             </div>
             <div className="flex-1">
               <div className="flex items-baseline gap-2">
-                <span className="tp-display tp-num text-[40px] font-bold text-ink-900 leading-none">
+                <span className="tp-display tp-num text-[40px] font-bold text-neutral-900 leading-none">
                   {Math.round(day.high)}°
                 </span>
-                <span className="tp-num text-[18px] font-semibold text-ink-500">
+                <span className="tp-num text-[18px] font-semibold text-neutral-500">
                   / {Math.round(day.low)}°
                 </span>
               </div>
-              <div className="text-[13px] text-ink-700 mt-1 font-medium">
+              <div className="text-[13px] text-neutral-700 mt-1 font-medium">
                 {day.conditions}
               </div>
-              <div className="text-[12px] text-ink-500 mt-0.5">
+              <div className="text-[12px] text-neutral-500 mt-0.5">
                 Feels like {Math.round(day.feelsLikeDay)}° today
               </div>
             </div>
@@ -159,7 +159,7 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
         {/* Summary (OneCall v4 daily.summary) — italic so it reads like a
             caption rather than a section header. Hidden if null. */}
         {day.summary && (
-          <div className="px-5 py-3.5 text-[12.5px] italic text-ink-700 leading-relaxed border-b border-ink-100">
+          <div className="px-5 py-3.5 text-[12.5px] italic text-neutral-700 leading-relaxed border-b border-neutral-100">
             {day.summary}
           </div>
         )}
@@ -178,19 +178,19 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
                     key={d}
                     type="button"
                     onClick={() => setOpenRow(open ? null : d)}
-                    className="text-left rounded-[12px] border border-ink-100 px-3 py-2.5 hover:bg-ink-100/40 transition-colors"
+                    className="text-left rounded-[12px] border border-neutral-100 px-3 py-2.5 hover:bg-neutral-100/40 transition-colors"
                     aria-expanded={open}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 text-[13px] font-semibold text-ink-900">
+                      <div className="flex-1 text-[13px] font-semibold text-neutral-900">
                         {DISCIPLINE_LABEL[d]}
                       </div>
                       <VerdictPill verdict={v} />
                       {relevant.length > 0 ? (
                         open ? (
-                          <ChevronUp className="h-3.5 w-3.5 text-ink-500" />
+                          <ChevronUp className="h-3.5 w-3.5 text-neutral-500" />
                         ) : (
-                          <ChevronDown className="h-3.5 w-3.5 text-ink-500" />
+                          <ChevronDown className="h-3.5 w-3.5 text-neutral-500" />
                         )
                       ) : (
                         // Spacer so verdict pills align across all rows
@@ -202,7 +202,7 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
                         {relevant.map((w, i) => (
                           <li
                             key={`${w.kind}-${i}`}
-                            className="text-[11.5px] text-ink-700 flex items-start gap-1.5"
+                            className="text-[11.5px] text-neutral-700 flex items-start gap-1.5"
                           >
                             <span
                               className="mt-1 h-1.5 w-1.5 rounded-full shrink-0"
@@ -233,30 +233,30 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
         <SheetSection title="Wind">
           <div className="flex items-center gap-3">
             <div
-              className="h-10 w-10 rounded-full border-2 border-ink-200 grid place-items-center text-[10px] font-bold text-ink-700"
+              className="h-10 w-10 rounded-full border-2 border-neutral-200 grid place-items-center text-[10px] font-bold text-neutral-700"
               title={`From ${day.windDir} (${Math.round(day.windDeg)}°)`}
             >
               {day.windDir}
             </div>
             <div className="flex-1 flex items-baseline gap-3">
               <div>
-                <div className="tp-num text-[22px] font-bold text-ink-900">
+                <div className="tp-num text-[22px] font-bold text-neutral-900">
                   {Math.round(day.windMph)}
                 </div>
-                <div className="text-[10px] text-ink-500 font-semibold uppercase tracking-wide">
+                <div className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wide">
                   mph
                 </div>
               </div>
               <div>
-                <div className="tp-num text-[16px] font-semibold text-ink-700">
+                <div className="tp-num text-[16px] font-semibold text-neutral-700">
                   {Math.round(day.windGustMph)}
                 </div>
-                <div className="text-[10px] text-ink-500 font-semibold uppercase tracking-wide">
+                <div className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wide">
                   gusts
                 </div>
               </div>
             </div>
-            <Wind className="h-5 w-5 text-ink-400" strokeWidth={1.7} />
+            <Wind className="h-5 w-5 text-neutral-400" strokeWidth={1.7} />
           </div>
         </SheetSection>
 
@@ -301,16 +301,16 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
             "no rain expected" verdict that drove their scheduling. */}
         <SheetSection title="Precipitation">
           <div className="flex items-center gap-3">
-            <Gauge className="h-5 w-5 text-ink-400" strokeWidth={1.7} />
+            <Gauge className="h-5 w-5 text-neutral-400" strokeWidth={1.7} />
             <div className="flex-1">
-              <div className="tp-num text-[20px] font-bold text-ink-900">
+              <div className="tp-num text-[20px] font-bold text-neutral-900">
                 {Math.round(day.precipChance)}%
               </div>
-              <div className="text-[11px] text-ink-500">chance of precipitation</div>
+              <div className="text-[11px] text-neutral-500">chance of precipitation</div>
             </div>
             <div className="text-right">
               {day.rainInches > 0 && (
-                <div className="text-[12px] text-ink-700">
+                <div className="text-[12px] text-neutral-700">
                   <span className="tp-num font-semibold">
                     {day.rainInches.toFixed(2)}"
                   </span>{" "}
@@ -318,7 +318,7 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
                 </div>
               )}
               {day.snowInches > 0 && (
-                <div className="text-[12px] text-ink-700">
+                <div className="text-[12px] text-neutral-700">
                   <span className="tp-num font-semibold">
                     {day.snowInches.toFixed(2)}"
                   </span>{" "}
@@ -326,7 +326,7 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
                 </div>
               )}
               {day.rainInches === 0 && day.snowInches === 0 && (
-                <div className="text-[11px] text-ink-500">No accumulation expected</div>
+                <div className="text-[11px] text-neutral-500">No accumulation expected</div>
               )}
             </div>
           </div>
@@ -363,8 +363,8 @@ function SheetSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="px-5 py-3.5 border-b border-ink-100 last:border-b-0">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500 pb-2">
+    <section className="px-5 py-3.5 border-b border-neutral-100 last:border-b-0">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500 pb-2">
         {title}
       </div>
       {children}
@@ -377,9 +377,9 @@ function VerdictPill({ verdict }: { verdict: Verdict }) {
   // SprayConditionsCard and is documented in the project visual spec.
   const cls =
     verdict === "good"
-      ? "text-green-700 bg-green-50 border-green-100"
+      ? "text-brand-700 bg-brand-50 border-brand-100"
       : verdict === "caution"
-        ? "text-bronze-600 bg-bronze-100 border-bronze-400"
+        ? "text-accent-600 bg-accent-100 border-accent-400"
         : "text-destructive bg-[hsl(var(--destructive-bg))] border-destructive/30";
 
   return (
@@ -393,14 +393,14 @@ function VerdictPill({ verdict }: { verdict: Verdict }) {
 
 function TempBlock({ label, feels }: { label: string; feels: number }) {
   return (
-    <div className="rounded-[12px] border border-ink-100 px-3 py-2.5">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+    <div className="rounded-[12px] border border-neutral-100 px-3 py-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
         {label}
       </div>
-      <div className="tp-num text-[18px] font-bold text-ink-900 mt-0.5">
+      <div className="tp-num text-[18px] font-bold text-neutral-900 mt-0.5">
         {Math.round(feels)}°
       </div>
-      <div className="text-[10px] text-ink-500">feels like</div>
+      <div className="text-[10px] text-neutral-500">feels like</div>
     </div>
   );
 }
@@ -415,13 +415,13 @@ function AtmoStat({
   value: string;
 }) {
   return (
-    <div className="rounded-[12px] border border-ink-100 px-3 py-2.5 flex items-center gap-2.5">
-      <Icon className="h-4 w-4 text-ink-400" strokeWidth={1.7} />
+    <div className="rounded-[12px] border border-neutral-100 px-3 py-2.5 flex items-center gap-2.5">
+      <Icon className="h-4 w-4 text-neutral-400" strokeWidth={1.7} />
       <div className="flex-1">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
           {label}
         </div>
-        <div className="tp-num text-[14px] font-bold text-ink-900">{value}</div>
+        <div className="tp-num text-[14px] font-bold text-neutral-900">{value}</div>
       </div>
     </div>
   );
@@ -433,12 +433,12 @@ function HourCell({ hour }: { hour: HourlyForecast }) {
   // tiny percentages.
   const showPop = hour.precipChance >= 10;
   return (
-    <div className="shrink-0 w-14 rounded-[12px] border border-ink-100 px-1.5 py-2 flex flex-col items-center gap-1 bg-card">
-      <div className="text-[10px] font-semibold text-ink-500">{hour.hour}</div>
-      <div className="text-ink-700">
+    <div className="shrink-0 w-14 rounded-[12px] border border-neutral-100 px-1.5 py-2 flex flex-col items-center gap-1 bg-card">
+      <div className="text-[10px] font-semibold text-neutral-500">{hour.hour}</div>
+      <div className="text-neutral-700">
         <ConditionIcon condition={hour.condition} className="h-4 w-4" />
       </div>
-      <div className="tp-num text-[12.5px] font-bold text-ink-900">
+      <div className="tp-num text-[12.5px] font-bold text-neutral-900">
         {Math.round(hour.temp)}°
       </div>
       {showPop && (

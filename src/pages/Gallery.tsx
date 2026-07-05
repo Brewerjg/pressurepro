@@ -99,7 +99,7 @@ const Gallery = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-green-800" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-800" />
       </div>
     );
   }
@@ -108,7 +108,7 @@ const Gallery = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center max-w-sm">
-          <div className="h-12 w-12 mx-auto rounded-full bg-ink-100 text-ink-500 flex items-center justify-center">
+          <div className="h-12 w-12 mx-auto rounded-full bg-neutral-100 text-neutral-500 flex items-center justify-center">
             <Leaf className="h-6 w-6" />
           </div>
           <h1 className="font-display text-xl mt-4">Gallery not found</h1>
@@ -129,7 +129,7 @@ const Gallery = () => {
         </p>
         <button
           onClick={share}
-          className="mt-4 h-12 px-4 rounded-[14px] bg-bronze-500 text-green-900 font-bold text-sm flex items-center gap-2 shadow-bronze"
+          className="mt-4 h-12 px-4 rounded-[14px] bg-accent-500 text-brand-900 font-bold text-sm flex items-center gap-2 shadow-accent"
         >
           <Share2 className="h-4 w-4" /> Share my results
         </button>
@@ -154,7 +154,7 @@ const Gallery = () => {
                   alt="Before"
                   className="w-full aspect-[4/5] object-cover"
                 />
-                <figcaption className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-ink-900/80 text-white text-[10px] font-bold uppercase tracking-wider">
+                <figcaption className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-neutral-900/80 text-white text-[10px] font-bold uppercase tracking-wider">
                   Before
                 </figcaption>
               </figure>
@@ -170,14 +170,14 @@ const Gallery = () => {
                     Pending
                   </div>
                 )}
-                <figcaption className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-green-800 text-white text-[10px] font-bold uppercase tracking-wider">
+                <figcaption className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand-800 text-white text-[10px] font-bold uppercase tracking-wider">
                   After
                 </figcaption>
               </figure>
             </div>
             <div className="px-3.5 py-3 flex items-center justify-between">
               <div>
-                <div className="font-bold text-[13px] text-ink-900">Lawn care visit</div>
+                <div className="font-bold text-[13px] text-neutral-900">Lawn care visit</div>
                 <div className="text-[11px] text-muted-foreground">
                   {new Date(p.createdAt).toLocaleDateString(undefined, {
                     year: "numeric",
@@ -196,10 +196,10 @@ const Gallery = () => {
       <footer className="max-w-md mx-auto px-4 pt-8 pb-2 text-center">
         <div
           className="tp-card p-5"
-          style={{ background: "linear-gradient(135deg, hsl(var(--green-50)), hsl(var(--card)))" }}
+          style={{ background: "linear-gradient(135deg, hsl(var(--brand-50)), hsl(var(--card)))" }}
         >
           <div className="text-2xl mb-1">🌿</div>
-          <div className="font-extrabold text-sm text-ink-900">
+          <div className="font-extrabold text-sm text-neutral-900">
             Want a lawn like this?
           </div>
           <p className="text-xs text-muted-foreground mt-1 mb-3">
@@ -207,7 +207,7 @@ const Gallery = () => {
           </p>
           <Link
             to="/pricing"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-green-800 text-white font-bold text-sm"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-brand-800 text-white font-bold text-sm"
           >
             Get a quote from TurfPro
           </Link>
@@ -245,7 +245,7 @@ const Gallery = () => {
               />
             </div>
             <div>
-              <div className="text-bronze-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+              <div className="text-accent-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                 After
               </div>
               {lightbox.after ? (

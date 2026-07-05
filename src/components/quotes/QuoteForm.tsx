@@ -273,12 +273,12 @@ export default function QuoteForm({
                 key={item.id}
                 type="button"
                 onClick={() => addCatalogLine(item)}
-                className="px-3 py-1.5 rounded-full text-[12px] font-semibold border border-ink-200 bg-card text-ink-700 hover:border-green-700 transition-colors inline-flex items-center gap-1"
+                className="px-3 py-1.5 rounded-full text-[12px] font-semibold border border-neutral-200 bg-card text-neutral-700 hover:border-brand-700 transition-colors inline-flex items-center gap-1"
               >
                 <Plus className="h-3 w-3" strokeWidth={2.4} />
                 {item.name}
                 {item.default_rate ? (
-                  <span className="text-ink-500 ml-0.5 tp-num">
+                  <span className="text-neutral-500 ml-0.5 tp-num">
                     ${Number(item.default_rate).toFixed(0)}
                   </span>
                 ) : null}
@@ -286,7 +286,7 @@ export default function QuoteForm({
             ))}
           </div>
         ) : (
-          <p className="text-[12px] text-ink-500">
+          <p className="text-[12px] text-neutral-500">
             No services in your catalog yet — add some under Settings, or just
             add a custom line below.
           </p>
@@ -295,7 +295,7 @@ export default function QuoteForm({
         <button
           type="button"
           onClick={addCustomLine}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-ink-200 py-2 text-[12px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-200 py-2 text-[12px] font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
           Add custom line
@@ -306,7 +306,7 @@ export default function QuoteForm({
             {lines.map((l) => (
               <li
                 key={l.id}
-                className="rounded-xl border border-ink-200 bg-card p-3 space-y-2"
+                className="rounded-xl border border-neutral-200 bg-card p-3 space-y-2"
               >
                 <div className="flex items-center gap-2">
                   <input
@@ -354,7 +354,7 @@ export default function QuoteForm({
                     />
                   </Field>
                   <Field label="Total">
-                    <div className="tp-input bg-ink-100 text-ink-700 font-semibold tp-num">
+                    <div className="tp-input bg-neutral-100 text-neutral-700 font-semibold tp-num">
                       ${l.total.toFixed(2)}
                     </div>
                   </Field>
@@ -385,7 +385,7 @@ export default function QuoteForm({
                 }
                 className="tp-input pr-7"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">
                 %
               </span>
             </div>
@@ -400,7 +400,7 @@ export default function QuoteForm({
           </Field>
         </div>
         {depositPercent > 0 && total > 0 && (
-          <div className="text-[11px] text-ink-500 tp-num">
+          <div className="text-[11px] text-neutral-500 tp-num">
             Deposit ≈ ${((total * depositPercent) / 100).toFixed(2)}
           </div>
         )}
@@ -419,7 +419,7 @@ export default function QuoteForm({
 
       {/* Summary card */}
       <div className="rounded-[18px] bg-gradient-hero-deep text-white p-[18px] relative overflow-hidden">
-        <div className="text-[10px] font-semibold tracking-[1px] uppercase text-bronze-400">
+        <div className="text-[10px] font-semibold tracking-[1px] uppercase text-accent-400">
           Quote total
         </div>
         <div className="tp-display tp-num text-[38px] font-bold leading-none mt-1">
@@ -445,7 +445,7 @@ export default function QuoteForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+            className="rounded-full border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
           >
             <X className="h-3.5 w-3.5" /> Cancel
           </button>
@@ -453,7 +453,7 @@ export default function QuoteForm({
             type="button"
             disabled={busy}
             onClick={() => handle("draft")}
-            className="rounded-full bg-ink-100 text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-200 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+            className="rounded-full bg-neutral-100 text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-200 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -466,7 +466,7 @@ export default function QuoteForm({
             type="button"
             disabled={busy}
             onClick={() => handle("send")}
-            className="rounded-full bg-bronze-500 text-white font-bold text-[13px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+            className="rounded-full bg-accent-500 text-white font-bold text-[13px] py-3 shadow-accent hover:bg-accent-600 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -481,7 +481,7 @@ export default function QuoteForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+            className="rounded-full border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
           >
             <X className="h-3.5 w-3.5" /> Cancel
           </button>
@@ -489,7 +489,7 @@ export default function QuoteForm({
             type="button"
             disabled={busy}
             onClick={() => handle("save")}
-            className="rounded-full bg-bronze-500 text-white font-bold text-[13px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+            className="rounded-full bg-accent-500 text-white font-bold text-[13px] py-3 shadow-accent hover:bg-accent-600 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -507,21 +507,21 @@ export default function QuoteForm({
         .tp-input {
           width: 100%;
           background: hsl(var(--card));
-          border: 1px solid hsl(var(--ink-200));
+          border: 1px solid hsl(var(--neutral-200));
           border-radius: 12px;
           padding: 10px 12px;
           font-size: 14px;
-          color: hsl(var(--ink-900));
+          color: hsl(var(--neutral-900));
           font-family: inherit;
         }
         .tp-input:focus {
           outline: none;
-          border-color: hsl(var(--green-800));
-          box-shadow: 0 0 0 3px hsl(var(--green-100));
+          border-color: hsl(var(--brand-800));
+          box-shadow: 0 0 0 3px hsl(var(--brand-100));
         }
         .tp-input:disabled {
-          background: hsl(var(--ink-100));
-          color: hsl(var(--ink-500));
+          background: hsl(var(--neutral-100));
+          color: hsl(var(--neutral-500));
           cursor: not-allowed;
         }
       `}</style>
@@ -541,9 +541,9 @@ function Section({
   return (
     <section className="tp-card p-4 space-y-3">
       <div>
-        <h2 className="text-[14px] font-semibold text-ink-900">{title}</h2>
+        <h2 className="text-[14px] font-semibold text-neutral-900">{title}</h2>
         {subtitle && (
-          <p className="text-[11.5px] text-ink-500 mt-0.5 leading-snug">
+          <p className="text-[11.5px] text-neutral-500 mt-0.5 leading-snug">
             {subtitle}
           </p>
         )}
@@ -562,7 +562,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="block text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500">
+      <span className="block text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500">
         {label}
       </span>
       {children}

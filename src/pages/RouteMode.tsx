@@ -621,7 +621,7 @@ export default function RouteMode() {
     return (
       <FullBleedShell>
         <div className="min-h-screen grid place-items-center">
-          <Loader2 className="h-8 w-8 text-bronze-400 animate-spin" />
+          <Loader2 className="h-8 w-8 text-accent-400 animate-spin" />
         </div>
       </FullBleedShell>
     );
@@ -633,7 +633,7 @@ export default function RouteMode() {
       <FullBleedShell>
         <div className="min-h-screen grid place-items-center px-6 text-center">
           <div>
-            <div className="text-xs font-semibold tracking-[2px] uppercase text-bronze-400 mb-3">
+            <div className="text-xs font-semibold tracking-[2px] uppercase text-accent-400 mb-3">
               Route not found
             </div>
             <p className="text-sm text-white/70 mb-5">
@@ -641,7 +641,7 @@ export default function RouteMode() {
             </p>
             <Link
               to="/routes"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-bronze-500 text-white text-sm font-bold hover:bg-bronze-600 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-accent-500 text-white text-sm font-bold hover:bg-accent-600 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" /> Back to routes
             </Link>
@@ -676,7 +676,7 @@ export default function RouteMode() {
     return (
       <FullBleedShell>
         <div className="min-h-screen grid place-items-center">
-          <Loader2 className="h-8 w-8 text-bronze-400 animate-spin" />
+          <Loader2 className="h-8 w-8 text-accent-400 animate-spin" />
         </div>
       </FullBleedShell>
     );
@@ -699,7 +699,7 @@ export default function RouteMode() {
               <ArrowLeft className="h-[18px] w-[18px] text-white" strokeWidth={1.8} />
             </Link>
             <div>
-              <div className="text-[10px] font-semibold tracking-[0.8px] uppercase text-bronze-400">
+              <div className="text-[10px] font-semibold tracking-[0.8px] uppercase text-accent-400">
                 Stop
               </div>
               <div className="tp-num text-[15px] font-bold text-white">
@@ -708,7 +708,7 @@ export default function RouteMode() {
             </div>
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 text-[11.5px] font-semibold text-[#cfead8]">
-            <Clock className="h-3 w-3 text-bronze-400" strokeWidth={2} />
+            <Clock className="h-3 w-3 text-accent-400" strokeWidth={2} />
             {counts.done} done · {counts.skipped} skipped
           </div>
         </header>
@@ -720,10 +720,10 @@ export default function RouteMode() {
               key={s.id}
               className={cn(
                 "flex-1 h-[3px] rounded-[2px]",
-                s.status === "done" && "bg-green-500",
-                s.status === "skipped" && "bg-ink-300/40",
-                s.status === "in_progress" && "bg-bronze-500",
-                s.status === "pending" && i === activeIndex && "bg-bronze-500",
+                s.status === "done" && "bg-brand-500",
+                s.status === "skipped" && "bg-neutral-300/40",
+                s.status === "in_progress" && "bg-accent-500",
+                s.status === "pending" && i === activeIndex && "bg-accent-500",
                 s.status === "pending" && i !== activeIndex && "bg-white/10",
               )}
             />
@@ -737,7 +737,7 @@ export default function RouteMode() {
               the server hasn't seen yet). Single bronze pill, no
               inspect-the-queue affordance per spec. */}
           {!isOnline && pendingCount > 0 && (
-            <div className="mb-3 inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-full bg-bronze-500/20 border border-bronze-400/40 text-bronze-200 text-[11.5px] font-semibold">
+            <div className="mb-3 inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-full bg-accent-500/20 border border-accent-400/40 text-accent-200 text-[11.5px] font-semibold">
               <CloudOff className="h-3.5 w-3.5" strokeWidth={2} />
               Offline — {pendingCount} pending
             </div>
@@ -767,7 +767,7 @@ export default function RouteMode() {
             </button>
           )}
 
-          <div className="text-[12px] font-semibold tracking-[0.8px] uppercase text-bronze-400 mb-2">
+          <div className="text-[12px] font-semibold tracking-[0.8px] uppercase text-accent-400 mb-2">
             Current stop
           </div>
           <h1 className="tp-display text-[44px] font-bold leading-[1.05] tracking-[-0.02em] text-white">
@@ -783,10 +783,10 @@ export default function RouteMode() {
               (re-rendered by the 60s tick effect at the top of this
               component). */}
           {activeStop.arrived_at ? (
-            <div className="mt-3 inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-full bg-green-600/20 border border-green-500/40 text-green-200 text-[12px] font-semibold">
+            <div className="mt-3 inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-full bg-brand-600/20 border border-brand-500/40 text-brand-200 text-[12px] font-semibold">
               <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
               On site since {formatTimeOfDay(activeStop.arrived_at)}
-              <span className="text-green-300/80">
+              <span className="text-brand-300/80">
                 · {formatElapsedSince(activeStop.arrived_at)}
               </span>
             </div>
@@ -798,7 +798,7 @@ export default function RouteMode() {
                 onClick={() =>
                   arriveMutation.mutate({ stopId: activeStop.id })
                 }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-green-600/20 border border-green-500/50 text-green-200 text-[12.5px] font-semibold hover:bg-green-600/30 transition-colors disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600/20 border border-brand-500/50 text-brand-200 text-[12.5px] font-semibold hover:bg-brand-600/30 transition-colors disabled:opacity-60"
               >
                 {arriveMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -856,12 +856,12 @@ export default function RouteMode() {
                 key={svc}
                 className="px-3.5 py-2 rounded-full bg-white/10 text-[13px] font-semibold text-white inline-flex items-center gap-1.5"
               >
-                <Leaf className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
+                <Leaf className="h-3.5 w-3.5 text-accent-400" strokeWidth={2} />
                 {svc}
               </span>
             ))}
             {activeStop.fee_cents != null && (
-              <span className="px-3.5 py-2 rounded-full bg-white/10 text-[13px] font-bold text-bronze-400 inline-flex items-center gap-1">
+              <span className="px-3.5 py-2 rounded-full bg-white/10 text-[13px] font-bold text-accent-400 inline-flex items-center gap-1">
                 <DollarSign className="h-3.5 w-3.5" strokeWidth={2.2} />
                 <span className="tp-num">
                   {Math.round(activeStop.fee_cents / 100)}
@@ -967,9 +967,9 @@ export default function RouteMode() {
           {(!TWILIO_ENABLED || !RESEND_ENABLED) &&
             lastCompletedStop &&
             lastCompletedStop.id !== activeStop.id && (
-              <div className="mb-3.5 rounded-2xl border border-green-500/40 bg-green-600/15 px-3.5 py-3 flex flex-col gap-2">
+              <div className="mb-3.5 rounded-2xl border border-brand-500/40 bg-brand-600/15 px-3.5 py-3 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="text-[12.5px] font-semibold text-green-100">
+                  <div className="text-[12.5px] font-semibold text-brand-100">
                     Marked done — message the customer the wrap-up?
                   </div>
                   <button
@@ -1002,7 +1002,7 @@ export default function RouteMode() {
                 to={`/photos/new?property_id=${activeStop.property_id}&route_stop_id=${activeStop.id}`}
                 className="inline-flex items-center gap-1.5 self-start px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/85 text-[12.5px] font-semibold hover:bg-white/10 transition-colors"
               >
-                <Camera className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
+                <Camera className="h-3.5 w-3.5 text-accent-400" strokeWidth={2} />
                 + Capture photo
               </Link>
             )}
@@ -1015,8 +1015,8 @@ export default function RouteMode() {
               className={cn(
                 "inline-flex items-center gap-1.5 self-start px-3 py-2 rounded-xl text-[12.5px] font-semibold transition-colors border",
                 paymentFormOpen
-                  ? "bg-green-500/20 border-green-400/60 text-green-100"
-                  : "bg-transparent border-green-400/60 text-green-200 hover:bg-green-500/15",
+                  ? "bg-brand-500/20 border-brand-400/60 text-brand-100"
+                  : "bg-transparent border-brand-400/60 text-brand-200 hover:bg-brand-500/15",
               )}
             >
               <DollarSign className="h-3.5 w-3.5" strokeWidth={2} />
@@ -1053,7 +1053,7 @@ export default function RouteMode() {
               className={cn(
                 "mb-3 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold inline-flex items-center gap-2 self-start",
                 onTheWayStatus.kind === "success"
-                  ? "bg-green-600/20 text-green-300 border border-green-600/30"
+                  ? "bg-brand-600/20 text-brand-300 border border-brand-600/30"
                   : "bg-red-500/20 text-red-200 border border-red-500/30",
               )}
             >
@@ -1067,7 +1067,7 @@ export default function RouteMode() {
             type="button"
             disabled={markDoneMutation.isPending}
             onClick={() => markDoneMutation.mutate(activeStop.id)}
-            className="py-[22px] rounded-[20px] bg-bronze-500 text-white font-bold text-[20px] tracking-[0.2px] inline-flex items-center justify-center gap-2.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-70"
+            className="py-[22px] rounded-[20px] bg-accent-500 text-white font-bold text-[20px] tracking-[0.2px] inline-flex items-center justify-center gap-2.5 shadow-accent hover:bg-accent-600 transition-colors disabled:opacity-70"
           >
             {markDoneMutation.isPending ? (
               <Loader2 className="h-[22px] w-[22px] animate-spin" />
@@ -1163,7 +1163,7 @@ function PropertyFlagPills({ flags }: { flags: PropertyFlags }) {
       tone: "neutral",
       node: (
         <>
-          <Lock className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
+          <Lock className="h-3.5 w-3.5 text-accent-400" strokeWidth={2} />
           <span>
             Gate <b className="tp-num font-bold">{flags.gate_code}</b>
           </span>
@@ -1283,14 +1283,14 @@ function SummaryView({
         >
           <ArrowLeft className="h-[18px] w-[18px] text-white" strokeWidth={1.8} />
         </Link>
-        <div className="text-[10px] font-semibold tracking-[0.8px] uppercase text-bronze-400">
+        <div className="text-[10px] font-semibold tracking-[0.8px] uppercase text-accent-400">
           {alreadyComplete ? "Route closed" : "Route wrapped"}
         </div>
         <div className="w-10" />
       </header>
 
       <div className="flex-1 flex flex-col px-6 pt-10 pb-8">
-        <div className="text-[12px] font-semibold tracking-[0.8px] uppercase text-bronze-400 mb-2">
+        <div className="text-[12px] font-semibold tracking-[0.8px] uppercase text-accent-400 mb-2">
           Nice work
         </div>
         <h1 className="tp-display text-[40px] font-bold leading-[1.05] tracking-[-0.02em] text-white">
@@ -1330,7 +1330,7 @@ function SummaryView({
 
         {counts.skipped > 0 && (
           <div className="mt-5 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 text-[12.5px] font-semibold text-white/85 self-start">
-            <SkipForward className="h-3.5 w-3.5 text-bronze-400" strokeWidth={2} />
+            <SkipForward className="h-3.5 w-3.5 text-accent-400" strokeWidth={2} />
             {counts.skipped} stop{counts.skipped === 1 ? "" : "s"} skipped
           </div>
         )}
@@ -1340,7 +1340,7 @@ function SummaryView({
         {alreadyComplete ? (
           <Link
             to="/routes"
-            className="py-[22px] rounded-[20px] bg-bronze-500 text-white font-bold text-[18px] tracking-[0.2px] inline-flex items-center justify-center gap-2.5 shadow-bronze hover:bg-bronze-600 transition-colors"
+            className="py-[22px] rounded-[20px] bg-accent-500 text-white font-bold text-[18px] tracking-[0.2px] inline-flex items-center justify-center gap-2.5 shadow-accent hover:bg-accent-600 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2.2} />
             Back to routes
@@ -1350,7 +1350,7 @@ function SummaryView({
             type="button"
             disabled={completing}
             onClick={onComplete}
-            className="py-[22px] rounded-[20px] bg-bronze-500 text-white font-bold text-[18px] tracking-[0.2px] inline-flex items-center justify-center gap-2.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-70"
+            className="py-[22px] rounded-[20px] bg-accent-500 text-white font-bold text-[18px] tracking-[0.2px] inline-flex items-center justify-center gap-2.5 shadow-accent hover:bg-accent-600 transition-colors disabled:opacity-70"
           >
             {completing ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -1376,7 +1376,7 @@ function SummaryStat({
 }) {
   return (
     <div className="rounded-2xl bg-white/8 border border-white/10 px-4 py-3.5">
-      <div className="flex items-center gap-1.5 text-bronze-400 mb-1.5">
+      <div className="flex items-center gap-1.5 text-accent-400 mb-1.5">
         {icon}
         <div className="text-[10.5px] font-semibold tracking-[0.6px] uppercase">
           {label}
@@ -1533,7 +1533,7 @@ function ManualPaymentForm({
   };
 
   return (
-    <div className="mb-3 rounded-2xl border border-green-400/40 bg-black/30 p-3.5">
+    <div className="mb-3 rounded-2xl border border-brand-400/40 bg-black/30 p-3.5">
       <div className="text-[12px] font-semibold text-white/85 mb-2 flex items-center justify-between">
         <span>Record payment</span>
         <button
@@ -1556,7 +1556,7 @@ function ManualPaymentForm({
               className={cn(
                 "py-2 rounded-xl text-[11.5px] font-semibold transition-colors border",
                 on
-                  ? "border-green-400 bg-green-500/25 text-white"
+                  ? "border-brand-400 bg-brand-500/25 text-white"
                   : "border-white/15 bg-white/5 text-white/85 hover:bg-white/10",
               )}
             >
@@ -1582,7 +1582,7 @@ function ManualPaymentForm({
               min="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full pl-7 pr-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-[14px] font-semibold focus:outline-none focus:border-green-400/60"
+              className="w-full pl-7 pr-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-[14px] font-semibold focus:outline-none focus:border-brand-400/60"
             />
           </div>
         </div>
@@ -1596,7 +1596,7 @@ function ManualPaymentForm({
               value={checkNumber}
               onChange={(e) => setCheckNumber(e.target.value)}
               placeholder="optional"
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-[14px] font-semibold placeholder:text-white/40 focus:outline-none focus:border-green-400/60"
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-[14px] font-semibold placeholder:text-white/40 focus:outline-none focus:border-brand-400/60"
             />
           </div>
         )}
@@ -1612,7 +1612,7 @@ function ManualPaymentForm({
         type="button"
         disabled={submitting}
         onClick={submit}
-        className="w-full py-2.5 rounded-xl bg-green-600 text-white text-[13px] font-bold inline-flex items-center justify-center gap-1.5 hover:bg-green-700 transition-colors disabled:opacity-60"
+        className="w-full py-2.5 rounded-xl bg-brand-600 text-white text-[13px] font-bold inline-flex items-center justify-center gap-1.5 hover:bg-brand-700 transition-colors disabled:opacity-60"
       >
         {submitting ? (
           <Loader2 className="h-4 w-4 animate-spin" />
