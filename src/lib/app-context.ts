@@ -20,8 +20,14 @@
 // inherently disambiguating, and customers shouldn't care which app a
 // quote was authored in.
 
-export const APP_ID = "turfpro" as const;
-export type AppId = typeof APP_ID | "pressurepro";
+import { vertical } from "@/vertical";
+export type { AppId } from "@/verticals/types";
+
+// APP_ID is the single source of truth for "which trade is this build?" — now
+// derived from the active vertical (VITE_VERTICAL) rather than a hard-coded
+// constant. Equals the DB `app` discriminator. Behaviour is unchanged for the
+// default (lawn) build: APP_ID === "turfpro".
+export const APP_ID = vertical.id;
 
 /**
  * Tables that carry the `app` column. Useful for code-review checks
