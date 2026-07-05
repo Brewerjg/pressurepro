@@ -1,0 +1,23 @@
+// The Vertical contract — the per-trade configuration the shared core reads.
+//
+// Phase 0a is intentionally minimal (identity + brand). Later phases WIDEN this
+// interface with the domain seams (quoteLine, catalog, theme, calculators,
+// plan cadence, weather semantics, property fields, copy, extraRoutes) as those
+// pieces are extracted out of the shared core. Do not add unused seams early.
+
+export type AppId = "turfpro" | "pressurepro";
+
+export interface Vertical {
+  /** Trade identity — equals the DB `app` discriminator for this trade. */
+  id: AppId;
+  brand: {
+    /** Display name, e.g. "TurfPro". */
+    name: string;
+    /** One-line positioning shown in marketing/settings surfaces. */
+    tagline: string;
+    /** Capacitor appId / bundle identifier, e.g. "com.turfpro.beta". */
+    bundleId: string;
+    /** Native status-bar / web theme-color hex. */
+    themeColor: string;
+  };
+}
