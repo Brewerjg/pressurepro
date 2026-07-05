@@ -1,4 +1,5 @@
 import type { Vertical } from "@/verticals/types";
+import { lawnQuoteLine } from "./quote-line";
 
 // Lawn-care vertical (TurfPro). Phase 0a holds identity only; the lawn domain
 // (catalog seed, calculators, GDD/season/weather, quote-line model, theme) is
@@ -11,4 +12,5 @@ export const lawnVertical: Vertical = {
     bundleId: "com.turfpro.beta",
     themeColor: "#f5f1e8",
   },
+  quoteLine: lawnQuoteLine,
 };

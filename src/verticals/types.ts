@@ -5,6 +5,8 @@
 // plan cadence, weather semantics, property fields, copy, extraRoutes) as those
 // pieces are extracted out of the shared core. Do not add unused seams early.
 
+import type { QuoteLineModule } from "./quote-line";
+
 export type AppId = "turfpro" | "pressurepro";
 
 export interface Vertical {
@@ -20,4 +22,5 @@ export interface Vertical {
     /** Native status-bar / web theme-color hex. */
     themeColor: string;
   };
+  quoteLine: QuoteLineModule;
 }
