@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Printer } from "lucide-react";
 import { getInvoiceByToken, formatInvoiceNumber, type Invoice } from "@/lib/invoices";
-import { parseLines, type QuoteLine } from "@/components/quotes/types";
+import { parseLines, describe, type QuoteLine } from "@/components/quotes/types";
 
 // Customer-facing printable invoice. Resolved by invoices.public_token (no
 // auth). Auto-opens the print dialog so any modern browser's "Save as PDF"
@@ -18,15 +18,6 @@ interface Business {
 const fmtUSD = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
-const lineQty = (l: QuoteLine): string => {
-  if (typeof l.qty === "number") return String(l.qty);
-  return "1";
-};
-
-const lineRate = (l: QuoteLine): string => {
-  if (typeof l.rate === "number") return `$${l.rate.toFixed(2)}`;
-  return "—";
-};
 
 const InvoicePrint = () => {
   const { token } = useParams<{ token: string }>();
@@ -190,18 +181,21 @@ const InvoicePrint = () => {
               </tr>
             </thead>
             <tbody>
-              {lines.map((l, i) => (
-                <tr key={l.id ?? i}>
-                  <td>
-                    <div className="font-semibold">{l.name}</div>
-                  </td>
-                  <td style={{ textAlign: "right" }}>{lineQty(l)}</td>
-                  <td style={{ textAlign: "right" }}>{lineRate(l)}</td>
-                  <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {fmtUSD(l.total)}
-                  </td>
-                </tr>
-              ))}
+              {lines.map((l, i) => {
+                const d = describe(l);
+                return (
+                  <tr key={l.id ?? i}>
+                    <td>
+                      <div className="font-semibold">{d.label}</div>
+                    </td>
+                    <td style={{ textAlign: "right" }}>{d.qty}</td>
+                    <td style={{ textAlign: "right" }}>{d.rate}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>
+                      {fmtUSD(d.amount)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr>

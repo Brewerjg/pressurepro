@@ -2,25 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Printer } from "lucide-react";
+import { parseLines, describe, quoteTotal } from "@/components/quotes/types";
 
 // Customer-facing printable quote. Auto-opens the print dialog so any
 // modern browser's "Save as PDF" is the de-facto PDF generator with zero
 // bundle weight. Service-agnostic — works for mow / cleanup / aeration /
 // fert / anything else in the TurfPro catalog.
-
-interface QuoteLine {
-  id?: string;
-  name?: string;
-  label?: string;
-  custom?: boolean;
-  qty?: number;
-  rate?: number;
-  total?: number;
-  area_sqft?: number;
-  surface?: string;
-  sqft?: number;
-  mode?: string;
-}
 
 type PrintQuote = {
   id: string;
@@ -28,7 +15,7 @@ type PrintQuote = {
   customer_email: string | null;
   phone: string;
   address: string;
-  lines: QuoteLine[];
+  lines: unknown;
   notes: string | null;
   total: number | null;
   deposit_amount: number | null;
@@ -45,33 +32,6 @@ type Business = {
 
 const fmtUSD = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-
-const lineLabel = (l: QuoteLine): string => {
-  if (l.custom && l.label) return l.label;
-  if (l.name) return l.name;
-  if (l.label) return l.label;
-  if (l.surface) return l.surface.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  return "Service";
-};
-
-const lineQty = (l: QuoteLine): string => {
-  if (l.area_sqft) return `${l.area_sqft.toLocaleString()} sqft`;
-  if (l.sqft) return `${l.sqft.toLocaleString()} sqft`;
-  if (typeof l.qty === "number") return String(l.qty);
-  return "1";
-};
-
-const lineRate = (l: QuoteLine): string => {
-  if (typeof l.rate === "number") return `$${l.rate.toFixed(2)}`;
-  return "—";
-};
-
-const lineAmount = (l: QuoteLine): number => {
-  if (typeof l.total === "number") return l.total;
-  if (typeof l.rate === "number" && typeof l.qty === "number") return l.rate * l.qty;
-  if (typeof l.rate === "number" && typeof l.sqft === "number") return l.rate * l.sqft;
-  return 0;
-};
 
 const QuotePrint = () => {
   const { id } = useParams();
@@ -117,11 +77,13 @@ const QuotePrint = () => {
     return () => clearTimeout(t);
   }, [loading, q]);
 
+  const lines = useMemo(() => (q ? parseLines(q.lines) : []), [q]);
+
   const total = useMemo(() => {
     if (!q) return 0;
     if (typeof q.total === "number" && q.total > 0) return q.total;
-    return (q.lines ?? []).reduce((s, l) => s + lineAmount(l), 0);
-  }, [q]);
+    return quoteTotal(lines);
+  }, [q, lines]);
 
   if (loading) {
     return (
@@ -228,18 +190,21 @@ const QuotePrint = () => {
               </tr>
             </thead>
             <tbody>
-              {(q.lines ?? []).map((l, i) => (
-                <tr key={l.id ?? i}>
-                  <td>
-                    <div className="font-semibold">{lineLabel(l)}</div>
-                  </td>
-                  <td style={{ textAlign: "right" }}>{lineQty(l)}</td>
-                  <td style={{ textAlign: "right" }}>{lineRate(l)}</td>
-                  <td style={{ textAlign: "right", fontWeight: 600 }}>
-                    {fmtUSD(lineAmount(l))}
-                  </td>
-                </tr>
-              ))}
+              {lines.map((l, i) => {
+                const d = describe(l);
+                return (
+                  <tr key={l.id ?? i}>
+                    <td>
+                      <div className="font-semibold">{d.label}</div>
+                    </td>
+                    <td style={{ textAlign: "right" }}>{d.qty}</td>
+                    <td style={{ textAlign: "right" }}>{d.rate}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>
+                      {fmtUSD(d.amount)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               {q.deposit_amount != null && q.deposit_amount > 0 && (
