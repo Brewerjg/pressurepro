@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Plus, Save, Send, Trash2, X } from "lucide-react";
+import { Loader2, Save, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { QuoteLine } from "./types";
 import { defaultExpiresAt, lineTotal, quoteTotal } from "./types";
 import { APP_ID } from "@/lib/app-context";
+import { vertical } from "@/vertical";
+import { Section, Field } from "@/components/quotes/FormSection";
 
 // Shared editor used by NewQuote (create) and QuoteDetail (edit). The form
 // shape is identical — only the submit handler and "Cancel" target differ.
@@ -102,7 +104,7 @@ export default function QuoteForm({
         .from("catalog_items")
         .select("*")
         .eq("app", APP_ID)
-        .eq("kind", "service")
+        .eq("kind", vertical.quoteLine.catalogKindFilter)
         .eq("archived", false)
         .order("sort_order");
       if (error) throw error;
@@ -148,47 +150,6 @@ export default function QuoteForm({
       setPropertyId("");
     }
   }, [properties, propertyId]);
-
-  const addCatalogLine = (item: CatalogItem) => {
-    setLines((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        catalog_item_id: item.id,
-        name: item.name,
-        qty: 1,
-        rate: Number(item.default_rate ?? 0),
-        total: Number(item.default_rate ?? 0),
-      },
-    ]);
-  };
-
-  const addCustomLine = () => {
-    setLines((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: "Custom service",
-        qty: 1,
-        rate: 0,
-        total: 0,
-      },
-    ]);
-  };
-
-  const updateLine = (id: string, patch: Partial<QuoteLine>) => {
-    setLines((prev) =>
-      prev.map((l) => {
-        if (l.id !== id) return l;
-        const next = { ...l, ...patch };
-        next.total = lineTotal(next);
-        return next;
-      }),
-    );
-  };
-
-  const removeLine = (id: string) =>
-    setLines((prev) => prev.filter((l) => l.id !== id));
 
   const buildValues = (): QuoteFormValues => ({
     customer_id: customerId,
@@ -260,110 +221,12 @@ export default function QuoteForm({
         </Field>
       </Section>
 
-      {/* Line items */}
-      <Section
-        title="Line items"
-        subtitle="Pick from your service catalog or add a custom row. Most one-offs are a single flat-fee line."
-      >
-        {/* Catalog quick-picker */}
-        {catalog && catalog.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {catalog.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => addCatalogLine(item)}
-                className="px-3 py-1.5 rounded-full text-[12px] font-semibold border border-neutral-200 bg-card text-neutral-700 hover:border-brand-700 transition-colors inline-flex items-center gap-1"
-              >
-                <Plus className="h-3 w-3" strokeWidth={2.4} />
-                {item.name}
-                {item.default_rate ? (
-                  <span className="text-neutral-500 ml-0.5 tp-num">
-                    ${Number(item.default_rate).toFixed(0)}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[12px] text-neutral-500">
-            No services in your catalog yet — add some under Settings, or just
-            add a custom line below.
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={addCustomLine}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-200 py-2 text-[12px] font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
-          Add custom line
-        </button>
-
-        {lines.length > 0 && (
-          <ul className="space-y-2 pt-1">
-            {lines.map((l) => (
-              <li
-                key={l.id}
-                className="rounded-xl border border-neutral-200 bg-card p-3 space-y-2"
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    value={l.name}
-                    onChange={(e) =>
-                      updateLine(l.id, { name: e.target.value })
-                    }
-                    placeholder="Line item name"
-                    className="tp-input flex-1 font-semibold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeLine(l.id)}
-                    className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center"
-                    aria-label="Remove line"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Field label="Qty">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.5"
-                      value={l.qty}
-                      onChange={(e) =>
-                        updateLine(l.id, { qty: Number(e.target.value) || 0 })
-                      }
-                      className="tp-input"
-                    />
-                  </Field>
-                  <Field label="Rate ($)">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      value={l.rate}
-                      onChange={(e) =>
-                        updateLine(l.id, { rate: Number(e.target.value) || 0 })
-                      }
-                      className="tp-input"
-                    />
-                  </Field>
-                  <Field label="Total">
-                    <div className="tp-input bg-neutral-100 text-neutral-700 font-semibold tp-num">
-                      ${l.total.toFixed(2)}
-                    </div>
-                  </Field>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+      {/* Line items — delegated to the active vertical */}
+      <vertical.quoteLine.LineEditor
+        lines={lines}
+        catalog={catalog ?? []}
+        onChange={setLines}
+      />
 
       {/* Deposit + expiry */}
       <Section
@@ -529,44 +392,4 @@ export default function QuoteForm({
   );
 }
 
-function Section({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="tp-card p-4 space-y-3">
-      <div>
-        <h2 className="text-[14px] font-semibold text-neutral-900">{title}</h2>
-        {subtitle && (
-          <p className="text-[11.5px] text-neutral-500 mt-0.5 leading-snug">
-            {subtitle}
-          </p>
-        )}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="block text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
 
