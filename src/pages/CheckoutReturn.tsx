@@ -126,11 +126,11 @@ export default function CheckoutReturn() {
       <div className="tp-card max-w-md w-full p-6 text-center">
         {state.kind === "verifying" && (
           <>
-            <Loader2 className="h-10 w-10 animate-spin text-bronze-500 mx-auto mb-4" />
-            <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
+            <Loader2 className="h-10 w-10 animate-spin text-accent-500 mx-auto mb-4" />
+            <h1 className="font-display text-xl font-bold text-neutral-900 mb-1">
               {isPlanFlow ? "Activating the plan…" : "Confirming your subscription…"}
             </h1>
-            <p className="text-sm text-ink-500">Hang tight, just a moment.</p>
+            <p className="text-sm text-neutral-500">Hang tight, just a moment.</p>
           </>
         )}
 
@@ -152,14 +152,14 @@ export default function CheckoutReturn() {
         {state.kind === "failed" && (
           <>
             <XCircle className="h-12 w-12 text-destructive mx-auto mb-3" strokeWidth={2.2} />
-            <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
+            <h1 className="font-display text-xl font-bold text-neutral-900 mb-1">
               {isPlanFlow ? "Card setup didn't complete" : "Payment didn't go through"}
             </h1>
-            <p className="text-sm text-ink-500 mb-5">{state.message}</p>
+            <p className="text-sm text-neutral-500 mb-5">{state.message}</p>
             <button
               type="button"
               onClick={() => navigate(isPlanFlow ? "/plans" : "/pricing")}
-              className="w-full h-12 rounded-[14px] bg-bronze-500 text-white font-extrabold text-sm shadow-bronze hover:bg-bronze-600 transition-colors"
+              className="w-full h-12 rounded-[14px] bg-accent-500 text-white font-extrabold text-sm shadow-accent hover:bg-accent-600 transition-colors"
             >
               {isPlanFlow ? "Back to plans" : "Try again"}
             </button>
@@ -174,20 +174,20 @@ function PlanSuccessCard({ onContinue }: { onContinue: () => void }) {
   return (
     <>
       <CheckCircle2
-        className="h-14 w-14 text-green-600 mx-auto mb-3"
+        className="h-14 w-14 text-brand-600 mx-auto mb-3"
         strokeWidth={2.2}
       />
-      <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
+      <h1 className="font-display text-xl font-bold text-neutral-900 mb-1">
         Card on file. Plan is active.
       </h1>
-      <p className="text-sm text-ink-500 mb-5">
+      <p className="text-sm text-neutral-500 mb-5">
         We'll bill the card on schedule. Taking you to the plan…
       </p>
       <button
         type="button"
         onClick={onContinue}
         className={cn(
-          "w-full h-12 rounded-[14px] bg-bronze-500 text-white font-extrabold text-sm shadow-bronze hover:bg-bronze-600",
+          "w-full h-12 rounded-[14px] bg-accent-500 text-white font-extrabold text-sm shadow-accent hover:bg-accent-600",
           "transition-colors flex items-center justify-center gap-2",
         )}
       >
@@ -210,20 +210,20 @@ function SuccessCard({
   return (
     <>
       <CheckCircle2
-        className="h-14 w-14 text-green-600 mx-auto mb-3"
+        className="h-14 w-14 text-brand-600 mx-auto mb-3"
         strokeWidth={2.2}
       />
-      <h1 className="font-display text-xl font-bold text-ink-900 mb-1">
+      <h1 className="font-display text-xl font-bold text-neutral-900 mb-1">
         {tier ? `You're subscribed to ${tier.name}` : "You're subscribed"}
       </h1>
-      <p className="text-sm text-ink-500 mb-5">
+      <p className="text-sm text-neutral-500 mb-5">
         Welcome to TurfPro. Taking you to your settings…
       </p>
       <button
         type="button"
         onClick={onContinue}
         className={cn(
-          "w-full h-12 rounded-[14px] bg-bronze-500 text-white font-extrabold text-sm shadow-bronze hover:bg-bronze-600",
+          "w-full h-12 rounded-[14px] bg-accent-500 text-white font-extrabold text-sm shadow-accent hover:bg-accent-600",
           "transition-colors flex items-center justify-center gap-2",
         )}
       >

@@ -64,9 +64,9 @@ export function DemoBanner() {
   if (!isDemo || dismissed) return null;
 
   return (
-    <div className="bg-bronze-100 border-b border-bronze-400 px-4 py-2">
+    <div className="bg-accent-100 border-b border-accent-400 px-4 py-2">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-bronze-700">
+        <div className="flex items-center gap-2 text-sm text-accent-700">
           <AlertCircle className="h-4 w-4" />
           <span>
             <strong>Demo Mode:</strong> You're exploring TurfPro with a demo account. Data won't be saved.
@@ -74,7 +74,7 @@ export function DemoBanner() {
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className="text-bronze-600 hover:text-bronze-700"
+          className="text-accent-600 hover:text-accent-700"
           aria-label="Dismiss banner"
         >
           <X className="h-4 w-4" />

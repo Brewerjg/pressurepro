@@ -44,20 +44,20 @@ export default function TrialBanner() {
         "mx-4 mt-3 rounded-2xl p-3 flex items-center gap-3",
         urgent
           ? "bg-destructive/10 border border-destructive/40"
-          : "bg-bronze-100 border border-bronze-400/40",
+          : "bg-accent-100 border border-accent-400/40",
       )}
       role="status"
     >
       <div
         className={cn(
           "h-8 w-8 rounded-full grid place-items-center shrink-0",
-          urgent ? "bg-destructive/20 text-destructive" : "bg-bronze-500 text-white",
+          urgent ? "bg-destructive/20 text-destructive" : "bg-accent-500 text-white",
         )}
       >
         <Clock className="h-4 w-4" strokeWidth={2.2} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-ink-900 leading-tight">
+        <div className="text-[13px] font-semibold text-neutral-900 leading-tight">
           {copy}
         </div>
       </div>
@@ -67,7 +67,7 @@ export default function TrialBanner() {
           "inline-flex items-center gap-1 text-[12px] font-extrabold px-3 py-2 rounded-full shrink-0",
           urgent
             ? "bg-destructive text-destructive-foreground"
-            : "bg-bronze-500 text-white shadow-bronze hover:bg-bronze-600",
+            : "bg-accent-500 text-white shadow-accent hover:bg-accent-600",
         )}
       >
         {expired ? "Pick a plan" : "View plans"}

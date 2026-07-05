@@ -26,9 +26,9 @@ interface Props {
 export default function GddTinyChart({ series, tone = "open", height = 80 }: Props) {
   if (!series || series.length === 0) return null;
 
-  const stroke = tone === "closing" ? "hsl(var(--bronze-500))" : "hsl(var(--green-700))";
+  const stroke = tone === "closing" ? "hsl(var(--accent-500))" : "hsl(var(--brand-700))";
   const fill =
-    tone === "closing" ? "hsl(var(--bronze-500) / 0.18)" : "hsl(var(--green-700) / 0.18)";
+    tone === "closing" ? "hsl(var(--accent-500) / 0.18)" : "hsl(var(--brand-700) / 0.18)";
 
   // Slight padding above the highest value so the 200 reference line is
   // always visible even if cumulative hasn't reached it yet.
@@ -46,13 +46,13 @@ export default function GddTinyChart({ series, tone = "open", height = 80 }: Pro
           <YAxis hide domain={[0, maxValue]} />
           <ReferenceLine
             y={100}
-            stroke="hsl(var(--green-700))"
+            stroke="hsl(var(--brand-700))"
             strokeDasharray="3 3"
             strokeOpacity={0.5}
           />
           <ReferenceLine
             y={200}
-            stroke="hsl(var(--bronze-500))"
+            stroke="hsl(var(--accent-500))"
             strokeDasharray="3 3"
             strokeOpacity={0.6}
           />

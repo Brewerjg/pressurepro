@@ -187,7 +187,7 @@ export default function CustomerDetail() {
   });
 
   if (isLoading) {
-    return <div className="pt-6 px-[22px] text-sm text-ink-500">Loading…</div>;
+    return <div className="pt-6 px-[22px] text-sm text-neutral-500">Loading…</div>;
   }
   if (!customer) {
     return (
@@ -195,11 +195,11 @@ export default function CustomerDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="text-sm text-ink-500 inline-flex items-center gap-1.5 mb-3"
+          className="text-sm text-neutral-500 inline-flex items-center gap-1.5 mb-3"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <div className="tp-card p-5 text-sm text-ink-700">Customer not found.</div>
+        <div className="tp-card p-5 text-sm text-neutral-700">Customer not found.</div>
       </div>
     );
   }
@@ -213,20 +213,20 @@ export default function CustomerDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-ink-500 mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-neutral-500 mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-bronze-600">
+            <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-accent-600">
               Customer · #{customer.id.slice(0, 4).toUpperCase()}
             </div>
-            <h1 className="tp-display text-[26px] font-bold text-ink-900 mt-0.5 leading-tight">
+            <h1 className="tp-display text-[26px] font-bold text-neutral-900 mt-0.5 leading-tight">
               {customer.name}
             </h1>
             {customer.primary_address && (
-              <div className="text-sm text-ink-500 mt-1 flex items-start gap-1.5">
+              <div className="text-sm text-neutral-500 mt-1 flex items-start gap-1.5">
                 <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                 <span className="truncate">{customer.primary_address}</span>
               </div>
@@ -236,7 +236,7 @@ export default function CustomerDetail() {
             <button
               type="button"
               onClick={beginEdit}
-              className="h-10 px-3.5 rounded-[14px] border border-ink-200 bg-card text-ink-700 text-sm font-semibold inline-flex items-center gap-1.5"
+              className="h-10 px-3.5 rounded-[14px] border border-neutral-200 bg-card text-neutral-700 text-sm font-semibold inline-flex items-center gap-1.5"
             >
               <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Edit
             </button>
@@ -296,7 +296,7 @@ export default function CustomerDetail() {
                   setEditing(false);
                   setSaveError(null);
                 }}
-                className="flex-1 h-11 rounded-[14px] bg-ink-100 text-ink-700 font-bold text-sm"
+                className="flex-1 h-11 rounded-[14px] bg-neutral-100 text-neutral-700 font-bold text-sm"
               >
                 Cancel
               </button>
@@ -304,7 +304,7 @@ export default function CustomerDetail() {
                 type="button"
                 onClick={() => saveCustomer.mutate()}
                 disabled={saveCustomer.isPending}
-                className="flex-1 h-11 rounded-[14px] bg-bronze-500 text-white font-bold text-sm shadow-bronze hover:bg-bronze-600 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                className="flex-1 h-11 rounded-[14px] bg-accent-500 text-white font-bold text-sm shadow-accent hover:bg-accent-600 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {saveCustomer.isPending ? "Saving…" : "Save"}
@@ -319,30 +319,30 @@ export default function CustomerDetail() {
             {customer.phone && (
               <a
                 href={`tel:${customer.phone}`}
-                className="flex items-center gap-2.5 text-sm active:bg-ink-100 rounded-lg -mx-1 px-1 py-1"
+                className="flex items-center gap-2.5 text-sm active:bg-neutral-100 rounded-lg -mx-1 px-1 py-1"
               >
-                <div className="h-8 w-8 rounded-lg bg-green-100 text-green-800 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-brand-100 text-brand-800 flex items-center justify-center">
                   <Phone className="h-[16px] w-[16px]" />
                 </div>
-                <span className="font-semibold text-ink-900">{customer.phone}</span>
+                <span className="font-semibold text-neutral-900">{customer.phone}</span>
               </a>
             )}
             {customer.email && (
               <a
                 href={`mailto:${customer.email}`}
-                className="flex items-center gap-2.5 text-sm active:bg-ink-100 rounded-lg -mx-1 px-1 py-1"
+                className="flex items-center gap-2.5 text-sm active:bg-neutral-100 rounded-lg -mx-1 px-1 py-1"
               >
-                <div className="h-8 w-8 rounded-lg bg-green-100 text-green-800 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-brand-100 text-brand-800 flex items-center justify-center">
                   <Mail className="h-[16px] w-[16px]" />
                 </div>
-                <span className="font-semibold text-ink-900 truncate">{customer.email}</span>
+                <span className="font-semibold text-neutral-900 truncate">{customer.email}</span>
               </a>
             )}
             {!customer.phone && !customer.email && (
-              <div className="text-sm text-ink-500">No contact info on file.</div>
+              <div className="text-sm text-neutral-500">No contact info on file.</div>
             )}
             {customer.notes && (
-              <p className="text-sm text-ink-700 leading-snug pt-1 border-t border-ink-200 mt-2">
+              <p className="text-sm text-neutral-700 leading-snug pt-1 border-t border-neutral-200 mt-2">
                 {customer.notes}
               </p>
             )}
@@ -353,22 +353,22 @@ export default function CustomerDetail() {
       {/* ── PLANS (primary, first) ───────────────────────────────────────── */}
       <section className="mx-4 mb-4">
         <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="tp-display text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5">
-            <Repeat className="h-4 w-4 text-green-800" strokeWidth={2.2} />
+          <h2 className="tp-display text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5">
+            <Repeat className="h-4 w-4 text-brand-800" strokeWidth={2.2} />
             Plans
-            <span className="text-ink-500 font-semibold text-xs ml-0.5">
+            <span className="text-neutral-500 font-semibold text-xs ml-0.5">
               ({activePlans.length} active)
             </span>
           </h2>
           <Link
             to="/plans/new"
-            className="text-xs font-bold text-green-800 inline-flex items-center gap-1"
+            className="text-xs font-bold text-brand-800 inline-flex items-center gap-1"
           >
             <Plus className="h-3 w-3" strokeWidth={2.4} /> New
           </Link>
         </div>
         {data!.plans.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">
+          <div className="tp-card p-4 text-sm text-neutral-500">
             No plans yet. Recurring service is the TurfPro default — add a plan to put this
             customer on a route.
           </div>
@@ -385,41 +385,41 @@ export default function CustomerDetail() {
                 <Link
                   key={p.id}
                   to={`/plans/${p.id}`}
-                  className="tp-card p-3.5 flex items-center justify-between gap-3 active:bg-ink-100 transition-colors"
+                  className="tp-card p-3.5 flex items-center justify-between gap-3 active:bg-neutral-100 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-bold text-ink-900 capitalize">
+                      <span className="text-sm font-bold text-neutral-900 capitalize">
                         {freq.replace("_", " ")}
                       </span>
                       {day && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-800 px-1.5 py-0.5 rounded-full">
                           {day}
                         </span>
                       )}
                       <span
                         className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
                           isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-ink-100 text-ink-700"
+                            ? "bg-brand-100 text-brand-800"
+                            : "bg-neutral-100 text-neutral-700"
                         }`}
                       >
                         {p.status}
                       </span>
                     </div>
-                    <div className="text-[11px] text-ink-500 truncate mt-0.5">
+                    <div className="text-[11px] text-neutral-500 truncate mt-0.5">
                       {p.address || "—"}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="tp-display tp-num text-base font-bold text-ink-900">
+                    <div className="tp-display tp-num text-base font-bold text-neutral-900">
                       {fmtUSD(Number(p.amount))}
                     </div>
-                    <div className="text-[10px] text-ink-500">
+                    <div className="text-[10px] text-neutral-500">
                       every {p.interval_months} mo
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2.2} />
+                  <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={2.2} />
                 </Link>
               );
             })}
@@ -430,28 +430,28 @@ export default function CustomerDetail() {
       {/* ── PROPERTIES ───────────────────────────────────────────────────── */}
       <section className="mx-4 mb-4">
         <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="tp-display text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5">
-            <HomeIcon className="h-4 w-4 text-green-800" strokeWidth={2.2} />
+          <h2 className="tp-display text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5">
+            <HomeIcon className="h-4 w-4 text-brand-800" strokeWidth={2.2} />
             Properties
-            <span className="text-ink-500 font-semibold text-xs ml-0.5">
+            <span className="text-neutral-500 font-semibold text-xs ml-0.5">
               ({data!.properties.length})
             </span>
           </h2>
         </div>
         {data!.properties.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">No properties yet.</div>
+          <div className="tp-card p-4 text-sm text-neutral-500">No properties yet.</div>
         ) : (
           <div className="space-y-2">
             {data!.properties.map((p) => (
               <Link
                 key={p.id}
                 to={`/properties/${p.id}`}
-                className="tp-card p-3.5 flex items-center gap-3 active:bg-ink-100 transition-colors"
+                className="tp-card p-3.5 flex items-center gap-3 active:bg-neutral-100 transition-colors"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm text-ink-900 truncate">{p.address}</div>
+                  <div className="font-semibold text-sm text-neutral-900 truncate">{p.address}</div>
                   {p.surface_notes && (
-                    <div className="text-[11px] text-ink-500 truncate mt-0.5">
+                    <div className="text-[11px] text-neutral-500 truncate mt-0.5">
                       {p.surface_notes}
                     </div>
                   )}
@@ -461,7 +461,7 @@ export default function CustomerDetail() {
                     <AlertTriangle className="h-2.5 w-2.5" strokeWidth={2.4} /> Dog
                   </span>
                 )}
-                <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2.2} />
+                <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={2.2} />
               </Link>
             ))}
           </div>
@@ -476,10 +476,10 @@ export default function CustomerDetail() {
           className="w-full flex items-center justify-between px-1 pb-2 text-left"
           aria-expanded={quotesOpen}
         >
-          <h2 className="tp-display text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5">
-            <FileText className="h-4 w-4 text-bronze-600" strokeWidth={2.2} />
+          <h2 className="tp-display text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5">
+            <FileText className="h-4 w-4 text-accent-600" strokeWidth={2.2} />
             Quotes
-            <span className="text-ink-500 font-semibold text-xs ml-0.5">
+            <span className="text-neutral-500 font-semibold text-xs ml-0.5">
               ({data!.quotes.length})
             </span>
           </h2>
@@ -487,20 +487,20 @@ export default function CustomerDetail() {
             <Link
               to={`/quotes/new?customer=${customer.id}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-xs font-bold text-bronze-600 inline-flex items-center gap-1"
+              className="text-xs font-bold text-accent-600 inline-flex items-center gap-1"
             >
               <Plus className="h-3 w-3" strokeWidth={2.4} /> New quote
             </Link>
             {quotesOpen ? (
-              <ChevronUp className="h-4 w-4 text-ink-500" />
+              <ChevronUp className="h-4 w-4 text-neutral-500" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-ink-500" />
+              <ChevronDown className="h-4 w-4 text-neutral-500" />
             )}
           </div>
         </button>
         {quotesOpen &&
           (data!.quotes.length === 0 ? (
-            <div className="tp-card p-4 text-sm text-ink-500">No quotes yet.</div>
+            <div className="tp-card p-4 text-sm text-neutral-500">No quotes yet.</div>
           ) : (
             <div className="space-y-2">
               {data!.quotes.slice(0, 10).map((q) => (
@@ -509,18 +509,18 @@ export default function CustomerDetail() {
                   className="tp-card p-3.5 flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-ink-900">
+                    <div className="text-sm font-semibold text-neutral-900">
                       {new Date(q.created_at).toLocaleDateString()}
                     </div>
-                    <div className="text-[11px] text-ink-500 truncate">
+                    <div className="text-[11px] text-neutral-500 truncate">
                       {q.address || "—"}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="tp-display tp-num text-base font-bold text-ink-900">
+                    <div className="tp-display tp-num text-base font-bold text-neutral-900">
                       {fmtUSD(Number(q.total))}
                     </div>
-                    <div className="text-[10px] uppercase tracking-wide text-ink-500">
+                    <div className="text-[10px] uppercase tracking-wide text-neutral-500">
                       {q.status}
                     </div>
                   </div>
@@ -533,8 +533,8 @@ export default function CustomerDetail() {
       {/* ── ACTIVITY (unified notes timeline) ───────────────────────────── */}
       <section className="mx-4 mb-4">
         <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="tp-display text-[15px] font-bold text-ink-700 inline-flex items-center gap-1.5">
-            <Activity className="h-4 w-4 text-green-800" strokeWidth={2.2} />
+          <h2 className="tp-display text-[15px] font-bold text-neutral-700 inline-flex items-center gap-1.5">
+            <Activity className="h-4 w-4 text-brand-800" strokeWidth={2.2} />
             Activity
           </h2>
         </div>
@@ -558,15 +558,15 @@ export default function CustomerDetail() {
           width: 100%;
           padding: 10px 12px;
           border-radius: 10px;
-          border: 1.5px solid hsl(var(--ink-200));
+          border: 1.5px solid hsl(var(--neutral-200));
           background: hsl(var(--card));
-          color: hsl(var(--ink-900));
+          color: hsl(var(--neutral-900));
           font-size: 14px;
           font-weight: 500;
           outline: none;
           transition: border-color 0.15s;
         }
-        .tp-input:focus { border-color: hsl(var(--green-800)); }
+        .tp-input:focus { border-color: hsl(var(--brand-800)); }
       `}</style>
     </div>
   );
@@ -575,7 +575,7 @@ export default function CustomerDetail() {
 function EditField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-1">
+      <span className="block text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-500 mb-1">
         {label}
       </span>
       {children}

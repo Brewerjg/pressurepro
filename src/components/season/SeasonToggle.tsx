@@ -80,7 +80,7 @@ export default function SeasonToggle() {
 
   return (
     <div className="tp-card p-4 space-y-3">
-      <p className="text-[11px] text-ink-500 leading-relaxed">
+      <p className="text-[11px] text-neutral-500 leading-relaxed">
         Winter mode pauses your recurring mow plans and switches Home + Routes
         to the storm-driven snow workflow. Flip back to resume them.
       </p>
@@ -107,8 +107,8 @@ export default function SeasonToggle() {
                 on
                   ? isWinterCell
                     ? "bg-[hsl(var(--rain-bg))] border-[hsl(var(--rain))]/40 text-[hsl(var(--rain))]"
-                    : "bg-green-50 border-green-700/30 text-green-800"
-                  : "bg-card border-ink-200 text-ink-700 hover:bg-ink-100",
+                    : "bg-brand-50 border-brand-700/30 text-brand-800"
+                  : "bg-card border-neutral-200 text-neutral-700 hover:bg-neutral-100",
                 "disabled:opacity-60",
               )}
             >
@@ -126,7 +126,7 @@ export default function SeasonToggle() {
       </div>
 
       {flash && (
-        <div className="text-[11.5px] font-semibold text-green-800">
+        <div className="text-[11.5px] font-semibold text-brand-800">
           {flash}
         </div>
       )}

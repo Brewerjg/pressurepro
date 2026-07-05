@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import "@active-theme";
 import "./index.css";
 // Side-effecting native-plugin bootstrap. Configures @capacitor/keyboard
 // resize behavior and registers the auth deep-link listener when the

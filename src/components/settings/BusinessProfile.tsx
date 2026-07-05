@@ -100,7 +100,7 @@ export default function BusinessProfile() {
   return (
     <div className="tp-card p-4 space-y-3">
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-ink-500">
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading profile…
         </div>
@@ -162,7 +162,7 @@ export default function BusinessProfile() {
               onClick={() => saveMutation.mutate(draft)}
               disabled={saveMutation.isPending}
               className={cn(
-                "h-9 px-3.5 rounded-xl bg-green-800 text-white text-[13px] font-semibold flex items-center gap-1.5 hover:bg-green-900 transition-colors disabled:opacity-60",
+                "h-9 px-3.5 rounded-xl bg-brand-800 text-white text-[13px] font-semibold flex items-center gap-1.5 hover:bg-brand-900 transition-colors disabled:opacity-60",
               )}
             >
               {saveMutation.isPending ? (
@@ -173,7 +173,7 @@ export default function BusinessProfile() {
               Save profile
             </button>
             {savedFlash && (
-              <span className="text-[11px] font-semibold text-green-700">
+              <span className="text-[11px] font-semibold text-brand-700">
                 Saved
               </span>
             )}
@@ -193,7 +193,7 @@ export default function BusinessProfile() {
 }
 
 const inputCls =
-  "w-full h-10 rounded-xl border border-ink-200 bg-card px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700";
+  "w-full h-10 rounded-xl border border-neutral-200 bg-card px-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-700/30 focus:border-brand-700";
 
 function Field({
   label,
@@ -204,7 +204,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1">
+      <span className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
         {label}
       </span>
       {children}

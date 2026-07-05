@@ -101,10 +101,10 @@ export default function BreakevenCalc() {
   return (
     <section className="tp-card p-5 sm:p-6 max-w-2xl mx-auto">
       <div className="mb-4">
-        <h2 className="font-display font-extrabold text-[18px] sm:text-xl text-ink-900">
+        <h2 className="font-display font-extrabold text-[18px] sm:text-xl text-neutral-900">
           Which tier fits you?
         </h2>
-        <p className="text-[12px] sm:text-[13px] text-ink-500 mt-1">
+        <p className="text-[12px] sm:text-[13px] text-neutral-500 mt-1">
           Enter your monthly card volume and we'll show the cheapest tier
           at that level.
         </p>
@@ -113,12 +113,12 @@ export default function BreakevenCalc() {
       {/* Volume input */}
       <label
         htmlFor="payg-volume"
-        className="block text-[11px] font-semibold uppercase tracking-wide text-ink-500 mb-1.5"
+        className="block text-[11px] font-semibold uppercase tracking-wide text-neutral-500 mb-1.5"
       >
         Monthly card volume
       </label>
       <div className="relative mb-5">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 font-semibold text-sm pointer-events-none">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-semibold text-sm pointer-events-none">
           $
         </span>
         <input
@@ -128,7 +128,7 @@ export default function BreakevenCalc() {
           value={volume === 0 ? "" : volume.toString()}
           onChange={(e) => handleVolumeChange(e.target.value)}
           placeholder="5,000"
-          className="w-full h-12 rounded-xl border-[1.5px] border-ink-200 bg-card pl-7 pr-3 text-ink-900 font-semibold focus:outline-none focus:ring-2 focus:ring-green-700"
+          className="w-full h-12 rounded-xl border-[1.5px] border-neutral-200 bg-card pl-7 pr-3 text-neutral-900 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-700"
         />
       </div>
 
@@ -142,34 +142,34 @@ export default function BreakevenCalc() {
               className={cn(
                 "flex items-center justify-between gap-3 rounded-[14px] px-3.5 py-3 border",
                 isWinner
-                  ? "border-bronze-500 bg-bronze-500/5"
-                  : "border-ink-100 bg-card",
+                  ? "border-accent-500 bg-accent-500/5"
+                  : "border-neutral-100 bg-card",
               )}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-extrabold text-sm text-ink-900">
+                  <span className="font-extrabold text-sm text-neutral-900">
                     {row.label}
                   </span>
                   {isWinner && (
-                    <span className="inline-flex items-center gap-1 bg-bronze-500 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em]">
+                    <span className="inline-flex items-center gap-1 bg-accent-500 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-[0.06em]">
                       <Sparkles className="h-2.5 w-2.5" strokeWidth={3} />
                       Best value at your volume
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-ink-500 mt-0.5">
+                <div className="text-[11px] text-neutral-500 mt-0.5">
                   {row.formula}
                 </div>
               </div>
               <div
                 className={cn(
                   "font-display font-bold text-lg leading-none shrink-0",
-                  isWinner ? "text-bronze-600" : "text-ink-900",
+                  isWinner ? "text-accent-600" : "text-neutral-900",
                 )}
               >
                 {formatMoney(row.cost)}
-                <span className="text-[11px] font-semibold text-ink-500 ml-0.5">
+                <span className="text-[11px] font-semibold text-neutral-500 ml-0.5">
                   /mo
                 </span>
               </div>
@@ -178,7 +178,7 @@ export default function BreakevenCalc() {
         })}
       </ul>
 
-      <p className="text-[11px] text-ink-500 mt-4 leading-relaxed">
+      <p className="text-[11px] text-neutral-500 mt-4 leading-relaxed">
         Quick reference: under $1,000/mo stay on Base; $1,000–$3,267
         Solo wins; $3,267+ Crew wins.
       </p>

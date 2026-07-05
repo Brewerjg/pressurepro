@@ -323,24 +323,24 @@ export default function ApplicationCalc() {
       <header className="px-[22px] pb-[14px] flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
           {property?.address ? (
-            <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500 truncate">
+            <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500 truncate">
               <Link
                 to={`/properties/${property.id}`}
-                className="inline-flex items-center gap-1 hover:text-ink-700"
+                className="inline-flex items-center gap-1 hover:text-neutral-700"
               >
                 <ArrowLeft className="h-3 w-3" /> {property.address}
               </Link>
             </div>
           ) : (
-            <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+            <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
               NPK · lbs per 1000 ft²
             </div>
           )}
-          <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight mt-0.5">
+          <h1 className="tp-display text-[28px] font-bold text-neutral-900 leading-tight mt-0.5">
             Application
           </h1>
         </div>
-        <div className="h-10 w-10 rounded-full bg-green-800 text-bronze-400 grid place-items-center">
+        <div className="h-10 w-10 rounded-full bg-brand-800 text-accent-400 grid place-items-center">
           <Calculator className="h-[18px] w-[18px]" strokeWidth={1.8} />
         </div>
       </header>
@@ -353,7 +353,7 @@ export default function ApplicationCalc() {
               className="h-4 w-4 text-[hsl(var(--warning))] shrink-0"
               strokeWidth={2}
             />
-            <div className="text-[12px] text-bronze-700 leading-snug">
+            <div className="text-[12px] text-accent-700 leading-snug">
               <b>Pet-safe products only.</b> This property has pets on site —
               double-check label before applying.
             </div>
@@ -382,12 +382,12 @@ export default function ApplicationCalc() {
                 className={cn(
                   "flex-1 py-2.5 rounded-[12px] flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors",
                   on
-                    ? "bg-green-800 text-white"
-                    : "text-ink-700 hover:bg-ink-100",
+                    ? "bg-brand-800 text-white"
+                    : "text-neutral-700 hover:bg-neutral-100",
                 )}
               >
                 <Icon
-                  className={cn("h-3.5 w-3.5", on ? "text-bronze-400" : "text-ink-500")}
+                  className={cn("h-3.5 w-3.5", on ? "text-accent-400" : "text-neutral-500")}
                   strokeWidth={1.9}
                 />
                 {label}
@@ -468,7 +468,7 @@ export default function ApplicationCalc() {
         />
       </div>
 
-      <div className="text-center text-[10.5px] text-ink-400 mt-4 px-6 leading-relaxed">
+      <div className="text-center text-[10.5px] text-neutral-400 mt-4 px-6 leading-relaxed">
         Calculations are estimates. Always defer to the product label for
         final rates and re-entry intervals.
       </div>
@@ -516,12 +516,12 @@ function GranularMode(props: {
             value={props.product}
             onChange={(e) => props.setProduct(e.target.value)}
             placeholder="Product name (e.g. Lesco Pro)"
-            className="w-full bg-transparent text-[14.5px] font-semibold text-ink-900 placeholder:text-ink-400 focus:outline-none"
+            className="w-full bg-transparent text-[14.5px] font-semibold text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
           />
           <div className="grid grid-cols-3 gap-2 mt-3">
-            <NPKChip label="N" value={props.nPct} onChange={props.setNPct} color="text-green-700" />
-            <NPKChip label="P" value={props.pPct} onChange={props.setPPct} color="text-ink-500" />
-            <NPKChip label="K" value={props.kPct} onChange={props.setKPct} color="text-bronze-600" />
+            <NPKChip label="N" value={props.nPct} onChange={props.setNPct} color="text-brand-700" />
+            <NPKChip label="P" value={props.pPct} onChange={props.setPPct} color="text-neutral-500" />
+            <NPKChip label="K" value={props.kPct} onChange={props.setKPct} color="text-accent-600" />
           </div>
         </div>
       </Section>
@@ -551,15 +551,15 @@ function GranularMode(props: {
             onChange={props.setBagLb}
             suffix="lb"
           />
-          <div className="rounded-[14px] border border-ink-100 bg-card p-3 flex flex-col justify-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+          <div className="rounded-[14px] border border-neutral-100 bg-card p-3 flex flex-col justify-center">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
               Actual N applied
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="tp-num text-[20px] font-bold text-ink-900">
+              <span className="tp-num text-[20px] font-bold text-neutral-900">
                 {r.actualN.toFixed(2)}
               </span>
-              <span className="text-[11px] text-ink-500 font-semibold">lb/1k</span>
+              <span className="text-[11px] text-neutral-500 font-semibold">lb/1k</span>
             </div>
           </div>
         </div>
@@ -568,7 +568,7 @@ function GranularMode(props: {
       {/* Result card */}
       <Section>
         <div className="rounded-[22px] bg-gradient-hero-deep text-white px-[22px] pt-5 pb-5 relative overflow-hidden shadow-[0_8px_24px_-10px_hsl(148_75%_12%_/_0.5)]">
-          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-bronze-400">
+          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-accent-400">
             Apply this visit
           </div>
           <div className="flex items-baseline gap-1.5 mt-1.5">
@@ -587,7 +587,7 @@ function GranularMode(props: {
           <div className="flex justify-between gap-4 mt-4 pt-3.5 border-t border-white/10">
             <ResultStat
               label="Spreader"
-              value={<>setting <span className="text-bronze-400">{r.setting}</span></>}
+              value={<>setting <span className="text-accent-400">{r.setting}</span></>}
             />
             <ResultStat
               label="Coverage"
@@ -649,7 +649,7 @@ function LiquidMode(props: {
             value={props.product}
             onChange={(e) => props.setProduct(e.target.value)}
             placeholder="Product name (e.g. Tenacity)"
-            className="w-full bg-transparent text-[14.5px] font-semibold text-ink-900 placeholder:text-ink-400 focus:outline-none"
+            className="w-full bg-transparent text-[14.5px] font-semibold text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
           />
         </div>
       </Section>
@@ -662,8 +662,8 @@ function LiquidMode(props: {
             className={cn(
               "flex-1 py-2 rounded-[10px] text-[12px] font-semibold",
               props.labelRateMode === "oz_per_gal"
-                ? "bg-green-800 text-white"
-                : "text-ink-700 hover:bg-ink-100",
+                ? "bg-brand-800 text-white"
+                : "text-neutral-700 hover:bg-neutral-100",
             )}
           >
             oz / gal water
@@ -674,8 +674,8 @@ function LiquidMode(props: {
             className={cn(
               "flex-1 py-2 rounded-[10px] text-[12px] font-semibold",
               props.labelRateMode === "floz_per_1k"
-                ? "bg-green-800 text-white"
-                : "text-ink-700 hover:bg-ink-100",
+                ? "bg-brand-800 text-white"
+                : "text-neutral-700 hover:bg-neutral-100",
             )}
           >
             fl oz / 1000 sqft
@@ -720,7 +720,7 @@ function LiquidMode(props: {
 
       <Section>
         <div className="rounded-[22px] bg-gradient-hero-deep text-white px-[22px] pt-5 pb-5 relative overflow-hidden shadow-[0_8px_24px_-10px_hsl(148_75%_12%_/_0.5)]">
-          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-bronze-400">
+          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-accent-400">
             Mix this tank
           </div>
           <div className="flex items-baseline gap-1.5 mt-1.5">
@@ -789,9 +789,9 @@ function LimeMode(props: {
             value={props.product}
             onChange={(e) => props.setProduct(e.target.value)}
             placeholder="Product name (e.g. pelletized lime)"
-            className="w-full bg-transparent text-[14.5px] font-semibold text-ink-900 placeholder:text-ink-400 focus:outline-none"
+            className="w-full bg-transparent text-[14.5px] font-semibold text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
           />
-          <div className="text-[11px] text-ink-500 mt-1">
+          <div className="text-[11px] text-neutral-500 mt-1">
             Maintenance rate 40 lb/1000 sqft. Soil-test results trump this.
           </div>
         </div>
@@ -820,15 +820,15 @@ function LimeMode(props: {
             onChange={props.setBag}
             suffix="lb"
           />
-          <div className="rounded-[14px] border border-ink-100 bg-card p-3 flex flex-col justify-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+          <div className="rounded-[14px] border border-neutral-100 bg-card p-3 flex flex-col justify-center">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
               Spreader
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="tp-num text-[20px] font-bold text-ink-900">
+              <span className="tp-num text-[20px] font-bold text-neutral-900">
                 {spreaderSetting(Number(props.rate) || 40)}
               </span>
-              <span className="text-[11px] text-ink-500 font-semibold">setting</span>
+              <span className="text-[11px] text-neutral-500 font-semibold">setting</span>
             </div>
           </div>
         </div>
@@ -836,7 +836,7 @@ function LimeMode(props: {
 
       <Section>
         <div className="rounded-[22px] bg-gradient-hero-deep text-white px-[22px] pt-5 pb-5 relative overflow-hidden shadow-[0_8px_24px_-10px_hsl(148_75%_12%_/_0.5)]">
-          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-bronze-400">
+          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-accent-400">
             Apply this visit
           </div>
           <div className="flex items-baseline gap-1.5 mt-1.5">
@@ -863,7 +863,7 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   return (
     <section className="mx-4 mb-3">
       {title && (
-        <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500 px-1 pb-2">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500 px-1 pb-2">
           {title}
         </div>
       )}
@@ -888,8 +888,8 @@ function InputCard({
   step?: string;
 }) {
   return (
-    <div className="rounded-[14px] border border-ink-100 bg-card p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+    <div className="rounded-[14px] border border-neutral-100 bg-card p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
         {label}
       </div>
       <div className="flex items-baseline gap-1.5 mt-1">
@@ -899,15 +899,15 @@ function InputCard({
           step={step ?? "1"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="tp-num text-[22px] font-bold text-ink-900 w-full bg-transparent focus:outline-none placeholder:text-ink-300"
+          className="tp-num text-[22px] font-bold text-neutral-900 w-full bg-transparent focus:outline-none placeholder:text-neutral-300"
           placeholder="0"
         />
-        <span className="text-[11px] text-ink-500 font-semibold whitespace-nowrap">
+        <span className="text-[11px] text-neutral-500 font-semibold whitespace-nowrap">
           {suffix}
         </span>
       </div>
       {hint && (
-        <div className="text-[10.5px] text-green-700 font-semibold mt-0.5">{hint}</div>
+        <div className="text-[10.5px] text-brand-700 font-semibold mt-0.5">{hint}</div>
       )}
     </div>
   );
@@ -925,7 +925,7 @@ function NPKChip({
   color: string;
 }) {
   return (
-    <label className="bg-ink-100 rounded-[10px] px-2.5 py-2 block">
+    <label className="bg-neutral-100 rounded-[10px] px-2.5 py-2 block">
       <div className={cn("text-[10px] font-bold tracking-[0.5px]", color)}>{label}</div>
       <div className="flex items-baseline gap-0.5 mt-0.5">
         <input
@@ -933,10 +933,10 @@ function NPKChip({
           inputMode="decimal"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="tp-num text-[17px] font-bold text-ink-900 w-full bg-transparent focus:outline-none"
+          className="tp-num text-[17px] font-bold text-neutral-900 w-full bg-transparent focus:outline-none"
           placeholder="0"
         />
-        <span className="text-[10px] text-ink-500 font-medium">%</span>
+        <span className="text-[10px] text-neutral-500 font-medium">%</span>
       </div>
     </label>
   );

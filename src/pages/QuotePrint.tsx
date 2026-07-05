@@ -126,7 +126,7 @@ const QuotePrint = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-green-800" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-800" />
       </div>
     );
   }
@@ -175,7 +175,7 @@ const QuotePrint = () => {
       <div className="no-print fixed top-3 right-3 z-50">
         <button
           onClick={() => window.print()}
-          className="bg-green-800 text-white rounded-xl px-4 py-2 text-sm font-bold flex items-center gap-2 shadow"
+          className="bg-brand-800 text-white rounded-xl px-4 py-2 text-sm font-bold flex items-center gap-2 shadow"
         >
           <Printer className="h-4 w-4" /> Print / Save PDF
         </button>

@@ -57,9 +57,9 @@ const fmtDate = (iso: string) =>
   });
 
 const STATUS_PILL: Record<Invoice["status"], string> = {
-  open: "bg-bronze-100 text-bronze-700",
-  paid: "bg-green-100 text-green-800",
-  void: "bg-ink-100 text-ink-700",
+  open: "bg-accent-100 text-accent-700",
+  paid: "bg-brand-100 text-brand-800",
+  void: "bg-neutral-100 text-neutral-700",
 };
 
 interface CatalogEntry {
@@ -266,7 +266,7 @@ export default function InvoiceDetail() {
   });
 
   if (isLoading) {
-    return <div className="pt-6 px-[22px] text-sm text-ink-500">Loading…</div>;
+    return <div className="pt-6 px-[22px] text-sm text-neutral-500">Loading…</div>;
   }
   if (!invoice) {
     return (
@@ -274,11 +274,11 @@ export default function InvoiceDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="text-sm text-ink-500 inline-flex items-center gap-1.5 mb-3"
+          className="text-sm text-neutral-500 inline-flex items-center gap-1.5 mb-3"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <div className="tp-card p-5 text-sm text-ink-700">
+        <div className="tp-card p-5 text-sm text-neutral-700">
           Invoice not found.
         </div>
       </div>
@@ -335,19 +335,19 @@ export default function InvoiceDetail() {
         <button
           type="button"
           onClick={() => navigate("/invoices")}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-ink-500 mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-neutral-500 mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Invoices
         </button>
         <div className="min-w-0">
-          <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-bronze-600">
+          <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-accent-600">
             Invoice · {formatInvoiceNumber(invoice.invoice_number)}
           </div>
-          <h1 className="tp-display text-[26px] font-bold text-ink-900 mt-0.5 leading-tight truncate">
+          <h1 className="tp-display text-[26px] font-bold text-neutral-900 mt-0.5 leading-tight truncate">
             {invoice.customer_name}
           </h1>
           {invoice.address && (
-            <div className="text-sm text-ink-500 mt-1 truncate">
+            <div className="text-sm text-neutral-500 mt-1 truncate">
               {invoice.address}
             </div>
           )}
@@ -358,7 +358,7 @@ export default function InvoiceDetail() {
       <section className="mx-4 mb-3">
         <div className="rounded-[18px] bg-gradient-hero-deep text-white p-[18px] relative overflow-hidden">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="text-[10px] font-semibold tracking-[1px] uppercase text-bronze-400">
+            <div className="text-[10px] font-semibold tracking-[1px] uppercase text-accent-400">
               Invoice total
             </div>
             <div className="flex items-center gap-1.5">
@@ -371,7 +371,7 @@ export default function InvoiceDetail() {
                 {invoice.status}
               </span>
               {invoice.completed_at && (
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.4px] bg-green-100 text-green-800">
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.4px] bg-brand-100 text-brand-800">
                   complete
                 </span>
               )}
@@ -392,7 +392,7 @@ export default function InvoiceDetail() {
                 : ""}
           </div>
           {deposit > 0 && (
-            <div className="text-bronze-400 text-[11px] mt-1 tp-num">
+            <div className="text-accent-400 text-[11px] mt-1 tp-num">
               {fmtUSD(deposit)} deposit
               {invoice.deposit_paid_at
                 ? ` · paid ${fmtDate(invoice.deposit_paid_at)}`
@@ -414,7 +414,7 @@ export default function InvoiceDetail() {
             setPaymentFormOpen((v) => !v);
             setConvertFormOpen(false);
           }}
-          className="rounded-[14px] bg-bronze-500 text-white font-bold text-[13px] py-3 shadow-bronze hover:bg-bronze-600 transition-colors inline-flex items-center justify-center gap-1.5"
+          className="rounded-[14px] bg-accent-500 text-white font-bold text-[13px] py-3 shadow-accent hover:bg-accent-600 transition-colors inline-flex items-center justify-center gap-1.5"
         >
           <DollarSign className="h-3.5 w-3.5" />
           Record payment
@@ -423,11 +423,11 @@ export default function InvoiceDetail() {
           type="button"
           onClick={handleMarkPaid}
           disabled={invoice.status === "paid" || update.isPending}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
         >
           {invoice.status === "paid" ? (
             <>
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-700" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-brand-700" />
               Paid
             </>
           ) : (
@@ -441,7 +441,7 @@ export default function InvoiceDetail() {
           type="button"
           onClick={handleMarkComplete}
           disabled={!!invoice.completed_at || update.isPending}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
         >
           <CircleCheckBig className="h-3.5 w-3.5" />
           {invoice.completed_at ? "Completed" : "Mark complete"}
@@ -453,7 +453,7 @@ export default function InvoiceDetail() {
             setConvertFormOpen((v) => !v);
             setPaymentFormOpen(false);
           }}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
         >
           <Repeat className="h-3.5 w-3.5" />
           Convert to plan
@@ -461,11 +461,11 @@ export default function InvoiceDetail() {
         <button
           type="button"
           onClick={handleCopyLink}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
         >
           {copyState === "copied" ? (
             <>
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-700" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-brand-700" />
               Copied
             </>
           ) : (
@@ -478,7 +478,7 @@ export default function InvoiceDetail() {
         <button
           type="button"
           onClick={handlePrint}
-          className="rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5"
+          className="rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5"
         >
           <Printer className="h-3.5 w-3.5" />
           Print
@@ -491,7 +491,7 @@ export default function InvoiceDetail() {
             type="button"
             onClick={() => syncQb.mutate()}
             disabled={syncQb.isPending}
-            className="w-full rounded-[14px] border border-ink-200 bg-card text-ink-700 font-semibold text-[13px] py-3 hover:bg-ink-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+            className="w-full rounded-[14px] border border-neutral-200 bg-card text-neutral-700 font-semibold text-[13px] py-3 hover:bg-neutral-100 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
             <Calculator className="h-3.5 w-3.5" />
             {syncQb.isPending
@@ -501,7 +501,7 @@ export default function InvoiceDetail() {
                 : "Sync to QuickBooks"}
           </button>
           {invoice.qbo_synced_at && !qbError && (
-            <p className="mt-1 text-[11px] text-ink-500">
+            <p className="mt-1 text-[11px] text-neutral-500">
               Last synced {fmtDate(invoice.qbo_synced_at)}.
             </p>
           )}
@@ -557,25 +557,25 @@ export default function InvoiceDetail() {
       {/* Line items */}
       <section className="mx-4 mb-3">
         <div className="flex items-center justify-between px-1 pb-2">
-          <h2 className="tp-display text-[15px] font-bold text-ink-900">
+          <h2 className="tp-display text-[15px] font-bold text-neutral-900">
             Line items
           </h2>
         </div>
         {lines.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">No line items.</div>
+          <div className="tp-card p-4 text-sm text-neutral-500">No line items.</div>
         ) : (
           <ul className="space-y-2">
             {lines.map((l) => (
               <li key={l.id} className="tp-card p-3 flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm text-ink-900 truncate">
+                  <div className="font-semibold text-sm text-neutral-900 truncate">
                     {l.name}
                   </div>
-                  <div className="text-[11px] text-ink-500 tp-num mt-0.5">
+                  <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
                     {l.qty} × {fmtUSD(l.rate)}
                   </div>
                 </div>
-                <div className="tp-num font-bold text-sm text-ink-900 shrink-0">
+                <div className="tp-num font-bold text-sm text-neutral-900 shrink-0">
                   {fmtUSD(l.total)}
                 </div>
               </li>
@@ -588,10 +588,10 @@ export default function InvoiceDetail() {
       <section className="mx-4 mb-3">
         <Link
           to={`/quotes/${invoice.quote_id}`}
-          className="tp-card p-3.5 flex items-center justify-between gap-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors"
+          className="tp-card p-3.5 flex items-center justify-between gap-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors"
         >
           <span>View source quote</span>
-          <ArrowRight className="h-4 w-4 text-bronze-600" />
+          <ArrowRight className="h-4 w-4 text-accent-600" />
         </Link>
       </section>
 

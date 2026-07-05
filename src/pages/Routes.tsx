@@ -694,7 +694,7 @@ export default function RoutesPage() {
       {/* Header */}
       <header className="px-[22px] pt-1 pb-3 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             Week of {MONTH_SHORT[weekStart.getMonth()]} {weekStart.getDate()}
             {weeklyStopLimit !== null && (
               <span
@@ -702,16 +702,16 @@ export default function RoutesPage() {
                   "ml-2 normal-case tracking-normal font-semibold",
                   currentWeekStops >= weeklyStopLimit
                     ? "text-destructive"
-                    : "text-ink-400",
+                    : "text-neutral-400",
                 )}
               >
                 {currentWeekStops} / {weeklyStopLimit} stops
               </span>
             )}
           </div>
-          <h1 className="tp-display text-[28px] font-bold text-ink-900 leading-tight flex items-center gap-2">
+          <h1 className="tp-display text-[28px] font-bold text-neutral-900 leading-tight flex items-center gap-2">
             Routes
-            <span className="px-1.5 py-0.5 rounded-full bg-bronze-100 text-bronze-700 text-[10px] font-extrabold uppercase tracking-[0.06em] align-middle">
+            <span className="px-1.5 py-0.5 rounded-full bg-accent-100 text-accent-700 text-[10px] font-extrabold uppercase tracking-[0.06em] align-middle">
               Beta
             </span>
           </h1>
@@ -719,14 +719,14 @@ export default function RoutesPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            className="h-9 w-9 rounded-full border border-ink-200 bg-card flex items-center justify-center"
+            className="h-9 w-9 rounded-full border border-neutral-200 bg-card flex items-center justify-center"
             aria-label="Search routes"
           >
-            <Search className="h-4 w-4 text-ink-700" strokeWidth={1.8} />
+            <Search className="h-4 w-4 text-neutral-700" strokeWidth={1.8} />
           </button>
           <button
             type="button"
-            className="h-9 w-9 rounded-full bg-green-800 flex items-center justify-center"
+            className="h-9 w-9 rounded-full bg-brand-800 flex items-center justify-center"
             aria-label="New route"
           >
             <Plus className="h-4 w-4 text-white" strokeWidth={2} />
@@ -759,8 +759,8 @@ export default function RoutesPage() {
               className={cn(
                 "shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold border transition-colors",
                 selectedCrewId === "all"
-                  ? "bg-green-800 text-white border-green-800"
-                  : "bg-card text-ink-700 border-ink-200 hover:bg-ink-100",
+                  ? "bg-brand-800 text-white border-brand-800"
+                  : "bg-card text-neutral-700 border-neutral-200 hover:bg-neutral-100",
               )}
             >
               All crews
@@ -775,8 +775,8 @@ export default function RoutesPage() {
                   className={cn(
                     "shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold border transition-colors inline-flex items-center gap-1.5",
                     on
-                      ? "bg-green-800 text-white border-green-800"
-                      : "bg-card text-ink-700 border-ink-200 hover:bg-ink-100",
+                      ? "bg-brand-800 text-white border-brand-800"
+                      : "bg-card text-neutral-700 border-neutral-200 hover:bg-neutral-100",
                   )}
                 >
                   <span
@@ -807,14 +807,14 @@ export default function RoutesPage() {
                 onClick={() => setSelectedIdx(i)}
                 className={cn(
                   "flex-1 py-2 pb-1.5 rounded-[11px] flex flex-col items-center gap-0.5 transition-colors",
-                  on ? "bg-green-800" : "bg-transparent",
+                  on ? "bg-brand-800" : "bg-transparent",
                   past && "opacity-55",
                 )}
               >
                 <div
                   className={cn(
                     "text-[10px] font-semibold tracking-[0.5px]",
-                    on ? "text-bronze-400" : "text-ink-500",
+                    on ? "text-accent-400" : "text-neutral-500",
                   )}
                 >
                   {DAY_LETTERS[i]}
@@ -822,7 +822,7 @@ export default function RoutesPage() {
                 <div
                   className={cn(
                     "tp-num text-[17px] font-bold",
-                    on ? "text-white" : "text-ink-900",
+                    on ? "text-white" : "text-neutral-900",
                   )}
                 >
                   {d.getDate()}
@@ -833,7 +833,7 @@ export default function RoutesPage() {
                   <WeatherIcon
                     className={cn(
                       "h-3 w-3",
-                      on ? "text-bronze-200" : weekStripIconColor(fc!),
+                      on ? "text-accent-200" : weekStripIconColor(fc!),
                     )}
                     strokeWidth={1.8}
                   />
@@ -841,7 +841,7 @@ export default function RoutesPage() {
                 <div
                   className={cn(
                     "text-[9px] font-semibold",
-                    on ? "text-[#cfead8]" : "text-ink-400",
+                    on ? "text-[#cfead8]" : "text-neutral-400",
                   )}
                 >
                   {count > 0 ? `${count} stops` : "–"}
@@ -860,7 +860,7 @@ export default function RoutesPage() {
             the order may already reflect operator drag adjustments. */}
         {selectedRoute && selectedRoute.id === justOptimizedRouteId && stops.length >= 3 && (
           <div className="mb-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-[10.5px] font-semibold text-green-800 border border-green-100">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-50 text-[10.5px] font-semibold text-brand-800 border border-brand-100">
               <Truck className="h-2.5 w-2.5" strokeWidth={2} />
               Optimized for drive time
             </span>
@@ -868,12 +868,12 @@ export default function RoutesPage() {
         )}
         <div className="flex items-end justify-between mb-2.5">
           <div>
-            <div className="tp-display text-[18px] font-bold text-ink-900">
+            <div className="tp-display text-[18px] font-bold text-neutral-900">
               {WEEKDAY_NAMES[selectedIdx]} ·{" "}
               {selectedRoute ? stops.length : plannedStops.length} stop
               {(selectedRoute ? stops.length : plannedStops.length) === 1 ? "" : "s"}
             </div>
-            <div className="text-xs text-ink-500 mt-0.5">
+            <div className="text-xs text-neutral-500 mt-0.5">
               {selectedRoute ? (
                 stops.length === 0 ? (
                   "Nothing scheduled"
@@ -896,7 +896,7 @@ export default function RoutesPage() {
                 type="button"
                 onClick={() => reoptimizeMutation.mutate()}
                 disabled={reoptimizeMutation.isPending}
-                className="h-9 px-3 rounded-xl border border-ink-200 bg-card text-ink-700 text-[13px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+                className="h-9 px-3 rounded-xl border border-neutral-200 bg-card text-neutral-700 text-[13px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
               >
                 {reoptimizeMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -923,7 +923,7 @@ export default function RoutesPage() {
                 }
                 startRouteMutation.mutate({});
               }}
-              className="px-3.5 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-bold inline-flex items-center gap-1.5 shadow-bronze hover:bg-bronze-600 transition-colors disabled:opacity-60"
+              className="px-3.5 py-2 rounded-full bg-accent-500 text-white text-[13px] font-bold inline-flex items-center gap-1.5 shadow-accent hover:bg-accent-600 transition-colors disabled:opacity-60"
             >
               <startButton.Icon className="h-3 w-3" strokeWidth={2.5} />
               {startRouteMutation.isPending ? "..." : startButton.label}
@@ -932,7 +932,7 @@ export default function RoutesPage() {
         </div>
 
         {undoOrder && (
-          <div className="mx-4 mb-2 flex items-center justify-between rounded-xl bg-green-50 px-3 py-2 text-[12px] text-green-800">
+          <div className="mx-4 mb-2 flex items-center justify-between rounded-xl bg-brand-50 px-3 py-2 text-[12px] text-brand-800">
             <span>Route re-optimized.</span>
             <button
               type="button"
@@ -977,31 +977,31 @@ export default function RoutesPage() {
           })()}
 
         {/* Progress + collected card */}
-        <div className="bg-card border border-ink-100 rounded-[14px] px-3.5 py-3 flex gap-4 items-center shadow-card">
+        <div className="bg-card border border-neutral-100 rounded-[14px] px-3.5 py-3 flex gap-4 items-center shadow-card">
           <div className="flex-1">
-            <div className="flex justify-between text-[11px] text-ink-500 mb-1.5">
+            <div className="flex justify-between text-[11px] text-neutral-500 mb-1.5">
               <span>
                 {completedCount} / {stops.length} complete
               </span>
               <span className="tp-num">{pct}%</span>
             </div>
-            <div className="h-1.5 bg-ink-100 rounded-[3px] overflow-hidden">
+            <div className="h-1.5 bg-neutral-100 rounded-[3px] overflow-hidden">
               <div
                 className="h-full rounded-[3px]"
                 style={{
                   width: `${pct}%`,
                   background:
-                    "linear-gradient(90deg, hsl(var(--green-600)), hsl(var(--bronze-500)))",
+                    "linear-gradient(90deg, hsl(var(--brand-600)), hsl(var(--accent-500)))",
                 }}
               />
             </div>
           </div>
-          <div className="w-px h-8 bg-ink-200" />
+          <div className="w-px h-8 bg-neutral-200" />
           <div className="text-right">
-            <div className="tp-num text-[15px] font-bold text-ink-900">
+            <div className="tp-num text-[15px] font-bold text-neutral-900">
               ${Math.round(collectedCents / 100)}
             </div>
-            <div className="text-[10px] text-ink-500">collected today</div>
+            <div className="text-[10px] text-neutral-500">collected today</div>
           </div>
         </div>
 
@@ -1013,10 +1013,10 @@ export default function RoutesPage() {
                 key={s.id}
                 className={cn(
                   "flex-1 h-1.5 rounded-[3px]",
-                  s.status === "done" && "bg-green-600",
-                  s.status === "in_progress" && "bg-bronze-500",
-                  s.status === "skipped" && "bg-ink-300",
-                  s.status === "pending" && "bg-ink-100",
+                  s.status === "done" && "bg-brand-600",
+                  s.status === "in_progress" && "bg-accent-500",
+                  s.status === "skipped" && "bg-neutral-300",
+                  s.status === "pending" && "bg-neutral-100",
                 )}
               />
             ))}
@@ -1025,20 +1025,20 @@ export default function RoutesPage() {
 
         {/* Top metrics row */}
         {stops.length > 0 && (
-          <div className="mt-3 flex gap-4 px-1 text-[11px] text-ink-500 items-center flex-wrap">
+          <div className="mt-3 flex gap-4 px-1 text-[11px] text-neutral-500 items-center flex-wrap">
             <span>
-              <span className="tp-num text-ink-900 font-semibold">{totalMiles.toFixed(1)}</span> mi
+              <span className="tp-num text-neutral-900 font-semibold">{totalMiles.toFixed(1)}</span> mi
             </span>
-            <span className="text-ink-300">·</span>
+            <span className="text-neutral-300">·</span>
             <span>
-              <span className="tp-num text-ink-900 font-semibold">
+              <span className="tp-num text-neutral-900 font-semibold">
                 {Math.round(totalMinutes / 60 * 10) / 10}
               </span>{" "}
               h est.
             </span>
-            <span className="text-ink-300">·</span>
+            <span className="text-neutral-300">·</span>
             <span>
-              <span className="tp-num text-ink-900 font-semibold">{stops.length}</span> stops
+              <span className="tp-num text-neutral-900 font-semibold">{stops.length}</span> stops
             </span>
           </div>
         )}
@@ -1047,7 +1047,7 @@ export default function RoutesPage() {
       {/* Stop list */}
       <div className="px-4 pb-6">
         {weekRoutesQuery.isLoading && (
-          <div className="tp-card p-6 text-center text-sm text-ink-500">
+          <div className="tp-card p-6 text-center text-sm text-neutral-500">
             Loading route…
           </div>
         )}
@@ -1067,13 +1067,13 @@ export default function RoutesPage() {
             recurrence engine, so this preview == the created route). */}
         {!weekRoutesQuery.isLoading && !selectedRoute && plannedStops.length > 0 && (
           <div className="space-y-2">
-            <div className="px-1 pb-0.5 text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+            <div className="px-1 pb-0.5 text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
               Planned for {WEEKDAY_NAMES[selectedIdx]}
             </div>
             {plannedStops.map((s) => (
               <PlannedStopCard key={s.id} stop={s} />
             ))}
-            <p className="pt-1 text-center text-[11px] text-ink-400">
+            <p className="pt-1 text-center text-[11px] text-neutral-400">
               Tap Start route to optimize and begin these stops.
             </p>
           </div>
@@ -1085,7 +1085,7 @@ export default function RoutesPage() {
               {(handle) => (
                 <div>
                   {i > 0 && (
-                    <div className="flex items-center gap-1.5 py-1 pl-[34px] text-ink-400 text-[10.5px]">
+                    <div className="flex items-center gap-1.5 py-1 pl-[34px] text-neutral-400 text-[10.5px]">
                       <Truck className="h-2.5 w-2.5" strokeWidth={1.8} />
                       <span>
                         {s.drive_minutes_from_prev != null
@@ -1120,12 +1120,12 @@ export default function RoutesPage() {
             Start-route call — drive_minutes_from_prev / _miles_from_prev
             on each row remain stale until then. */}
         {stops.length > 0 && (
-          <div className="pt-3.5 pb-1 text-center text-xs text-ink-400">
+          <div className="pt-3.5 pb-1 text-center text-xs text-neutral-400">
             {counts.pending + counts.in_progress > 0
               ? `${counts.pending + counts.in_progress} stops left`
               : "All stops handled"}
             {reorderStopsMutation.isPending && (
-              <span className="block mt-0.5 text-[10.5px] text-ink-300">
+              <span className="block mt-0.5 text-[10.5px] text-neutral-300">
                 Saving new order…
               </span>
             )}
@@ -1138,17 +1138,17 @@ export default function RoutesPage() {
           AND fires the mutation, no extra confirm step. */}
       {crewPickerOpen && (
         <div
-          className="fixed inset-0 z-50 bg-ink-900/40 flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-neutral-900/40 flex items-end sm:items-center justify-center p-4"
           onClick={() => setCrewPickerOpen(false)}
         >
           <div
             className="w-full max-w-sm bg-card rounded-[16px] p-4 shadow-card"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-[15px] font-bold text-ink-900 mb-1">
+            <div className="text-[15px] font-bold text-neutral-900 mb-1">
               Which crew runs this?
             </div>
-            <p className="text-[11.5px] text-ink-500 mb-3">
+            <p className="text-[11.5px] text-neutral-500 mb-3">
               Pick the crew that will own today's stops. You can re-assign later.
             </p>
             <div className="flex flex-col gap-1.5">
@@ -1160,13 +1160,13 @@ export default function RoutesPage() {
                     setCrewPickerOpen(false);
                     startRouteMutation.mutate({ crewId: c.id });
                   }}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-ink-200 hover:bg-ink-100 text-left transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-neutral-200 hover:bg-neutral-100 text-left transition-colors"
                 >
                   <span
                     className="h-3 w-3 rounded-full"
                     style={{ backgroundColor: c.color }}
                   />
-                  <span className="text-[13.5px] font-semibold text-ink-900">
+                  <span className="text-[13.5px] font-semibold text-neutral-900">
                     {c.name}
                   </span>
                 </button>
@@ -1175,7 +1175,7 @@ export default function RoutesPage() {
             <button
               type="button"
               onClick={() => setCrewPickerOpen(false)}
-              className="mt-3 w-full text-center text-[12px] font-medium text-ink-500 hover:text-ink-700"
+              className="mt-3 w-full text-center text-[12px] font-medium text-neutral-500 hover:text-neutral-700"
             >
               Cancel
             </button>
@@ -1229,8 +1229,8 @@ function StopCard({
       className={cn(
         "rounded-[14px] border flex items-center gap-3 px-3 py-3 relative",
         isActive
-          ? "bg-green-50 border-green-100 shadow-[0_4px_16px_-8px_hsl(148_65%_25%_/_0.4)]"
-          : "bg-card border-ink-100 shadow-card",
+          ? "bg-brand-50 border-brand-100 shadow-[0_4px_16px_-8px_hsl(148_65%_25%_/_0.4)]"
+          : "bg-card border-neutral-100 shadow-card",
         isDone && "opacity-65",
         isSkipped && "opacity-75",
       )}
@@ -1246,9 +1246,9 @@ function StopCard({
         type="button"
         aria-label="Drag to reorder"
         className={cn(
-          "-ml-1 p-0.5 text-ink-300 touch-none",
+          "-ml-1 p-0.5 text-neutral-300 touch-none",
           !isPending && "invisible",
-          dragHandle?.isDragging && "text-bronze-500",
+          dragHandle?.isDragging && "text-accent-500",
         )}
         {...(dragHandle?.attributes ?? {})}
         {...(dragHandle?.listeners ?? {})}
@@ -1261,23 +1261,23 @@ function StopCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[14.5px] font-semibold text-ink-900 truncate">
+          <div className="text-[14.5px] font-semibold text-neutral-900 truncate">
             {stop.address_snapshot ?? "(no address)"}
           </div>
           <div
             className={cn(
               "tp-num text-[13.5px] font-bold whitespace-nowrap",
-              isActive ? "text-bronze-600" : "text-ink-700",
+              isActive ? "text-accent-600" : "text-neutral-700",
             )}
           >
             ${stop.fee_cents != null ? Math.round(stop.fee_cents / 100) : "—"}
           </div>
         </div>
-        <div className="text-[11.5px] text-ink-500 mt-px flex items-center gap-1.5">
+        <div className="text-[11.5px] text-neutral-500 mt-px flex items-center gap-1.5">
           <span className="truncate">{stop.customer_name_snapshot ?? "—"}</span>
           {stop.services.length > 0 && (
             <>
-              <span className="text-ink-300">·</span>
+              <span className="text-neutral-300">·</span>
               <span className="truncate">{stop.services.join(" + ")}</span>
             </>
           )}
@@ -1286,12 +1286,12 @@ function StopCard({
         {(isActive || isSkipped) && (
           <div className="flex gap-1.5 mt-1.5 flex-wrap">
             {isActive && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-bronze-100 text-[10.5px] font-semibold text-bronze-700">
-                <span className="h-1 w-1 rounded-full bg-bronze-500" /> On site
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent-100 text-[10.5px] font-semibold text-accent-700">
+                <span className="h-1 w-1 rounded-full bg-accent-500" /> On site
               </span>
             )}
             {isSkipped && stop.skip_reason && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-ink-100 text-[10.5px] font-medium text-ink-700">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-neutral-100 text-[10.5px] font-medium text-neutral-700">
                 <SkipForward className="h-2.5 w-2.5" /> {skipReasonLabel(stop.skip_reason)}
               </span>
             )}
@@ -1300,13 +1300,13 @@ function StopCard({
 
         {/* Inline skip-reason picker */}
         {skipOpen && (
-          <div className="mt-2.5 rounded-[10px] border border-ink-200 bg-card p-2.5">
-            <div className="text-[11px] font-semibold text-ink-700 mb-1.5 flex items-center justify-between">
+          <div className="mt-2.5 rounded-[10px] border border-neutral-200 bg-card p-2.5">
+            <div className="text-[11px] font-semibold text-neutral-700 mb-1.5 flex items-center justify-between">
               <span>Skip this week — why?</span>
               <button
                 type="button"
                 onClick={onCloseSkip}
-                className="text-[11px] font-medium text-ink-500 hover:text-ink-700"
+                className="text-[11px] font-medium text-neutral-500 hover:text-neutral-700"
               >
                 Cancel
               </button>
@@ -1318,7 +1318,7 @@ function StopCard({
                   type="button"
                   disabled={skipping}
                   onClick={() => onPickReason(value)}
-                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-ink-100 hover:bg-ink-200 text-ink-700 text-[10.5px] font-semibold transition-colors disabled:opacity-60"
+                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[10.5px] font-semibold transition-colors disabled:opacity-60"
                 >
                   <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
                   {label}
@@ -1337,7 +1337,7 @@ function StopCard({
             disabled={marking}
             onClick={onMarkDone}
             aria-label="Mark done"
-            className="h-8 w-8 rounded-full bg-green-800 text-white grid place-items-center hover:bg-green-700 transition-colors disabled:opacity-60"
+            className="h-8 w-8 rounded-full bg-brand-800 text-white grid place-items-center hover:bg-brand-700 transition-colors disabled:opacity-60"
           >
             <Check className="h-4 w-4" strokeWidth={2.4} />
           </button>
@@ -1345,7 +1345,7 @@ function StopCard({
             type="button"
             onClick={onOpenSkip}
             aria-label="Skip this week"
-            className="h-8 w-8 rounded-full border border-ink-200 text-ink-500 grid place-items-center hover:bg-ink-100 transition-colors"
+            className="h-8 w-8 rounded-full border border-neutral-200 text-neutral-500 grid place-items-center hover:bg-neutral-100 transition-colors"
           >
             <SkipForward className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
@@ -1360,24 +1360,24 @@ function StopCard({
 // neutral dot, signalling that nothing is committed until Start route.
 function PlannedStopCard({ stop }: { stop: PlannedStop }) {
   return (
-    <div className="rounded-[14px] border border-dashed border-ink-200 bg-card flex items-center gap-3 px-3 py-3">
-      <div className="h-[30px] w-[30px] rounded-full bg-ink-50 border-[1.5px] border-dashed border-ink-300 text-ink-400 grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
+    <div className="rounded-[14px] border border-dashed border-neutral-200 bg-card flex items-center gap-3 px-3 py-3">
+      <div className="h-[30px] w-[30px] rounded-full bg-neutral-50 border-[1.5px] border-dashed border-neutral-300 text-neutral-400 grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
         {stop.sort_order / 10}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[14.5px] font-semibold text-ink-900 truncate">
+          <div className="text-[14.5px] font-semibold text-neutral-900 truncate">
             {stop.address_snapshot ?? "(no address)"}
           </div>
-          <div className="tp-num text-[13.5px] font-bold whitespace-nowrap text-ink-700">
+          <div className="tp-num text-[13.5px] font-bold whitespace-nowrap text-neutral-700">
             ${stop.fee_cents != null ? Math.round(stop.fee_cents / 100) : "—"}
           </div>
         </div>
-        <div className="text-[11.5px] text-ink-500 mt-px flex items-center gap-1.5">
+        <div className="text-[11.5px] text-neutral-500 mt-px flex items-center gap-1.5">
           <span className="truncate">{stop.customer_name_snapshot ?? "—"}</span>
           {stop.services.length > 0 && (
             <>
-              <span className="text-ink-300">·</span>
+              <span className="text-neutral-300">·</span>
               <span className="truncate">{stop.services.join(" + ")}</span>
             </>
           )}
@@ -1390,28 +1390,28 @@ function PlannedStopCard({ stop }: { stop: PlannedStop }) {
 function StatusDot({ status, number }: { status: StopStatus; number: number }) {
   if (status === "done") {
     return (
-      <div className="h-[30px] w-[30px] rounded-full bg-green-600 text-white grid place-items-center flex-shrink-0">
+      <div className="h-[30px] w-[30px] rounded-full bg-brand-600 text-white grid place-items-center flex-shrink-0">
         <Check className="h-3.5 w-3.5" strokeWidth={2.6} />
       </div>
     );
   }
   if (status === "in_progress") {
     return (
-      <div className="h-[30px] w-[30px] rounded-full bg-bronze-500 text-white grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
+      <div className="h-[30px] w-[30px] rounded-full bg-accent-500 text-white grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
         {number}
       </div>
     );
   }
   if (status === "skipped") {
     return (
-      <div className="h-[30px] w-[30px] rounded-full bg-ink-100 text-ink-400 grid place-items-center flex-shrink-0">
+      <div className="h-[30px] w-[30px] rounded-full bg-neutral-100 text-neutral-400 grid place-items-center flex-shrink-0">
         <SkipForward className="h-3 w-3" strokeWidth={2} />
       </div>
     );
   }
   // pending
   return (
-    <div className="h-[30px] w-[30px] rounded-full bg-card border-[1.5px] border-ink-300 text-ink-500 grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
+    <div className="h-[30px] w-[30px] rounded-full bg-card border-[1.5px] border-neutral-300 text-neutral-500 grid place-items-center flex-shrink-0 text-[13px] font-bold tp-num">
       {number}
     </div>
   );
@@ -1435,9 +1435,9 @@ function weekStripIconColor(fc: ForecastDay): string {
   if (fc.derived_tone === "rain" || fc.condition === "rain") return "text-[hsl(var(--rain))]";
   if (fc.derived_tone === "drought") return "text-[hsl(var(--drought))]";
   if (fc.derived_tone === "wind" || fc.derived_tone === "frost") return "text-[hsl(var(--rain))]";
-  if (fc.condition === "cloud") return "text-ink-400";
+  if (fc.condition === "cloud") return "text-neutral-400";
   if (fc.condition === "snow") return "text-[hsl(var(--rain))]";
-  return "text-bronze-500";
+  return "text-accent-500";
 }
 
 // =====================================================================
@@ -1446,19 +1446,19 @@ function weekStripIconColor(fc: ForecastDay): string {
 function EmptyDay({ hasRoute, onCreate }: { hasRoute: boolean; onCreate: () => void }) {
   return (
     <div className="tp-card p-6 text-center">
-      <div className="mx-auto h-12 w-12 rounded-full bg-green-50 text-green-700 grid place-items-center mb-3">
+      <div className="mx-auto h-12 w-12 rounded-full bg-brand-50 text-brand-700 grid place-items-center mb-3">
         <Sprout className="h-5 w-5" strokeWidth={1.8} />
       </div>
-      <div className="text-[15px] font-semibold text-ink-900">
+      <div className="text-[15px] font-semibold text-neutral-900">
         {hasRoute ? "No stops on this route yet" : "Nothing scheduled for this day"}
       </div>
-      <p className="text-xs text-ink-500 mt-1.5 max-w-[260px] mx-auto">
+      <p className="text-xs text-neutral-500 mt-1.5 max-w-[260px] mx-auto">
         Recurring maintenance plans seed routes automatically by day-of-week. Add a plan to fill out this day.
       </p>
       <button
         type="button"
         onClick={onCreate}
-        className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-green-800 text-white text-[13px] font-bold hover:bg-green-700 transition-colors"
+        className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-brand-800 text-white text-[13px] font-bold hover:bg-brand-700 transition-colors"
       >
         <Plus className="h-3.5 w-3.5" strokeWidth={2.5} /> Create a plan
       </button>

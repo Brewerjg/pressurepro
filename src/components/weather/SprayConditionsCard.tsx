@@ -36,18 +36,18 @@ const VERDICT_COPY: Record<Verdict, { headline: string; Icon: typeof CheckCircle
 function verdictClasses(v: Verdict) {
   if (v === "good") {
     return {
-      card: "border-green-100 bg-green-50",
-      pill: "text-green-700 bg-white border-green-100",
-      icon: "text-green-700",
-      text: "text-green-700",
+      card: "border-brand-100 bg-brand-50",
+      pill: "text-brand-700 bg-white border-brand-100",
+      icon: "text-brand-700",
+      text: "text-brand-700",
     };
   }
   if (v === "caution") {
     return {
-      card: "border-bronze-400 bg-bronze-100",
-      pill: "text-bronze-600 bg-white border-bronze-400",
-      icon: "text-bronze-600",
-      text: "text-bronze-700",
+      card: "border-accent-400 bg-accent-100",
+      pill: "text-accent-600 bg-white border-accent-400",
+      icon: "text-accent-600",
+      text: "text-accent-700",
     };
   }
   return {
@@ -98,7 +98,7 @@ export default function SprayConditionsCard({ day, hourly }: Props) {
 
   return (
     <section className="mx-4 mb-3.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-ink-500 px-1 pb-2">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.4px] text-neutral-500 px-1 pb-2">
         Today's spray conditions
       </div>
       <div className={`rounded-[14px] border px-4 py-3.5 ${cls.card}`}>
@@ -108,7 +108,7 @@ export default function SprayConditionsCard({ day, hourly }: Props) {
             <div className={`text-[14.5px] font-bold ${cls.text}`}>
               {copy.headline}
             </div>
-            <div className="text-[11.5px] text-ink-700/80">
+            <div className="text-[11.5px] text-neutral-700/80">
               {day.conditions} · {Math.round(day.high)}° / {Math.round(day.low)}°
             </div>
           </div>
@@ -131,7 +131,7 @@ export default function SprayConditionsCard({ day, hourly }: Props) {
                   className={`text-[12px] flex items-start gap-1.5 ${cls.text}`}
                 >
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current shrink-0 opacity-70" />
-                  <span className="text-ink-700">{w.message}</span>
+                  <span className="text-neutral-700">{w.message}</span>
                 </li>
               ))}
             </ul>
@@ -182,14 +182,14 @@ function DataPoint({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.4px] text-ink-500">
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.4px] text-neutral-500">
         <Icon className="h-3 w-3" strokeWidth={1.8} />
         {label}
       </div>
-      <div className="tp-num text-[15px] font-bold text-ink-900">{value}</div>
+      <div className="tp-num text-[15px] font-bold text-neutral-900">{value}</div>
       <div
         className={`text-[10.5px] font-medium ${
-          highlight ? "text-destructive" : "text-ink-500"
+          highlight ? "text-destructive" : "text-neutral-500"
         }`}
       >
         {suffix}

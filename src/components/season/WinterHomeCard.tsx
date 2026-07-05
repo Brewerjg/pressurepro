@@ -33,10 +33,10 @@ export default function WinterHomeCard() {
   return (
     <section className="mx-4 mb-3">
       <div className="flex items-center justify-between px-1 pb-2">
-        <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">
+        <h2 className="text-[13px] font-semibold text-neutral-700 tracking-[0.2px]">
           Today's storm
         </h2>
-        <span className="text-xs text-ink-500 inline-flex items-center gap-1">
+        <span className="text-xs text-neutral-500 inline-flex items-center gap-1">
           <Snowflake className="h-3 w-3" strokeWidth={1.8} />
           Winter mode
         </span>
@@ -50,10 +50,10 @@ export default function WinterHomeCard() {
                 <CloudSnow className="h-5 w-5" strokeWidth={1.8} />
               </div>
               <div className="min-w-0">
-                <div className="text-[15px] font-semibold text-ink-900">
+                <div className="text-[15px] font-semibold text-neutral-900">
                   Snow expected — storm route ready
                 </div>
-                <div className="text-[11.5px] text-ink-500 mt-0.5">
+                <div className="text-[11.5px] text-neutral-500 mt-0.5">
                   {stormDays.length} snow day
                   {stormDays.length === 1 ? "" : "s"} in the next 72h
                 </div>
@@ -70,7 +70,7 @@ export default function WinterHomeCard() {
                     className={
                       isSnow
                         ? "flex-1 rounded-lg bg-[hsl(var(--rain-bg))] text-[hsl(var(--rain))] flex flex-col items-center py-2"
-                        : "flex-1 rounded-lg bg-ink-100/50 text-ink-500 flex flex-col items-center py-2"
+                        : "flex-1 rounded-lg bg-neutral-100/50 text-neutral-500 flex flex-col items-center py-2"
                     }
                   >
                     <CloudSnow
@@ -98,14 +98,14 @@ export default function WinterHomeCard() {
         ) : (
           <>
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-ink-100 text-ink-500 grid place-items-center shrink-0">
+              <div className="h-11 w-11 rounded-full bg-neutral-100 text-neutral-500 grid place-items-center shrink-0">
                 <Snowflake className="h-5 w-5" strokeWidth={1.8} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[15px] font-semibold text-ink-900">
+                <div className="text-[15px] font-semibold text-neutral-900">
                   No snow in the forecast — standby
                 </div>
-                <div className="text-[11.5px] text-ink-500 mt-0.5">
+                <div className="text-[11.5px] text-neutral-500 mt-0.5">
                   {tomorrow
                     ? `Tomorrow: ${tomorrow.conditions_label || tomorrow.condition} · ${tomorrow.temp_high}°`
                     : "Watching the next 3 days"}

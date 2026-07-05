@@ -170,7 +170,7 @@ export default function AudienceStep({ filter, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="text-[12px] font-semibold uppercase tracking-wide text-ink-500">
+      <div className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
         2. Pick the audience
       </div>
 
@@ -184,20 +184,20 @@ export default function AudienceStep({ filter, onChange }: Props) {
               onClick={() => onChange({ preset: p.key, days: p.key === "inactive_days" ? daysInput : undefined })}
               className={cn(
                 "tp-card w-full text-left p-3 transition-all flex items-start gap-3",
-                active ? "ring-2 ring-green-700 bg-green-50" : "hover:bg-ink-100/30",
+                active ? "ring-2 ring-brand-700 bg-brand-50" : "hover:bg-neutral-100/30",
               )}
             >
               <span
                 className={cn(
                   "mt-0.5 h-4 w-4 rounded-full border-2 shrink-0",
-                  active ? "border-green-700 bg-green-700" : "border-ink-300",
+                  active ? "border-brand-700 bg-brand-700" : "border-neutral-300",
                 )}
               />
               <div className="min-w-0">
-                <div className="font-semibold text-[13.5px] text-ink-900">
+                <div className="font-semibold text-[13.5px] text-neutral-900">
                   {p.label}
                 </div>
-                <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+                <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5">
                   {p.blurb}
                 </div>
               </div>
@@ -208,8 +208,8 @@ export default function AudienceStep({ filter, onChange }: Props) {
 
       {/* Days threshold — only meaningful for inactive_days preset */}
       {filter.preset === "inactive_days" && (
-        <div className="tp-card p-3 bg-ink-100/30">
-          <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+        <div className="tp-card p-3 bg-neutral-100/30">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
             Days since last visit
           </label>
           <div className="flex items-center gap-3 mt-2">
@@ -224,7 +224,7 @@ export default function AudienceStep({ filter, onChange }: Props) {
               onTouchEnd={() => onChange({ preset: "inactive_days", days: daysInput })}
               className="flex-1"
             />
-            <span className="tp-num font-bold text-[14px] text-ink-900 w-14 text-right">
+            <span className="tp-num font-bold text-[14px] text-neutral-900 w-14 text-right">
               {daysInput}d
             </span>
           </div>
@@ -233,12 +233,12 @@ export default function AudienceStep({ filter, onChange }: Props) {
 
       {/* Live count card */}
       <div className="tp-card p-3 flex items-center gap-3">
-        <Users className="h-5 w-5 text-green-700 shrink-0" strokeWidth={2} />
+        <Users className="h-5 w-5 text-brand-700 shrink-0" strokeWidth={2} />
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] uppercase tracking-wide text-ink-500 font-semibold">
+          <div className="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">
             Recipients
           </div>
-          <div className="tp-num font-bold text-[18px] text-ink-900">
+          <div className="tp-num font-bold text-[18px] text-neutral-900">
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin inline" />
             ) : (

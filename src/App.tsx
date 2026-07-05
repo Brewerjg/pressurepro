@@ -93,7 +93,7 @@ const Paid = ({ children }: { children: React.ReactNode }) => (
 // background color so the screen doesn't flash white between routes.
 const RouteSuspense = () => (
   <div className="min-h-screen grid place-items-center bg-background">
-    <Loader2 className="h-6 w-6 animate-spin text-ink-400" strokeWidth={2} />
+    <Loader2 className="h-6 w-6 animate-spin text-neutral-400" strokeWidth={2} />
   </div>
 );
 

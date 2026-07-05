@@ -49,8 +49,8 @@ const forecastTone: Record<
   ForecastTone,
   { container: string; label: string; icon: string; value: string }
 > = {
-  ok:      { container: "bg-transparent",       label: "text-ink-700/70",        icon: "text-ink-400",          value: "text-ink-700" },
-  today:   { container: "bg-green-800",         label: "text-bronze-400/90",     icon: "text-bronze-400",       value: "text-white" },
+  ok:      { container: "bg-transparent",       label: "text-neutral-700/70",        icon: "text-neutral-400",          value: "text-neutral-700" },
+  today:   { container: "bg-brand-800",         label: "text-accent-400/90",     icon: "text-accent-400",       value: "text-white" },
   rain:    { container: "bg-[hsl(var(--rain-bg))]",    label: "text-[hsl(var(--rain))]/80",    icon: "text-[hsl(var(--rain))]",    value: "text-[hsl(var(--rain))]" },
   drought: { container: "bg-[hsl(var(--drought-bg))]", label: "text-[hsl(var(--drought))]/80", icon: "text-[hsl(var(--drought))]", value: "text-[hsl(var(--drought))]" },
   // Wind + frost re-use the rain tinting because they're equally "stop" signals
@@ -100,13 +100,13 @@ function iconFor(d: ForecastDay) {
 }
 
 const quickActions = [
-  { icon: FileText,     label: "Quotes",        sub: "One-off jobs",       accent: "text-bronze-600", to: "/quotes" },
-  { icon: ReceiptText,  label: "Invoices",      sub: "Accepted jobs",      accent: "text-green-700",  to: "/invoices" },
-  { icon: MessageSquare,label: "Inbox",         sub: "Customer texts",     accent: "text-green-700",  to: "/inbox" },
-  { icon: Camera,       label: "Photo pair",    sub: "Before / after",     accent: "text-green-600",  to: "/photos/new" },
-  { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²",  accent: "text-bronze-600", to: "/calc" },
-  { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record",  accent: "text-green-700",  to: "/chem-log" },
-  { icon: BarChart3,    label: "Reports",       sub: "MRR · churn · $/hr", accent: "text-ink-700",    to: "/reports" },
+  { icon: FileText,     label: "Quotes",        sub: "One-off jobs",       accent: "text-accent-600", to: "/quotes" },
+  { icon: ReceiptText,  label: "Invoices",      sub: "Accepted jobs",      accent: "text-brand-700",  to: "/invoices" },
+  { icon: MessageSquare,label: "Inbox",         sub: "Customer texts",     accent: "text-brand-700",  to: "/inbox" },
+  { icon: Camera,       label: "Photo pair",    sub: "Before / after",     accent: "text-brand-600",  to: "/photos/new" },
+  { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²",  accent: "text-accent-600", to: "/calc" },
+  { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record",  accent: "text-brand-700",  to: "/chem-log" },
+  { icon: BarChart3,    label: "Reports",       sub: "MRR · churn · $/hr", accent: "text-neutral-700",    to: "/reports" },
 ];
 
 export default function Home() {
@@ -275,20 +275,20 @@ export default function Home() {
       {/* Header */}
       <header className="px-[22px] pb-[18px] flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </div>
-          <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5 whitespace-nowrap">
+          <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5 whitespace-nowrap">
             {isDemo ? "Good morning, Mike" : getGreeting(profile?.name)}
           </h1>
         </div>
         <button
           type="button"
-          className="relative h-10 w-10 rounded-full border border-ink-200 bg-card flex items-center justify-center"
+          className="relative h-10 w-10 rounded-full border border-neutral-200 bg-card flex items-center justify-center"
           aria-label="Notifications"
         >
-          <Bell className="h-[18px] w-[18px] text-ink-700" strokeWidth={1.7} />
-          <span className="absolute top-[9px] right-[11px] h-1.5 w-1.5 rounded-full bg-bronze-500" />
+          <Bell className="h-[18px] w-[18px] text-neutral-700" strokeWidth={1.7} />
+          <span className="absolute top-[9px] right-[11px] h-1.5 w-1.5 rounded-full bg-accent-500" />
         </button>
       </header>
 
@@ -304,7 +304,7 @@ export default function Home() {
         />
         <div className="relative">
           <div className="flex items-center justify-between mb-2.5">
-            <div className="text-[11px] font-semibold tracking-[1px] uppercase text-bronze-400">
+            <div className="text-[11px] font-semibold tracking-[1px] uppercase text-accent-400">
               Monthly recurring
             </div>
             {isDemo && (
@@ -315,7 +315,7 @@ export default function Home() {
           </div>
           <div className="tp-display tp-num text-[48px] font-bold leading-none tracking-[-0.04em]">
             {isDemo ? "$14,820" : stats?.mrr > 0 ? `$${stats.mrr.toLocaleString()}` : "$0"}
-            <span className="text-lg text-bronze-400 font-semibold ml-1">/mo</span>
+            <span className="text-lg text-accent-400 font-semibold ml-1">/mo</span>
           </div>
           <div className="flex gap-6 mt-4 pt-3.5 border-t border-white/10">
             <Stat value={isDemo ? "67" : String(stats?.planCount || 0)} label="Active plans" />
@@ -336,16 +336,16 @@ export default function Home() {
         // Demo route for demo users
         <section className="mx-4 mb-3">
           <div className="flex items-center justify-between px-1 pb-2">
-            <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">Today's route</h2>
-            <span className="text-xs text-ink-500">Wednesday crew</span>
+            <h2 className="text-[13px] font-semibold text-neutral-700 tracking-[0.2px]">Today's route</h2>
+            <span className="text-xs text-neutral-500">Wednesday crew</span>
           </div>
           <div className="tp-card p-4">
             <div className="flex items-center justify-between mb-3.5">
               <div className="flex gap-[18px]">
                 <SummaryStat value="11" unit="" sub="stops" />
-                <div className="w-px bg-ink-200" />
+                <div className="w-px bg-neutral-200" />
                 <SummaryStat value="23" unit=" mi" sub="drive total" />
-                <div className="w-px bg-ink-200" />
+                <div className="w-px bg-neutral-200" />
                 <SummaryStat value="6.5" unit=" h" sub="est." />
               </div>
             </div>
@@ -354,26 +354,26 @@ export default function Home() {
                 <div
                   key={i}
                   className={`flex-1 h-1.5 rounded-[3px] ${
-                    i < 3 ? "bg-green-600" : i === 3 ? "bg-bronze-500" : "bg-ink-100"
+                    i < 3 ? "bg-brand-600" : i === 3 ? "bg-accent-500" : "bg-neutral-100"
                   }`}
                 />
               ))}
             </div>
-            <div className="flex items-center gap-3 px-3 py-2.5 bg-green-50 rounded-xl mb-3">
-              <div className="h-8 w-8 rounded-full bg-green-800 text-white grid place-items-center text-[13px] font-bold">
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-brand-50 rounded-xl mb-3">
+              <div className="h-8 w-8 rounded-full bg-brand-800 text-white grid place-items-center text-[13px] font-bold">
                 4
               </div>
               <div className="flex-1">
-                <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-green-700">
+                <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-brand-700">
                   Up next
                 </div>
-                <div className="text-sm font-semibold text-ink-900">411 Lantana Ave</div>
+                <div className="text-sm font-semibold text-neutral-900">411 Lantana Ave</div>
               </div>
-              <div className="text-[11px] font-semibold text-green-700">2 mi · 7 min</div>
+              <div className="text-[11px] font-semibold text-brand-700">2 mi · 7 min</div>
             </div>
             <Link
               to="/routes"
-              className="w-full rounded-[14px] bg-bronze-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-bronze hover:bg-bronze-600 transition-colors"
+              className="w-full rounded-[14px] bg-accent-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-accent hover:bg-accent-600 transition-colors"
             >
               <Play className="h-3.5 w-3.5" /> Start route
             </Link>
@@ -385,22 +385,22 @@ export default function Home() {
         // from Home; Routes owns the start/resume flow.
         <section className="mx-4 mb-3">
           <div className="tp-card p-6 text-center">
-            <MapPin className="h-12 w-12 text-green-700 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-ink-700 mb-1">
+            <MapPin className="h-12 w-12 text-brand-700 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-neutral-700 mb-1">
               {todayRoute.status === "complete"
                 ? "Today's route is complete"
                 : todayRoute.status === "in_progress"
                   ? "Route in progress"
                   : "Today's route is ready"}
             </h3>
-            <p className="text-xs text-ink-500 mb-4">
+            <p className="text-xs text-neutral-500 mb-4">
               {todayRoute.status === "complete"
                 ? "Review today's stops in Routes."
                 : "Pick up where you left off in Routes."}
             </p>
             <Link
               to="/routes"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-bronze-500 text-white rounded-xl text-sm font-semibold hover:bg-bronze-600 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-xl text-sm font-semibold hover:bg-accent-600 transition-colors"
             >
               <Play className="h-3.5 w-3.5" />{" "}
               {todayRoute.status === "complete" ? "Review route" : "Resume today's route"}
@@ -413,18 +413,18 @@ export default function Home() {
         // Routes. Home never persists; Start route (in Routes) does.
         <section className="mx-4 mb-3">
           <div className="flex items-center justify-between px-1 pb-2">
-            <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px]">
+            <h2 className="text-[13px] font-semibold text-neutral-700 tracking-[0.2px]">
               Today's route
             </h2>
-            <span className="text-xs text-ink-500">Planned</span>
+            <span className="text-xs text-neutral-500">Planned</span>
           </div>
           <div className="tp-card p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="tp-num text-[22px] font-bold text-ink-900">
+              <div className="tp-num text-[22px] font-bold text-neutral-900">
                 {plannedToday.length}
-                <span className="text-[13px] text-ink-500 font-medium"> stops</span>
+                <span className="text-[13px] text-neutral-500 font-medium"> stops</span>
               </div>
-              <span className="text-[11px] font-semibold text-green-700 bg-green-50 px-2 py-1 rounded-full">
+              <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-1 rounded-full">
                 From your plans
               </span>
             </div>
@@ -432,23 +432,23 @@ export default function Home() {
             <div className="space-y-1.5 mb-3.5">
               {plannedToday.slice(0, 3).map((s, i) => (
                 <div key={s.id} className="flex items-center gap-2.5">
-                  <div className="h-6 w-6 rounded-full bg-ink-100 text-ink-500 grid place-items-center text-[11px] font-bold tp-num">
+                  <div className="h-6 w-6 rounded-full bg-neutral-100 text-neutral-500 grid place-items-center text-[11px] font-bold tp-num">
                     {i + 1}
                   </div>
-                  <div className="text-[13px] text-ink-900 truncate">
+                  <div className="text-[13px] text-neutral-900 truncate">
                     {s.address_snapshot ?? s.customer_name_snapshot ?? "Stop"}
                   </div>
                 </div>
               ))}
               {plannedToday.length > 3 && (
-                <div className="text-[11px] text-ink-500 pl-[34px]">
+                <div className="text-[11px] text-neutral-500 pl-[34px]">
                   +{plannedToday.length - 3} more
                 </div>
               )}
             </div>
             <Link
               to="/routes"
-              className="w-full rounded-[14px] bg-bronze-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-bronze hover:bg-bronze-600 transition-colors"
+              className="w-full rounded-[14px] bg-accent-500 text-white py-3.5 font-bold text-[15px] tracking-[0.2px] flex items-center justify-center gap-2 shadow-accent hover:bg-accent-600 transition-colors"
             >
               <Play className="h-3.5 w-3.5" /> Start today's route
             </Link>
@@ -462,9 +462,9 @@ export default function Home() {
         //   active plans, no route -> acknowledge plans, point to Routes
         <section className="mx-4 mb-3">
           <div className="tp-card p-6 text-center">
-            <MapPin className="h-12 w-12 text-ink-300 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-ink-700 mb-1">No routes scheduled</h3>
-            <p className="text-xs text-ink-500 mb-4">
+            <MapPin className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-neutral-700 mb-1">No routes scheduled</h3>
+            <p className="text-xs text-neutral-500 mb-4">
               {stats?.customerCount === 0
                 ? "Add customers to start planning routes"
                 : (stats?.planCount ?? 0) > 0
@@ -480,7 +480,7 @@ export default function Home() {
                     ? "/routes"
                     : "/plans"
               }
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-800 text-white rounded-xl text-sm font-semibold hover:bg-green-900 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-800 text-white rounded-xl text-sm font-semibold hover:bg-brand-900 transition-colors"
             >
               {stats?.customerCount === 0 ? (
                 <><Users className="h-4 w-4" /> Add First Customer</>
@@ -513,22 +513,22 @@ export default function Home() {
                 days.find((d) => isToday(d.date)) ?? days[0] ?? null;
               if (target) setOpenDayDate(target.date);
             }}
-            className="w-full mb-2.5 rounded-[14px] bg-bronze-100 border border-bronze-400 px-3.5 py-2.5 flex items-center gap-2.5 text-left hover:bg-bronze-100/80 transition-colors"
+            className="w-full mb-2.5 rounded-[14px] bg-accent-100 border border-accent-400 px-3.5 py-2.5 flex items-center gap-2.5 text-left hover:bg-accent-100/80 transition-colors"
             aria-label={`Weather alert: ${alerts[0]?.event ?? "Active alert"}`}
           >
             <AlertTriangle
-              className="h-4 w-4 text-bronze-600 shrink-0"
+              className="h-4 w-4 text-accent-600 shrink-0"
               strokeWidth={2}
             />
-            <div className="flex-1 min-w-0 text-[12.5px] font-semibold text-bronze-700 leading-snug truncate">
+            <div className="flex-1 min-w-0 text-[12.5px] font-semibold text-accent-700 leading-snug truncate">
               {alerts[0]?.event ?? "Active weather alert"}
               {alerts[0]?.end && (
-                <span className="font-medium text-bronze-700/80 ml-1">
+                <span className="font-medium text-accent-700/80 ml-1">
                   · until {formatAlertEnd(alerts[0].end)}
                 </span>
               )}
               {alerts.length > 1 && (
-                <span className="ml-1 text-bronze-600">
+                <span className="ml-1 text-accent-600">
                   +{alerts.length - 1} more
                 </span>
               )}
@@ -536,9 +536,9 @@ export default function Home() {
           </button>
         )}
 
-        <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px] px-1 pb-2 flex items-center gap-2">
+        <h2 className="text-[13px] font-semibold text-neutral-700 tracking-[0.2px] px-1 pb-2 flex items-center gap-2">
           This week
-          <span className="px-1.5 py-0.5 rounded-full bg-bronze-100 text-bronze-700 text-[9px] font-extrabold uppercase tracking-[0.06em]">
+          <span className="px-1.5 py-0.5 rounded-full bg-accent-100 text-accent-700 text-[9px] font-extrabold uppercase tracking-[0.06em]">
             Beta
           </span>
         </h2>
@@ -546,9 +546,9 @@ export default function Home() {
         {!forecast.hasZip && !zipQ.isLoading && (
           // Soft prompt — the rest of Home is fully usable without weather, so
           // we don't gate anything else behind ZIP.
-          <div className="tp-card px-3.5 py-3 text-[12.5px] text-ink-600">
+          <div className="tp-card px-3.5 py-3 text-[12.5px] text-neutral-600">
             Set your business ZIP in{" "}
-            <Link to="/settings" className="font-semibold text-green-800 underline-offset-2 hover:underline">
+            <Link to="/settings" className="font-semibold text-brand-800 underline-offset-2 hover:underline">
               Settings
             </Link>{" "}
             to see live weather and skip-day suggestions.
@@ -563,15 +563,15 @@ export default function Home() {
                 // doesn't jump when data arrives.
                 Array.from({ length: 7 }).map((_, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 py-1.5">
-                    <div className="h-2.5 w-7 rounded bg-ink-100" />
-                    <div className="h-4 w-4 rounded-full bg-ink-100" />
-                    <div className="h-3 w-6 rounded bg-ink-100" />
+                    <div className="h-2.5 w-7 rounded bg-neutral-100" />
+                    <div className="h-4 w-4 rounded-full bg-neutral-100" />
+                    <div className="h-3 w-6 rounded bg-neutral-100" />
                   </div>
                 ))
               ) : forecast.error ? (
-                <div className="flex-1 py-2 text-center text-[12px] text-ink-500">
+                <div className="flex-1 py-2 text-center text-[12px] text-neutral-500">
                   Weather unavailable.
-                  <div className="mt-1 text-[10px] text-ink-400 break-words px-2">
+                  <div className="mt-1 text-[10px] text-neutral-400 break-words px-2">
                     {forecast.error}
                   </div>
                 </div>
@@ -644,18 +644,18 @@ export default function Home() {
 
       {/* Quick actions */}
       <section className="mx-4 mt-3.5 mb-1">
-        <h2 className="text-[13px] font-semibold text-ink-700 px-1 pb-2">Quick actions</h2>
+        <h2 className="text-[13px] font-semibold text-neutral-700 px-1 pb-2">Quick actions</h2>
         <div className="grid grid-cols-2 gap-2.5">
           {quickActions
             .filter((t) => t.to !== "/inbox" || TWILIO_ENABLED)
             .map(({ icon: Icon, label, sub, accent, to }) => {
             const inner = (
               <>
-                <div className={`h-[30px] w-[30px] rounded-[9px] bg-ink-100 grid place-items-center mb-2.5 ${accent}`}>
+                <div className={`h-[30px] w-[30px] rounded-[9px] bg-neutral-100 grid place-items-center mb-2.5 ${accent}`}>
                   <Icon className="h-4 w-4" strokeWidth={1.8} />
                 </div>
-                <div className="text-[13.5px] font-semibold text-ink-900">{label}</div>
-                <div className="text-[11px] text-ink-500 mt-0.5">{sub}</div>
+                <div className="text-[13.5px] font-semibold text-neutral-900">{label}</div>
+                <div className="text-[11px] text-neutral-500 mt-0.5">{sub}</div>
               </>
             );
             return to ? (
@@ -709,11 +709,11 @@ function Stat({ value, label }: { value: string; label: string }) {
 function SummaryStat({ value, unit, sub }: { value: string; unit: string; sub: string }) {
   return (
     <div>
-      <div className="tp-num text-[22px] font-bold text-ink-900">
+      <div className="tp-num text-[22px] font-bold text-neutral-900">
         {value}
-        {unit && <span className="text-[13px] text-ink-500 font-medium">{unit}</span>}
+        {unit && <span className="text-[13px] text-neutral-500 font-medium">{unit}</span>}
       </div>
-      <div className="text-[11px] text-ink-500 -mt-0.5">{sub}</div>
+      <div className="text-[11px] text-neutral-500 -mt-0.5">{sub}</div>
     </div>
   );
 }

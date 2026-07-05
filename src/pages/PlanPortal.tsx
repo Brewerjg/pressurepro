@@ -70,7 +70,7 @@ const fmtDate = (iso: string) =>
 const STATUS_PILL: Record<Plan["status"], { label: string; classes: string }> = {
   active: { label: "Active", classes: "bg-success text-success-foreground" },
   paused: { label: "Paused", classes: "bg-warning text-warning-foreground" },
-  canceled: { label: "Canceled", classes: "bg-ink-200 text-ink-700" },
+  canceled: { label: "Canceled", classes: "bg-neutral-200 text-neutral-700" },
 };
 
 const PlanPortal = () => {
@@ -238,7 +238,7 @@ const PlanPortal = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-green-800" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-800" />
       </div>
     );
   }
@@ -275,7 +275,7 @@ const PlanPortal = () => {
   return (
     <div className="min-h-screen bg-background pb-12">
       <BrandHeader business={business.business}>
-        <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-bronze-400">
+        <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-accent-400">
           MAINTENANCE PLAN
         </div>
         <h1 className="font-display text-[28px] text-white mt-1.5">
@@ -292,7 +292,7 @@ const PlanPortal = () => {
               <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
                 Your plan
               </div>
-              <div className="font-bold text-sm text-ink-900 mt-0.5">{plan.address}</div>
+              <div className="font-bold text-sm text-neutral-900 mt-0.5">{plan.address}</div>
             </div>
             <span
               className={
@@ -315,15 +315,15 @@ const PlanPortal = () => {
           </div>
 
           {plan.services && plan.services.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-ink-200">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500 mb-1.5">
+            <div className="mt-4 pt-3 border-t border-neutral-200">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
                 Services
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {plan.services.map((s) => (
                   <span
                     key={s}
-                    className="px-2.5 py-1 rounded-full bg-green-50 text-green-800 text-[11.5px] font-semibold"
+                    className="px-2.5 py-1 rounded-full bg-brand-50 text-brand-800 text-[11.5px] font-semibold"
                   >
                     {s}
                   </span>
@@ -342,11 +342,11 @@ const PlanPortal = () => {
             </h2>
             <div className="tp-card p-4">
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-green-50 text-green-800 flex items-center justify-center shrink-0">
+                <div className="h-10 w-10 rounded-xl bg-brand-50 text-brand-800 flex items-center justify-center shrink-0">
                   <CalendarClock className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold text-sm text-ink-900">
+                  <div className="font-bold text-sm text-neutral-900">
                     {fmtVisitDate(nextVisit.date)}
                   </div>
                   {nextVisit.approxTimeLabel && (
@@ -425,7 +425,7 @@ const PlanPortal = () => {
           <div className="text-center pt-2">
             <a
               href={`tel:${business.phone.replace(/[^\d+]/g, "")}`}
-              className="text-sm font-semibold text-green-800 hover:underline"
+              className="text-sm font-semibold text-brand-800 hover:underline"
             >
               Questions? Call {business.business || "us"}: {business.phone}
             </a>
@@ -443,10 +443,10 @@ const PlanPortal = () => {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-ink-500">
+      <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500">
         {label}
       </div>
-      <div className="text-[13.5px] font-semibold text-ink-900 mt-0.5 tp-num">{value}</div>
+      <div className="text-[13.5px] font-semibold text-neutral-900 mt-0.5 tp-num">{value}</div>
     </div>
   );
 }
@@ -467,7 +467,7 @@ function ActionRow({ icon: Icon, label, sub, onClick, busy, destructive }: Actio
       disabled={busy}
       className={
         "w-full flex items-center gap-3 p-4 text-left border-b border-hairline last:border-b-0 " +
-        "active:bg-ink-100/60 disabled:opacity-60 transition-colors"
+        "active:bg-neutral-100/60 disabled:opacity-60 transition-colors"
       }
     >
       <div
@@ -475,13 +475,13 @@ function ActionRow({ icon: Icon, label, sub, onClick, busy, destructive }: Actio
           "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 " +
           (destructive
             ? "bg-destructive/10 text-destructive"
-            : "bg-green-50 text-green-800")
+            : "bg-brand-50 text-brand-800")
         }
       >
         {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className={"font-bold text-sm " + (destructive ? "text-destructive" : "text-ink-900")}>
+        <div className={"font-bold text-sm " + (destructive ? "text-destructive" : "text-neutral-900")}>
           {label}
         </div>
         <div className="text-[12px] text-muted-foreground truncate">{sub}</div>
@@ -544,7 +544,7 @@ function PlanPortalConfirmation({
         <p className="text-sm text-muted-foreground">{copy.body}</p>
         <Link
           to={`/plans/portal/${token}`}
-          className="inline-block text-sm font-semibold text-green-800"
+          className="inline-block text-sm font-semibold text-brand-800"
           onClick={(e) => {
             // Force re-mount so the portal refreshes its state.
             e.preventDefault();
@@ -621,7 +621,7 @@ export const PlanPortalDone = () => {
         {token && (
           <Link
             to={`/plans/portal/${token}`}
-            className="inline-block text-sm font-semibold text-green-800"
+            className="inline-block text-sm font-semibold text-brand-800"
           >
             Back to plan →
           </Link>

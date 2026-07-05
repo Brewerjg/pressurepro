@@ -51,14 +51,14 @@ export default function Settings() {
     <div className="pt-3 pb-8">
       {/* Header — matches Home.tsx px-[22px] */}
       <header className="px-[22px] pb-[18px]">
-        <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+        <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
           Account
         </div>
-        <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">
+        <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">
           Settings
         </h1>
         {user?.email && (
-          <div className="text-[12px] text-ink-500 mt-1 truncate">
+          <div className="text-[12px] text-neutral-500 mt-1 truncate">
             {user.email}
           </div>
         )}
@@ -107,20 +107,20 @@ export default function Settings() {
       <Section icon={<Megaphone className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Campaigns">
         <Link
           to="/campaigns"
-          className="tp-card p-4 flex items-center gap-3 hover:bg-ink-100/30 transition-colors"
+          className="tp-card p-4 flex items-center gap-3 hover:bg-neutral-100/30 transition-colors"
         >
-          <span className="h-9 w-9 rounded-lg bg-bronze-100 text-bronze-700 grid place-items-center shrink-0">
+          <span className="h-9 w-9 rounded-lg bg-accent-100 text-accent-700 grid place-items-center shrink-0">
             <Megaphone className="h-4 w-4" strokeWidth={2.2} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13.5px] font-semibold text-ink-900">
+            <div className="text-[13.5px] font-semibold text-neutral-900">
               Seasonal campaigns
             </div>
-            <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+            <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5">
               Blast aeration, leaf cleanup, spring restart, and snow signup pitches to your filtered customer list.
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2.2} />
+          <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={2.2} />
         </Link>
       </Section>
 
@@ -147,16 +147,16 @@ export default function Settings() {
       {/* Account */}
       <Section icon={<LogOut className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Account">
         <div className="tp-card p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
             Signed in as
           </div>
-          <div className="text-sm font-semibold text-ink-900 break-all mt-0.5">
+          <div className="text-sm font-semibold text-neutral-900 break-all mt-0.5">
             {user?.email ?? "Unknown"}
           </div>
           <button
             type="button"
             onClick={signOut}
-            className="mt-4 h-10 px-4 rounded-xl border border-ink-200 text-sm font-semibold text-ink-700 hover:bg-ink-100 inline-flex items-center gap-2"
+            className="mt-4 h-10 px-4 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 inline-flex items-center gap-2"
           >
             <LogOut className="h-4 w-4" strokeWidth={2} />
             Sign out
@@ -178,8 +178,8 @@ function Section({
 }) {
   return (
     <section className="mx-4 mb-3.5">
-      <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px] px-1 pb-2 flex items-center gap-1.5">
-        <span className="text-ink-500">{icon}</span>
+      <h2 className="text-[13px] font-semibold text-neutral-700 tracking-[0.2px] px-1 pb-2 flex items-center gap-1.5">
+        <span className="text-neutral-500">{icon}</span>
         {label}
       </h2>
       {children}
@@ -212,14 +212,14 @@ function StripePayoutsCard({ profile }: { profile: ConnectableProfile | null }) 
   if (ready) {
     return (
       <div className="tp-card p-4 flex items-center gap-3">
-        <span className="h-9 w-9 rounded-lg bg-green-100 text-green-800 grid place-items-center shrink-0">
+        <span className="h-9 w-9 rounded-lg bg-brand-100 text-brand-800 grid place-items-center shrink-0">
           <Check className="h-4 w-4" strokeWidth={2.6} />
         </span>
         <div className="flex-1 min-w-0">
-          <div className="text-[13.5px] font-semibold text-green-800">
+          <div className="text-[13.5px] font-semibold text-brand-800">
             Connected ✓
           </div>
-          <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+          <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5">
             Customer payments deposit into your Stripe account.
           </div>
         </div>
@@ -230,16 +230,16 @@ function StripePayoutsCard({ profile }: { profile: ConnectableProfile | null }) 
   return (
     <div className="tp-card p-4 space-y-2.5">
       <div className="flex items-start gap-3">
-        <span className="h-9 w-9 rounded-lg bg-bronze-100 text-bronze-700 grid place-items-center shrink-0">
+        <span className="h-9 w-9 rounded-lg bg-accent-100 text-accent-700 grid place-items-center shrink-0">
           <CreditCard className="h-4 w-4" strokeWidth={2.2} />
         </span>
         <div className="flex-1 min-w-0">
-          <div className="text-[13.5px] font-semibold text-ink-900">
+          <div className="text-[13.5px] font-semibold text-neutral-900">
             {startedButIncomplete
               ? "Onboarding incomplete"
               : "Not connected"}
           </div>
-          <div className="text-[11.5px] text-ink-500 leading-snug mt-0.5">
+          <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5">
             {startedButIncomplete
               ? "Stripe still needs a few details before payouts can start."
               : "Connect Stripe to accept customer payments and have them deposited in your bank account."}
@@ -250,7 +250,7 @@ function StripePayoutsCard({ profile }: { profile: ConnectableProfile | null }) 
         type="button"
         onClick={onClick}
         disabled={starting}
-        className="w-full h-10 rounded-xl bg-bronze-500 hover:bg-bronze-600 text-white font-semibold text-sm shadow-bronze disabled:opacity-60 flex items-center justify-center gap-2"
+        className="w-full h-10 rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-semibold text-sm shadow-accent disabled:opacity-60 flex items-center justify-center gap-2"
       >
         {starting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

@@ -192,15 +192,15 @@ export default function Customers() {
       {/* Header — matches Home.tsx spacing (px-[22px]) */}
       <header className="px-[22px] pb-[18px] flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             {customers?.length ?? 0} total
           </div>
-          <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">Customers</h1>
+          <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">Customers</h1>
         </div>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="h-11 w-11 rounded-[14px] bg-bronze-500 text-white flex items-center justify-center shadow-bronze hover:bg-bronze-600 transition-colors"
+          className="h-11 w-11 rounded-[14px] bg-accent-500 text-white flex items-center justify-center shadow-accent hover:bg-accent-600 transition-colors"
           aria-label="New customer"
         >
           <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />
@@ -210,28 +210,28 @@ export default function Customers() {
       {/* Search */}
       <section className="mx-4 pb-3.5">
         <div className="relative">
-          <Search className="h-[18px] w-[18px] absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-500" />
+          <Search className="h-[18px] w-[18px] absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search name, phone or address"
-            className="w-full h-[46px] pl-10 pr-3.5 rounded-xl border-[1.5px] border-ink-200 bg-card text-[15px] font-medium outline-none focus:border-green-800 transition-colors"
+            className="w-full h-[46px] pl-10 pr-3.5 rounded-xl border-[1.5px] border-neutral-200 bg-card text-[15px] font-medium outline-none focus:border-brand-800 transition-colors"
           />
         </div>
       </section>
 
       {isLoading && (
-        <div className="text-sm text-ink-500 text-center py-6">Loading…</div>
+        <div className="text-sm text-neutral-500 text-center py-6">Loading…</div>
       )}
 
       {!isLoading && filtered.length === 0 && (
         <section className="mx-4">
           <div className="tp-card p-8 text-center">
-            <UsersIcon className="h-10 w-10 mx-auto text-ink-400" strokeWidth={1.6} />
-            <h3 className="tp-display text-lg mt-3 text-ink-900">
+            <UsersIcon className="h-10 w-10 mx-auto text-neutral-400" strokeWidth={1.6} />
+            <h3 className="tp-display text-lg mt-3 text-neutral-900">
               {query ? "No matches" : "No customers yet"}
             </h3>
-            <p className="text-sm text-ink-500 mt-1">
+            <p className="text-sm text-neutral-500 mt-1">
               {query
                 ? "Try a different search."
                 : "No customers yet — add your first to track properties, plans, and routes."}
@@ -240,7 +240,7 @@ export default function Customers() {
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                className="inline-flex items-center gap-1.5 mt-4 bg-bronze-500 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow-bronze hover:bg-bronze-600 transition-colors"
+                className="inline-flex items-center gap-1.5 mt-4 bg-accent-500 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow-accent hover:bg-accent-600 transition-colors"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.4} /> Add customer
               </button>
@@ -252,7 +252,7 @@ export default function Customers() {
       <section className="mx-4 space-y-2">
         {groups.map(([letter, rows]) => (
           <div key={letter}>
-            <div className="px-1 py-2 text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-500">
+            <div className="px-1 py-2 text-[11px] font-extrabold uppercase tracking-[0.1em] text-neutral-500">
               {letter}
             </div>
             <div className="tp-card p-0 overflow-hidden">
@@ -260,16 +260,16 @@ export default function Customers() {
                 <Link
                   key={c.id}
                   to={`/customers/${c.id}`}
-                  className={`flex items-center gap-3 p-3 active:bg-ink-100 transition-colors ${
-                    i ? "border-t border-ink-200" : ""
+                  className={`flex items-center gap-3 p-3 active:bg-neutral-100 transition-colors ${
+                    i ? "border-t border-neutral-200" : ""
                   }`}
                 >
-                  <div className="h-9 w-9 rounded-[10px] bg-green-100 text-green-800 flex items-center justify-center font-extrabold text-xs">
+                  <div className="h-9 w-9 rounded-[10px] bg-brand-100 text-brand-800 flex items-center justify-center font-extrabold text-xs">
                     {initials(c.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-ink-900 truncate">{c.name}</div>
-                    <div className="text-[11px] text-ink-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <div className="font-bold text-sm text-neutral-900 truncate">{c.name}</div>
+                    <div className="text-[11px] text-neutral-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       {c.phone && (
                         <span className="flex items-center gap-1 truncate">
                           <Phone className="h-3 w-3 shrink-0" />
@@ -289,13 +289,13 @@ export default function Customers() {
                     {(c.activePlans > 0 || c.activeQuotes > 0) && (
                       <div className="flex items-center gap-1.5 mt-1">
                         {c.activePlans > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-brand-100 text-brand-800 px-1.5 py-0.5 rounded-full">
                             <Repeat className="h-2.5 w-2.5" strokeWidth={2.2} />
                             {c.activePlans} plan{c.activePlans === 1 ? "" : "s"}
                           </span>
                         )}
                         {c.activeQuotes > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-bronze-100 text-bronze-700 px-1.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-accent-100 text-accent-700 px-1.5 py-0.5 rounded-full">
                             <FileText className="h-2.5 w-2.5" strokeWidth={2.2} />
                             {c.activeQuotes} quote{c.activeQuotes === 1 ? "" : "s"}
                           </span>
@@ -303,7 +303,7 @@ export default function Customers() {
                       </div>
                     )}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-ink-400" strokeWidth={2.2} />
+                  <ChevronRight className="h-4 w-4 text-neutral-400" strokeWidth={2.2} />
                 </Link>
               ))}
             </div>
@@ -323,11 +323,11 @@ export default function Customers() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="tp-display text-xl text-ink-900">New customer</h3>
+              <h3 className="tp-display text-xl text-neutral-900">New customer</h3>
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="p-1 text-ink-500"
+                className="p-1 text-neutral-500"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -367,7 +367,7 @@ export default function Customers() {
               type="button"
               onClick={() => createCustomer.mutate()}
               disabled={createCustomer.isPending}
-              className="w-full h-12 rounded-2xl bg-bronze-500 text-white font-bold shadow-bronze hover:bg-bronze-600 disabled:opacity-60 transition-colors"
+              className="w-full h-12 rounded-2xl bg-accent-500 text-white font-bold shadow-accent hover:bg-accent-600 disabled:opacity-60 transition-colors"
             >
               {createCustomer.isPending ? "Saving…" : "Add customer"}
             </button>
@@ -381,15 +381,15 @@ export default function Customers() {
           height: 46px;
           padding: 0 14px;
           border-radius: 12px;
-          border: 1.5px solid hsl(var(--ink-200));
+          border: 1.5px solid hsl(var(--neutral-200));
           background: hsl(var(--card));
-          color: hsl(var(--ink-900));
+          color: hsl(var(--neutral-900));
           font-size: 15px;
           font-weight: 500;
           outline: none;
           transition: border-color 0.15s;
         }
-        .tp-modal-input:focus { border-color: hsl(var(--green-800)); }
+        .tp-modal-input:focus { border-color: hsl(var(--brand-800)); }
       `}</style>
     </div>
   );

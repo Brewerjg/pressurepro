@@ -31,9 +31,9 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
 // Color tokens that operators glance at on a phone. Open = still owed (bronze),
 // paid = settled (green), void = inert (ink).
 const STATUS_STYLE: Record<Invoice["status"], { pill: string; stripe: string }> = {
-  open: { pill: "bg-bronze-100 text-bronze-700", stripe: "bg-bronze-500" },
-  paid: { pill: "bg-green-100 text-green-800", stripe: "bg-green-700" },
-  void: { pill: "bg-ink-100 text-ink-700", stripe: "bg-ink-400" },
+  open: { pill: "bg-accent-100 text-accent-700", stripe: "bg-accent-500" },
+  paid: { pill: "bg-brand-100 text-brand-800", stripe: "bg-brand-700" },
+  void: { pill: "bg-neutral-100 text-neutral-700", stripe: "bg-neutral-400" },
 };
 
 const fmtUSD = (n: number) =>
@@ -93,13 +93,13 @@ export default function Invoices() {
       {/* Header */}
       <header className="px-[22px] pb-[18px] flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             Billing
           </div>
-          <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">
+          <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">
             Invoices
           </h1>
-          <div className="text-[12px] text-ink-500 mt-1 tp-num">
+          <div className="text-[12px] text-neutral-500 mt-1 tp-num">
             {isLoading
               ? "Loading…"
               : `${openInvoices.length} open · ${fmtUSD(outstanding)} outstanding`}
@@ -107,7 +107,7 @@ export default function Invoices() {
         </div>
         <Link
           to="/quotes"
-          className="h-10 px-3.5 rounded-full bg-bronze-500 text-white flex items-center gap-1.5 font-semibold text-[13px] shadow-bronze hover:bg-bronze-600 transition-colors"
+          className="h-10 px-3.5 rounded-full bg-accent-500 text-white flex items-center gap-1.5 font-semibold text-[13px] shadow-accent hover:bg-accent-600 transition-colors"
         >
           <Plus className="h-4 w-4" strokeWidth={2.4} />
           From quote
@@ -127,8 +127,8 @@ export default function Invoices() {
                 className={cn(
                   "flex-1 py-2 rounded-[12px] text-[12px] font-semibold transition-colors",
                   isActive
-                    ? "bg-green-800 text-white"
-                    : "text-ink-700 hover:bg-ink-100",
+                    ? "bg-brand-800 text-white"
+                    : "text-neutral-700 hover:bg-neutral-100",
                 )}
               >
                 {tab.label}
@@ -143,7 +143,7 @@ export default function Invoices() {
         {error ? (
           <div className="tp-card p-6 text-center">
             <p className="text-sm text-destructive">Couldn't load invoices.</p>
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               {error instanceof Error ? error.message : "Unknown error"}
             </p>
           </div>
@@ -152,25 +152,25 @@ export default function Invoices() {
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="tp-card p-3.5 h-[80px] animate-pulse bg-ink-100"
+                className="tp-card p-3.5 h-[80px] animate-pulse bg-neutral-100"
               />
             ))}
           </ul>
         ) : filtered.length === 0 ? (
           <div className="tp-card p-6 text-center">
-            <FileText className="h-7 w-7 mx-auto text-ink-400" strokeWidth={1.7} />
-            <p className="text-sm font-semibold text-ink-900 mt-2">
+            <FileText className="h-7 w-7 mx-auto text-neutral-400" strokeWidth={1.7} />
+            <p className="text-sm font-semibold text-neutral-900 mt-2">
               {filter === "all"
                 ? "No invoices yet."
                 : `No ${filter} invoices.`}
             </p>
-            <p className="text-xs text-ink-500 mt-1 max-w-[260px] mx-auto">
+            <p className="text-xs text-neutral-500 mt-1 max-w-[260px] mx-auto">
               Convert an accepted quote into an invoice to bill a customer and
               track what's still owed.
             </p>
             <Link
               to="/quotes"
-              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-semibold shadow-bronze hover:bg-bronze-600 transition-colors"
+              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full bg-accent-500 text-white text-[13px] font-semibold shadow-accent hover:bg-accent-600 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
               From quote
@@ -206,19 +206,19 @@ function InvoiceRowItem({ invoice, qbConnected }: { invoice: Invoice; qbConnecte
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
               <div className="min-w-0">
-                <div className="font-semibold text-[14px] text-ink-900 truncate">
+                <div className="font-semibold text-[14px] text-neutral-900 truncate">
                   {invoice.customer_name || "Unnamed customer"}
                 </div>
-                <div className="text-[11px] text-ink-500 tp-num mt-0.5">
+                <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
                   {formatInvoiceNumber(invoice.invoice_number)}
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <div className="tp-num font-bold text-[14px] text-ink-900">
+                <div className="tp-num font-bold text-[14px] text-neutral-900">
                   {fmtUSD(Number(invoice.total ?? 0))}
                 </div>
                 {amountDue > 0 && (
-                  <div className="text-[11px] text-bronze-700 tp-num font-semibold mt-0.5">
+                  <div className="text-[11px] text-accent-700 tp-num font-semibold mt-0.5">
                     {fmtUSD(amountDue)} due
                   </div>
                 )}
@@ -235,20 +235,20 @@ function InvoiceRowItem({ invoice, qbConnected }: { invoice: Invoice; qbConnecte
                   {invoice.status}
                 </span>
                 {invoice.completed_at && (
-                  <span className="inline-flex items-center gap-0.5 px-2 py-[2px] rounded-full text-[10.5px] font-bold uppercase tracking-[0.4px] bg-green-100 text-green-800 shrink-0">
+                  <span className="inline-flex items-center gap-0.5 px-2 py-[2px] rounded-full text-[10.5px] font-bold uppercase tracking-[0.4px] bg-brand-100 text-brand-800 shrink-0">
                     <CheckCircle2 className="h-3 w-3" strokeWidth={2.4} />
                     Complete
                   </span>
                 )}
                 {qbConnected && <QbSyncChip row={invoice} />}
               </div>
-              <div className="text-[11px] text-ink-500 tp-num shrink-0">
+              <div className="text-[11px] text-neutral-500 tp-num shrink-0">
                 {fmtDateShort(invoice.created_at)}
               </div>
             </div>
           </div>
           <ChevronRight
-            className="h-4 w-4 text-ink-400 self-center shrink-0"
+            className="h-4 w-4 text-neutral-400 self-center shrink-0"
             strokeWidth={2.2}
           />
         </div>

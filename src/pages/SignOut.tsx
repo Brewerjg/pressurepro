@@ -18,7 +18,7 @@ export default function SignOut() {
     <div className="min-h-screen grid place-items-center bg-background">
       <div className="text-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-4" />
-        <p className="text-sm text-ink-500">Signing out...</p>
+        <p className="text-sm text-neutral-500">Signing out...</p>
       </div>
     </div>
   );

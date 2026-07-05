@@ -65,10 +65,10 @@ interface CampaignRow {
 }
 
 const STATUS_STYLE: Record<CampaignStatus, { pill: string; stripe: string }> = {
-  draft: { pill: "bg-ink-100 text-ink-700", stripe: "bg-ink-400" },
-  queued: { pill: "bg-bronze-100 text-bronze-700", stripe: "bg-bronze-500" },
-  sending: { pill: "bg-bronze-100 text-bronze-700", stripe: "bg-bronze-500" },
-  sent: { pill: "bg-green-100 text-green-800", stripe: "bg-green-700" },
+  draft: { pill: "bg-neutral-100 text-neutral-700", stripe: "bg-neutral-400" },
+  queued: { pill: "bg-accent-100 text-accent-700", stripe: "bg-accent-500" },
+  sending: { pill: "bg-accent-100 text-accent-700", stripe: "bg-accent-500" },
+  sent: { pill: "bg-brand-100 text-brand-800", stripe: "bg-brand-700" },
   failed: { pill: "bg-red-100 text-red-700", stripe: "bg-red-500" },
 };
 
@@ -129,20 +129,20 @@ export default function Campaigns() {
       {/* Header */}
       <header className="px-[22px] pb-[18px] flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             Outreach
           </div>
-          <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">
+          <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">
             Campaigns
           </h1>
-          <div className="text-[12px] text-ink-500 mt-1">
+          <div className="text-[12px] text-neutral-500 mt-1">
             Seasonal blasts — aeration, leaf cleanup, spring restart.
           </div>
         </div>
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="h-10 px-3.5 rounded-full bg-bronze-500 text-white flex items-center gap-1.5 font-semibold text-[13px] shadow-bronze hover:bg-bronze-600 transition-colors"
+          className="h-10 px-3.5 rounded-full bg-accent-500 text-white flex items-center gap-1.5 font-semibold text-[13px] shadow-accent hover:bg-accent-600 transition-colors"
         >
           <Plus className="h-4 w-4" strokeWidth={2.4} />
           New campaign
@@ -156,27 +156,27 @@ export default function Campaigns() {
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="tp-card p-3.5 h-[80px] animate-pulse bg-ink-100"
+                className="tp-card p-3.5 h-[80px] animate-pulse bg-neutral-100"
               />
             ))}
           </ul>
         ) : (campaigns ?? []).length === 0 ? (
           <div className="tp-card p-6 text-center">
             <Megaphone
-              className="h-7 w-7 mx-auto text-ink-400"
+              className="h-7 w-7 mx-auto text-neutral-400"
               strokeWidth={1.7}
             />
-            <p className="text-sm font-semibold text-ink-900 mt-2">
+            <p className="text-sm font-semibold text-neutral-900 mt-2">
               No campaigns yet.
             </p>
-            <p className="text-xs text-ink-500 mt-1 max-w-[280px] mx-auto">
+            <p className="text-xs text-neutral-500 mt-1 max-w-[280px] mx-auto">
               Aeration in August, leaf cleanup in October, spring restart in
               March. Pick a template and blast your customer list in two minutes.
             </p>
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full bg-bronze-500 text-white text-[13px] font-semibold shadow-bronze hover:bg-bronze-600 transition-colors"
+              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full bg-accent-500 text-white text-[13px] font-semibold shadow-accent hover:bg-accent-600 transition-colors"
             >
               <Sparkles className="h-3.5 w-3.5" strokeWidth={2.4} />
               Start your first campaign
@@ -199,7 +199,7 @@ export default function Campaigns() {
       <div className="px-[22px] pt-4">
         <Link
           to="/settings"
-          className="text-[12px] font-semibold text-ink-500 hover:text-ink-700 inline-flex items-center gap-1"
+          className="text-[12px] font-semibold text-neutral-500 hover:text-neutral-700 inline-flex items-center gap-1"
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.2} />
           Back to Settings
@@ -235,15 +235,15 @@ function CampaignRowItem({
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
-              <div className="font-semibold text-[14px] text-ink-900 truncate">
+              <div className="font-semibold text-[14px] text-neutral-900 truncate">
                 {campaign.name || tplLabel}
               </div>
-              <div className="tp-num font-bold text-[13px] text-ink-700 shrink-0 inline-flex items-center gap-1">
+              <div className="tp-num font-bold text-[13px] text-neutral-700 shrink-0 inline-flex items-center gap-1">
                 <Users className="h-3 w-3" strokeWidth={2.2} />
                 {campaign.total_recipients.toLocaleString()}
               </div>
             </div>
-            <div className="text-[11.5px] text-ink-500 truncate mt-0.5">
+            <div className="text-[11.5px] text-neutral-500 truncate mt-0.5">
               {tplLabel} · {campaign.channels.length === 0
                 ? "no channels"
                 : campaign.channels.join(" + ")}
@@ -257,14 +257,14 @@ function CampaignRowItem({
               >
                 {campaign.status}
               </span>
-              <div className="text-[11px] text-ink-500 tp-num">
+              <div className="text-[11px] text-neutral-500 tp-num">
                 {campaign.sent_at
                   ? `Sent ${fmtDate(campaign.sent_at)}`
                   : fmtDate(campaign.created_at)}
               </div>
             </div>
             {campaign.status === "sending" && (
-              <div className="text-[11px] text-bronze-700 mt-1 tp-num inline-flex items-center gap-1">
+              <div className="text-[11px] text-accent-700 mt-1 tp-num inline-flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 {campaign.email_sent_count + campaign.sms_sent_count} /{" "}
                 {campaign.total_recipients} sent
@@ -470,7 +470,7 @@ function CampaignEditor({
   if (campaignId && existingLoading) {
     return (
       <div className="min-h-[40vh] grid place-items-center">
-        <Loader2 className="h-5 w-5 animate-spin text-ink-400" />
+        <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -481,16 +481,16 @@ function CampaignEditor({
         <button
           type="button"
           onClick={onClose}
-          className="h-9 w-9 grid place-items-center rounded-full bg-ink-100 hover:bg-ink-200 transition-colors"
+          className="h-9 w-9 grid place-items-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
           aria-label="Back"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.2} />
         </button>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+          <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
             {existing ? "Edit campaign" : "New campaign"}
           </div>
-          <h1 className="tp-display text-xl font-bold text-ink-900 mt-0.5 truncate">
+          <h1 className="tp-display text-xl font-bold text-neutral-900 mt-0.5 truncate">
             {name || "Untitled campaign"}
           </h1>
         </div>
@@ -503,14 +503,14 @@ function CampaignEditor({
         <div className="mx-4 space-y-5">
           {/* Name */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
               Campaign name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full h-10 px-3 rounded-xl border border-ink-200 bg-white text-[13.5px] font-medium text-ink-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+              className="mt-1 w-full h-10 px-3 rounded-xl border border-neutral-200 bg-white text-[13.5px] font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
               placeholder="Fall aeration 2026"
             />
           </div>
@@ -540,7 +540,7 @@ function CampaignEditor({
               type="button"
               onClick={() => saveDraftMutation.mutate()}
               disabled={saveDraftMutation.isPending || sendMutation.isPending}
-              className="h-10 px-3.5 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 disabled:opacity-60 inline-flex items-center gap-1.5"
+              className="h-10 px-3.5 rounded-xl border border-neutral-200 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-60 inline-flex items-center gap-1.5"
             >
               {saveDraftMutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -556,8 +556,8 @@ function CampaignEditor({
               className={cn(
                 "flex-1 h-10 px-3.5 rounded-xl font-semibold text-[13px] inline-flex items-center justify-center gap-1.5 transition-colors",
                 canSend
-                  ? "bg-green-700 text-white hover:bg-green-800"
-                  : "bg-ink-200 text-ink-500 cursor-not-allowed",
+                  ? "bg-brand-700 text-white hover:bg-brand-800"
+                  : "bg-neutral-200 text-neutral-500 cursor-not-allowed",
               )}
             >
               {sendMutation.isPending ? (
@@ -587,9 +587,9 @@ function CampaignEditor({
           )}
 
           {saveDraftMutation.isSuccess && !sendMutation.isPending && (
-            <div className="tp-card p-3 inline-flex items-start gap-2 border border-green-200 bg-green-50">
-              <Check className="h-4 w-4 text-green-700 shrink-0 mt-0.5" />
-              <div className="text-[12px] text-green-800">Draft saved.</div>
+            <div className="tp-card p-3 inline-flex items-start gap-2 border border-brand-200 bg-brand-50">
+              <Check className="h-4 w-4 text-brand-700 shrink-0 mt-0.5" />
+              <div className="text-[12px] text-brand-800">Draft saved.</div>
             </div>
           )}
         </div>
@@ -617,11 +617,11 @@ function SentSummary({ campaign }: { campaign: CampaignRow }) {
           >
             {campaign.status}
           </span>
-          <div className="text-[11px] text-ink-500 tp-num">
+          <div className="text-[11px] text-neutral-500 tp-num">
             {campaign.sent_at ? `Sent ${fmtDate(campaign.sent_at)}` : "—"}
           </div>
         </div>
-        <div className="mt-3 text-[13px] text-ink-700">
+        <div className="mt-3 text-[13px] text-neutral-700">
           <span className="font-semibold">{tplLabel}</span> ·{" "}
           {campaign.channels.join(" + ") || "no channels"}
         </div>
@@ -646,15 +646,15 @@ function SentSummary({ campaign }: { campaign: CampaignRow }) {
         )}
       </div>
       <div className="tp-card p-4">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-ink-500">
+        <div className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">
           Body
         </div>
         {campaign.subject && (
-          <div className="mt-1 text-[13px] font-semibold text-ink-900">
+          <div className="mt-1 text-[13px] font-semibold text-neutral-900">
             {campaign.subject}
           </div>
         )}
-        <pre className="mt-1 text-[12.5px] text-ink-700 whitespace-pre-wrap font-sans leading-relaxed">
+        <pre className="mt-1 text-[12.5px] text-neutral-700 whitespace-pre-wrap font-sans leading-relaxed">
           {campaign.body}
         </pre>
       </div>
@@ -664,11 +664,11 @@ function SentSummary({ campaign }: { campaign: CampaignRow }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="tp-card p-2 bg-ink-100/30">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 font-bold">
+    <div className="tp-card p-2 bg-neutral-100/30">
+      <div className="text-[10px] uppercase tracking-wide text-neutral-500 font-bold">
         {label}
       </div>
-      <div className="tp-num font-bold text-[16px] text-ink-900">{value}</div>
+      <div className="tp-num font-bold text-[16px] text-neutral-900">{value}</div>
     </div>
   );
 }

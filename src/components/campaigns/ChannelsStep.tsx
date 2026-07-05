@@ -17,10 +17,10 @@ export default function ChannelsStep({ channels, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="text-[12px] font-semibold uppercase tracking-wide text-ink-500">
+      <div className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
         3. Channels
       </div>
-      <p className="text-[12.5px] text-ink-500 leading-relaxed">
+      <p className="text-[12.5px] text-neutral-500 leading-relaxed">
         Pick at least one. SMS auto-trims to ~320 chars; email keeps the
         full body. Recipients missing the corresponding contact info are
         skipped silently.
@@ -65,21 +65,21 @@ function ChannelCard({
       onClick={onClick}
       className={cn(
         "tp-card p-3 text-left transition-all",
-        active ? "ring-2 ring-green-700 bg-green-50" : "hover:bg-ink-100/30",
+        active ? "ring-2 ring-brand-700 bg-brand-50" : "hover:bg-neutral-100/30",
       )}
     >
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
             "h-9 w-9 rounded-lg grid place-items-center shrink-0",
-            active ? "bg-green-700 text-white" : "bg-bronze-100 text-bronze-700",
+            active ? "bg-brand-700 text-white" : "bg-accent-100 text-accent-700",
           )}
         >
           {icon}
         </span>
         <div className="min-w-0">
-          <div className="font-semibold text-[14px] text-ink-900">{label}</div>
-          <div className="text-[11.5px] text-ink-500">{blurb}</div>
+          <div className="font-semibold text-[14px] text-neutral-900">{label}</div>
+          <div className="text-[11.5px] text-neutral-500">{blurb}</div>
         </div>
       </div>
     </button>

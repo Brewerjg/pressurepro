@@ -23,11 +23,11 @@ export function BrandHeader({ business, children, className }: BrandHeaderProps)
     >
       <div className="relative">
         <div className="flex items-center gap-2.5 mb-5">
-          <div className="h-9 w-9 rounded-[10px] bg-bronze-500 text-green-900 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-[10px] bg-accent-500 text-brand-900 flex items-center justify-center">
             <Leaf className="h-5 w-5" strokeWidth={2.4} />
           </div>
           <div className="flex flex-col">
-            <span className="tp-display font-extrabold text-[11px] tracking-[0.18em] text-bronze-400 uppercase">
+            <span className="tp-display font-extrabold text-[11px] tracking-[0.18em] text-accent-400 uppercase">
               TurfPro
             </span>
             <span className="font-extrabold text-sm leading-tight">

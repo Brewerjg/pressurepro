@@ -109,12 +109,12 @@ export default function CrewEditor() {
 
   return (
     <div className="tp-card p-4 space-y-3">
-      <p className="text-[11px] text-ink-500">
+      <p className="text-[11px] text-neutral-500">
         Color-code teams so the schedule shows who's doing what at a glance.
       </p>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-ink-500">
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading crews…
         </div>
@@ -132,17 +132,17 @@ export default function CrewEditor() {
           ))}
         </ul>
       ) : (
-        <p className="text-xs italic text-ink-500">
+        <p className="text-xs italic text-neutral-500">
           No crews yet. Add one below.
         </p>
       )}
 
-      <div className="flex items-center gap-2 pt-2 border-t border-ink-100">
+      <div className="flex items-center gap-2 pt-2 border-t border-neutral-100">
         <input
           type="color"
           value={newColor}
           onChange={(e) => setNewColor(e.target.value)}
-          className="h-9 w-9 rounded-lg border border-ink-200 cursor-pointer p-0.5 bg-card"
+          className="h-9 w-9 rounded-lg border border-neutral-200 cursor-pointer p-0.5 bg-card"
           aria-label="New crew color"
         />
         <input
@@ -152,14 +152,14 @@ export default function CrewEditor() {
             if (e.key === "Enter" && !addMutation.isPending) handleAdd();
           }}
           placeholder="Crew name (e.g. East Side, Tom + Mike)"
-          className="flex-1 h-9 rounded-lg border border-ink-200 px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700"
+          className="flex-1 h-9 rounded-lg border border-neutral-200 px-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-700/30 focus:border-brand-700"
         />
         <button
           type="button"
           onClick={handleAdd}
           disabled={addMutation.isPending || !newName.trim()}
           className={cn(
-            "h-9 px-3 rounded-lg bg-green-800 text-white text-[13px] font-semibold flex items-center gap-1 disabled:opacity-50 hover:bg-green-900 transition-colors",
+            "h-9 px-3 rounded-lg bg-brand-800 text-white text-[13px] font-semibold flex items-center gap-1 disabled:opacity-50 hover:bg-brand-900 transition-colors",
           )}
         >
           {addMutation.isPending ? (
@@ -204,7 +204,7 @@ function CrewRow({
         onBlur={() => {
           if (color !== crew.color) onPatch({ color });
         }}
-        className="h-9 w-9 rounded-lg border border-ink-200 cursor-pointer p-0.5 bg-card"
+        className="h-9 w-9 rounded-lg border border-neutral-200 cursor-pointer p-0.5 bg-card"
         aria-label={`${crew.name} color`}
       />
       <input
@@ -218,7 +218,7 @@ function CrewRow({
           }
           if (trimmed !== crew.name) onPatch({ name: trimmed });
         }}
-        className="flex-1 h-9 rounded-lg border border-ink-200 px-3 text-sm font-medium text-ink-900 focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700"
+        className="flex-1 h-9 rounded-lg border border-neutral-200 px-3 text-sm font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700/30 focus:border-brand-700"
       />
       <button
         type="button"

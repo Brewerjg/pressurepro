@@ -16,7 +16,7 @@ const tabs = [
 export const TabBar = () => {
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 border-t border-ink-200/80 bg-card/96 backdrop-blur-xl"
+      className="fixed bottom-0 inset-x-0 z-40 border-t border-neutral-200/80 bg-card/96 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="grid grid-cols-5 max-w-md mx-auto px-2 py-2">
@@ -28,7 +28,7 @@ export const TabBar = () => {
               className={({ isActive }) =>
                 cn(
                   "flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-semibold tracking-wide transition-colors",
-                  isActive ? "text-green-800" : "text-ink-500 hover:text-ink-700"
+                  isActive ? "text-brand-800" : "text-neutral-500 hover:text-neutral-700"
                 )
               }
             >

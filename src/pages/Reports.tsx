@@ -832,10 +832,10 @@ export default function Reports() {
     <div className="pt-3 pb-8">
       {/* Header — same shape as Plans.tsx */}
       <header className="px-[22px] pb-[18px]">
-        <div className="text-xs font-medium tracking-[0.4px] uppercase text-ink-500">
+        <div className="text-xs font-medium tracking-[0.4px] uppercase text-neutral-500">
           Last 30 days
         </div>
-        <h1 className="tp-display text-2xl font-bold text-ink-900 mt-0.5">
+        <h1 className="tp-display text-2xl font-bold text-neutral-900 mt-0.5">
           Reports
         </h1>
       </header>
@@ -843,7 +843,7 @@ export default function Reports() {
       {error ? (
         <div className="mx-4 tp-card p-6 text-center">
           <p className="text-sm text-destructive">Couldn't load reports.</p>
-          <p className="text-xs text-ink-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             {error instanceof Error ? error.message : "Unknown error"}
           </p>
         </div>
@@ -882,15 +882,15 @@ export default function Reports() {
 
           {qbConnected && qbInvoices !== undefined && (
             <div className="mx-4 tp-card p-4 mb-3.5">
-              <div className="text-[11px] font-bold uppercase tracking-[0.4px] text-ink-500">
+              <div className="text-[11px] font-bold uppercase tracking-[0.4px] text-neutral-500">
                 QuickBooks
               </div>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="tp-num text-2xl font-bold text-ink-900">{qbCounts.synced}</span>
-                <span className="text-[13px] text-ink-500">synced</span>
-                <span className="text-ink-300">·</span>
-                <span className="tp-num text-2xl font-bold text-ink-900">{qbCounts.unsynced}</span>
-                <span className="text-[13px] text-ink-500">not synced</span>
+                <span className="tp-num text-2xl font-bold text-neutral-900">{qbCounts.synced}</span>
+                <span className="text-[13px] text-neutral-500">synced</span>
+                <span className="text-neutral-300">·</span>
+                <span className="tp-num text-2xl font-bold text-neutral-900">{qbCounts.unsynced}</span>
+                <span className="text-[13px] text-neutral-500">not synced</span>
               </div>
               {qbCounts.error > 0 && (
                 <div className="mt-1 text-[12px] font-semibold text-destructive">
@@ -994,7 +994,7 @@ export default function Reports() {
 // =====================================================================
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-[13px] font-semibold text-ink-700 tracking-[0.2px] px-1 pb-2">
+    <h2 className="text-[13px] font-semibold text-neutral-700 tracking-[0.2px] px-1 pb-2">
       {children}
     </h2>
   );
@@ -1027,7 +1027,7 @@ function MrrHero({
       />
       <div className="relative">
         <div className="flex items-center justify-between mb-2.5">
-          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-bronze-400">
+          <div className="text-[11px] font-semibold tracking-[1px] uppercase text-accent-400">
             Monthly recurring
           </div>
           {!loading && (
@@ -1053,7 +1053,7 @@ function MrrHero({
         ) : (
           <div className="tp-display tp-num text-[48px] font-bold leading-none tracking-[-0.04em]">
             {fmtUSD(mrr)}
-            <span className="text-lg text-bronze-400 font-semibold ml-1">
+            <span className="text-lg text-accent-400 font-semibold ml-1">
               /mo
             </span>
           </div>
@@ -1106,20 +1106,20 @@ function ManualPaymentsCard({
   paymentCount: number;
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[88px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[88px] animate-pulse bg-neutral-100" />;
   }
   return (
-    <div className="rounded-[18px] bg-bronze-100 border border-bronze-400/40 p-3.5">
+    <div className="rounded-[18px] bg-accent-100 border border-accent-400/40 p-3.5">
       <div className="flex items-center gap-1.5 mb-1">
-        <DollarSign className="h-3.5 w-3.5 text-bronze-700" strokeWidth={2} />
-        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-bronze-700">
+        <DollarSign className="h-3.5 w-3.5 text-accent-700" strokeWidth={2} />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-accent-700">
           Cash + checks · 30d
         </div>
       </div>
-      <div className="tp-num tp-display text-[26px] font-bold leading-none text-bronze-700">
+      <div className="tp-num tp-display text-[26px] font-bold leading-none text-accent-700">
         {fmtUSD(totalCents / 100)}
       </div>
-      <div className="text-[11px] text-bronze-700/80 mt-1.5">
+      <div className="text-[11px] text-accent-700/80 mt-1.5">
         Offline {paymentCount} payment{paymentCount === 1 ? "" : "s"} · not via Stripe
       </div>
     </div>
@@ -1182,7 +1182,7 @@ function TurfProFeesCard({
   fees: Derived["turfproFees"] | null;
 }) {
   if (loading || !fees) {
-    return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-neutral-100" />;
   }
 
   const feeDollars = fees.currentMonthFeeCents / 100;
@@ -1200,20 +1200,20 @@ function TurfProFeesCard({
   return (
     <div className="tp-card p-3.5">
       <div className="flex items-center gap-1.5 mb-1">
-        <Receipt className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
-        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+        <Receipt className="h-3.5 w-3.5 text-neutral-500" strokeWidth={2} />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-neutral-500">
           TurfPro fees · this month
         </div>
       </div>
-      <div className="tp-num tp-display text-[26px] font-bold leading-none text-green-700">
+      <div className="tp-num tp-display text-[26px] font-bold leading-none text-brand-700">
         {fmtUSD(feeDollars)}
       </div>
-      <div className="text-[11px] text-ink-500 mt-1.5">
+      <div className="text-[11px] text-neutral-500 mt-1.5">
         TurfPro takes 0% — you keep 100% of customer payments.
       </div>
 
       {hasCharges && (
-        <div className="text-[11px] text-ink-500 mt-1">
+        <div className="text-[11px] text-neutral-500 mt-1">
           {fees.currentMonthCount} charge
           {fees.currentMonthCount === 1 ? "" : "s"} · {fmtUSD(chargeDollars)}{" "}
           total processed
@@ -1268,22 +1268,22 @@ function ChurnCard({
   churnedCount: number;
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[104px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[104px] animate-pulse bg-neutral-100" />;
   }
   // Industry rule of thumb: <2% monthly is healthy lawn-care churn.
   const healthy = churnPct < 2;
   return (
     <div className="tp-card p-3.5">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Repeat className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
-        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+        <Repeat className="h-3.5 w-3.5 text-neutral-500" strokeWidth={2} />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-neutral-500">
           Churn 30d
         </div>
       </div>
       <div
         className={cn(
           "tp-num tp-display text-[26px] font-bold leading-none flex items-baseline gap-1",
-          healthy ? "text-ink-900" : "text-destructive",
+          healthy ? "text-neutral-900" : "text-destructive",
         )}
       >
         {churnPct.toFixed(1)}
@@ -1292,7 +1292,7 @@ function ChurnCard({
           <ArrowUp className="h-4 w-4 text-destructive ml-0.5" strokeWidth={2.4} />
         )}
       </div>
-      <div className="text-[11px] text-ink-500 mt-1.5">
+      <div className="text-[11px] text-neutral-500 mt-1.5">
         {churnedCount} canceled · target &lt; 2%
       </div>
     </div>
@@ -1310,18 +1310,18 @@ function DriveCard({
   drive: Derived["driveData"];
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[104px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[104px] animate-pulse bg-neutral-100" />;
   }
   if (!drive) {
     return (
       <div className="tp-card p-3.5">
         <div className="flex items-center gap-1.5 mb-1.5">
-          <Gauge className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
-          <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+          <Gauge className="h-3.5 w-3.5 text-neutral-500" strokeWidth={2} />
+          <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-neutral-500">
             Drive-time
           </div>
         </div>
-        <div className="text-[13px] text-ink-500 mt-2">
+        <div className="text-[13px] text-neutral-500 mt-2">
           No completed routes yet.
         </div>
       </div>
@@ -1331,21 +1331,21 @@ function DriveCard({
   return (
     <div className="tp-card p-3.5">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Gauge className="h-3.5 w-3.5 text-ink-500" strokeWidth={2} />
-        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+        <Gauge className="h-3.5 w-3.5 text-neutral-500" strokeWidth={2} />
+        <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-neutral-500">
           Drive-time
         </div>
       </div>
       <div
         className={cn(
           "tp-num tp-display text-[26px] font-bold leading-none flex items-baseline gap-1",
-          efficient ? "text-ink-900" : "text-bronze-600",
+          efficient ? "text-neutral-900" : "text-accent-600",
         )}
       >
         {drive.drivePct.toFixed(0)}
         <span className="text-sm opacity-60">%</span>
       </div>
-      <div className="text-[11px] text-ink-500 mt-1.5">
+      <div className="text-[11px] text-neutral-500 mt-1.5">
         Good &lt; 25% · {drive.routeCount} route
         {drive.routeCount === 1 ? "" : "s"}
       </div>
@@ -1364,12 +1364,12 @@ function CrewBars({
   bars: Derived["crewBars"];
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[180px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[180px] animate-pulse bg-neutral-100" />;
   }
   if (bars.length === 0) {
     return (
       <div className="tp-card p-5 text-center">
-        <p className="text-[13px] text-ink-500">
+        <p className="text-[13px] text-neutral-500">
           No completed routes with crew + revenue yet.
         </p>
       </div>
@@ -1438,7 +1438,7 @@ function QuoteVsPlanCard({
   split: Derived["quoteVsPlan"] | null;
 }) {
   if (loading || !split) {
-    return <div className="tp-card p-3.5 h-[140px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[140px] animate-pulse bg-neutral-100" />;
   }
   const { planRevenue, quoteRevenue, planPct, quotePct } = split;
   const total = planRevenue + quoteRevenue;
@@ -1447,10 +1447,10 @@ function QuoteVsPlanCard({
     return (
       <div className="tp-card p-5 text-center">
         <Split
-          className="h-6 w-6 mx-auto text-ink-400"
+          className="h-6 w-6 mx-auto text-neutral-400"
           strokeWidth={1.6}
         />
-        <p className="text-[13px] text-ink-500 mt-2">
+        <p className="text-[13px] text-neutral-500 mt-2">
           No completed revenue in the last 90 days.
         </p>
       </div>
@@ -1464,10 +1464,10 @@ function QuoteVsPlanCard({
   return (
     <div className="tp-card p-3.5">
       <div className="flex items-baseline justify-between mb-3">
-        <div className="tp-num tp-display text-[22px] font-bold text-ink-900">
+        <div className="tp-num tp-display text-[22px] font-bold text-neutral-900">
           {fmtUSD(total)}
         </div>
-        <div className="text-[11px] text-ink-500">total 90d</div>
+        <div className="text-[11px] text-neutral-500">total 90d</div>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -1488,7 +1488,7 @@ function QuoteVsPlanCard({
       </div>
 
       {quoteRevenue <= 0 && (
-        <p className="text-[11px] text-ink-500 mt-3">
+        <p className="text-[11px] text-neutral-500 mt-3">
           No one-off jobs accepted in this window.
         </p>
       )}
@@ -1512,13 +1512,13 @@ function SplitBar({
   return (
     <div>
       <div className="flex items-baseline justify-between mb-1">
-        <span className="text-[12px] font-semibold text-ink-700">{label}</span>
-        <span className="tp-num text-[12px] text-ink-900">
+        <span className="text-[12px] font-semibold text-neutral-700">{label}</span>
+        <span className="tp-num text-[12px] text-neutral-900">
           <span className="font-semibold">{fmtUSD(value)}</span>
-          <span className="text-ink-500 ml-1.5">{pct.toFixed(0)}%</span>
+          <span className="text-neutral-500 ml-1.5">{pct.toFixed(0)}%</span>
         </span>
       </div>
-      <div className="h-[10px] rounded-full bg-ink-100 overflow-hidden">
+      <div className="h-[10px] rounded-full bg-neutral-100 overflow-hidden">
         <div
           className="h-full rounded-full transition-[width]"
           style={{ width: `${Math.max(2, widthPct)}%`, background: color }}
@@ -1544,17 +1544,17 @@ function SeasonalityCard({
   median: number;
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[220px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[220px] animate-pulse bg-neutral-100" />;
   }
   const hasData = weeks.some((w) => w.revenue > 0);
   if (!hasData) {
     return (
       <div className="tp-card p-5 text-center">
         <CalendarIcon
-          className="h-6 w-6 mx-auto text-ink-400"
+          className="h-6 w-6 mx-auto text-neutral-400"
           strokeWidth={1.6}
         />
-        <p className="text-[13px] text-ink-500 mt-2">
+        <p className="text-[13px] text-neutral-500 mt-2">
           Not enough history yet — check back after a few visits.
         </p>
       </div>
@@ -1567,16 +1567,16 @@ function SeasonalityCard({
     <div className="tp-card p-3.5">
       <div className="flex items-baseline justify-between mb-2">
         <div>
-          <div className="tp-num tp-display text-[22px] font-bold text-ink-900">
+          <div className="tp-num tp-display text-[22px] font-bold text-neutral-900">
             {fmtUSD(currentWeek?.revenue ?? 0)}
           </div>
-          <div className="text-[11px] text-ink-500">this week</div>
+          <div className="text-[11px] text-neutral-500">this week</div>
         </div>
         <div className="text-right">
-          <div className="tp-num text-[14px] font-semibold text-ink-700">
+          <div className="tp-num text-[14px] font-semibold text-neutral-700">
             {fmtUSD(median)}
           </div>
-          <div className="text-[11px] text-ink-500">52w median</div>
+          <div className="text-[11px] text-neutral-500">52w median</div>
         </div>
       </div>
 
@@ -1683,16 +1683,16 @@ function TopServices({
   rows: Derived["topServices"];
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[220px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[220px] animate-pulse bg-neutral-100" />;
   }
   if (rows.length === 0) {
     return (
       <div className="tp-card p-5 text-center">
         <Wrench
-          className="h-6 w-6 mx-auto text-ink-400"
+          className="h-6 w-6 mx-auto text-neutral-400"
           strokeWidth={1.6}
         />
-        <p className="text-[13px] text-ink-500 mt-2">
+        <p className="text-[13px] text-neutral-500 mt-2">
           No completed services yet.
         </p>
       </div>
@@ -1707,22 +1707,22 @@ function TopServices({
           return (
             <li key={r.name}>
               <div className="flex items-baseline justify-between mb-1">
-                <span className="text-[13px] font-semibold text-ink-900 truncate pr-2">
+                <span className="text-[13px] font-semibold text-neutral-900 truncate pr-2">
                   {r.name}
                 </span>
                 <span className="tp-num text-[12px] shrink-0">
-                  <span className="font-semibold text-ink-900">
+                  <span className="font-semibold text-neutral-900">
                     {fmtUSD(r.revenue)}
                   </span>
-                  <span className="text-ink-500 ml-1.5">
+                  <span className="text-neutral-500 ml-1.5">
                     {r.visits} visit{r.visits === 1 ? "" : "s"}
                   </span>
-                  <span className="text-ink-500 ml-1.5">
+                  <span className="text-neutral-500 ml-1.5">
                     {r.pct.toFixed(0)}%
                   </span>
                 </span>
               </div>
-              <div className="h-[8px] rounded-full bg-ink-100 overflow-hidden">
+              <div className="h-[8px] rounded-full bg-neutral-100 overflow-hidden">
                 <div
                   className="h-full rounded-full"
                   style={{
@@ -1750,13 +1750,13 @@ function LifetimeStatsCard({
   stats: Derived["lifetime"] | null;
 }) {
   if (loading || !stats) {
-    return <div className="tp-card p-3.5 h-[100px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[100px] animate-pulse bg-neutral-100" />;
   }
   if (stats.customerCount === 0) {
     return (
       <div className="tp-card p-5 text-center">
-        <Users className="h-6 w-6 mx-auto text-ink-400" strokeWidth={1.6} />
-        <p className="text-[13px] text-ink-500 mt-2">
+        <Users className="h-6 w-6 mx-auto text-neutral-400" strokeWidth={1.6} />
+        <p className="text-[13px] text-neutral-500 mt-2">
           No completed customer visits yet.
         </p>
       </div>
@@ -1791,13 +1791,13 @@ function MiniStat({
 }) {
   return (
     <div>
-      <div className="text-[10.5px] font-semibold tracking-[0.3px] uppercase text-ink-500">
+      <div className="text-[10.5px] font-semibold tracking-[0.3px] uppercase text-neutral-500">
         {label}
       </div>
-      <div className="tp-num tp-display text-[20px] font-bold leading-tight text-ink-900 mt-0.5">
+      <div className="tp-num tp-display text-[20px] font-bold leading-tight text-neutral-900 mt-0.5">
         {value}
       </div>
-      {sub && <div className="text-[10.5px] text-ink-500 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[10.5px] text-neutral-500 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -1818,7 +1818,7 @@ function TopCustomers({
         {[0, 1, 2].map((i) => (
           <li
             key={i}
-            className="tp-card p-3 h-[54px] animate-pulse bg-ink-100"
+            className="tp-card p-3 h-[54px] animate-pulse bg-neutral-100"
           />
         ))}
       </ul>
@@ -1827,8 +1827,8 @@ function TopCustomers({
   if (customers.length === 0) {
     return (
       <div className="tp-card p-5 text-center">
-        <Users className="h-6 w-6 mx-auto text-ink-400" strokeWidth={1.6} />
-        <p className="text-[13px] text-ink-500 mt-2">
+        <Users className="h-6 w-6 mx-auto text-neutral-400" strokeWidth={1.6} />
+        <p className="text-[13px] text-neutral-500 mt-2">
           No paid stops yet.
         </p>
       </div>
@@ -1842,20 +1842,20 @@ function TopCustomers({
             to={`/customers/${c.id}`}
             className="tp-card flex items-center gap-3 px-3 py-2.5 active:scale-[0.99] transition-transform"
           >
-            <div className="tp-num tp-display text-[15px] font-bold text-bronze-600 w-6 text-center">
+            <div className="tp-num tp-display text-[15px] font-bold text-accent-600 w-6 text-center">
               {i + 1}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13.5px] text-ink-900 truncate">
+              <div className="font-semibold text-[13.5px] text-neutral-900 truncate">
                 {c.name}
               </div>
               {c.address && (
-                <div className="text-[11px] text-ink-500 truncate">
+                <div className="text-[11px] text-neutral-500 truncate">
                   {c.address}
                 </div>
               )}
             </div>
-            <div className="tp-num font-bold text-[14px] text-ink-900 shrink-0">
+            <div className="tp-num font-bold text-[14px] text-neutral-900 shrink-0">
               {fmtUSD(c.total)}
             </div>
           </Link>
@@ -1876,12 +1876,12 @@ function SkipLog({
   skips: Derived["agingSkips"];
 }) {
   if (loading) {
-    return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-ink-100" />;
+    return <div className="tp-card p-3.5 h-[120px] animate-pulse bg-neutral-100" />;
   }
   if (skips.length === 0) {
     return (
       <div className="tp-card p-5 text-center">
-        <p className="text-[13px] text-ink-500">
+        <p className="text-[13px] text-neutral-500">
           No skipped stops — nice work.
         </p>
       </div>
@@ -1904,13 +1904,13 @@ function SkipLog({
                 strokeWidth={2}
               />
             ) : (
-              <div className="h-4 w-4 rounded-full bg-ink-200 shrink-0" />
+              <div className="h-4 w-4 rounded-full bg-neutral-200 shrink-0" />
             )}
             <div className="flex-1 min-w-0">
               <div
                 className={cn(
                   "font-semibold text-[13px] truncate",
-                  s.atRisk ? "text-destructive" : "text-ink-900",
+                  s.atRisk ? "text-destructive" : "text-neutral-900",
                 )}
               >
                 {s.address}
@@ -1921,7 +1921,7 @@ function SkipLog({
                 </div>
               )}
             </div>
-            <div className="tp-num text-[13px] font-bold text-ink-700 shrink-0">
+            <div className="tp-num text-[13px] font-bold text-neutral-700 shrink-0">
               {s.count}× skip{s.count === 1 ? "" : "s"}
             </div>
           </Link>

@@ -36,23 +36,23 @@ export default function MessageBubble({ message }: Props) {
           className={[
             "rounded-2xl px-3 py-2 text-[14px] leading-relaxed whitespace-pre-wrap break-words",
             isInbound
-              ? "bg-ink-100 text-ink-900 rounded-bl-sm"
+              ? "bg-neutral-100 text-neutral-900 rounded-bl-sm"
               : failed
                 ? "bg-red-100 text-red-900 rounded-br-sm border border-red-200"
                 : queued
-                  ? "bg-bronze-100 text-bronze-900 rounded-br-sm border border-bronze-200"
-                  : "bg-green-700 text-white rounded-br-sm",
+                  ? "bg-accent-100 text-accent-900 rounded-br-sm border border-accent-200"
+                  : "bg-brand-700 text-white rounded-br-sm",
           ].join(" ")}
         >
           {message.body}
         </div>
         <div
-          className={`flex items-center gap-1 text-[10px] text-ink-500 tp-num ${
+          className={`flex items-center gap-1 text-[10px] text-neutral-500 tp-num ${
             isInbound ? "self-start" : "self-end"
           }`}
         >
           {!isInbound && queued && message.deferredByQuietHours && (
-            <span className="flex items-center gap-0.5 text-bronze-700">
+            <span className="flex items-center gap-0.5 text-accent-700">
               <MoonStar className="h-3 w-3" strokeWidth={2} />
               quiet hours
             </span>

@@ -244,7 +244,7 @@ export default function PropertyDetail() {
   });
 
   if (isLoading) {
-    return <div className="pt-6 px-[22px] text-sm text-ink-500">Loading…</div>;
+    return <div className="pt-6 px-[22px] text-sm text-neutral-500">Loading…</div>;
   }
   if (!data?.property) {
     return (
@@ -252,11 +252,11 @@ export default function PropertyDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="text-sm text-ink-500 inline-flex items-center gap-1.5 mb-3"
+          className="text-sm text-neutral-500 inline-flex items-center gap-1.5 mb-3"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        <div className="tp-card p-5 text-sm text-ink-700">Property not found.</div>
+        <div className="tp-card p-5 text-sm text-neutral-700">Property not found.</div>
       </div>
     );
   }
@@ -270,22 +270,22 @@ export default function PropertyDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-ink-500 mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.4px] uppercase text-neutral-500 mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-bronze-600">
+            <div className="text-[10px] font-semibold tracking-[0.4px] uppercase text-accent-600">
               Property
             </div>
-            <h1 className="tp-display text-[24px] font-bold text-ink-900 mt-0.5 leading-tight">
+            <h1 className="tp-display text-[24px] font-bold text-neutral-900 mt-0.5 leading-tight">
               {property.address}
             </h1>
             {customerName && (
               <Link
                 to={`/customers/${property.customer_id}`}
-                className="text-sm text-green-800 font-semibold mt-1 inline-flex items-center gap-1"
+                className="text-sm text-brand-800 font-semibold mt-1 inline-flex items-center gap-1"
               >
                 For {customerName}
                 <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.2} />
@@ -299,7 +299,7 @@ export default function PropertyDetail() {
                 setSaveError(null);
                 setEditing(true);
               }}
-              className="h-10 px-3.5 rounded-[14px] border border-ink-200 bg-card text-ink-700 text-sm font-semibold inline-flex items-center gap-1.5"
+              className="h-10 px-3.5 rounded-[14px] border border-neutral-200 bg-card text-neutral-700 text-sm font-semibold inline-flex items-center gap-1.5"
             >
               <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Edit
             </button>
@@ -439,7 +439,7 @@ export default function PropertyDetail() {
                 setSaveError(null);
                 setEditing(false);
               }}
-              className="flex-1 h-11 rounded-[14px] bg-ink-100 text-ink-700 font-bold text-sm"
+              className="flex-1 h-11 rounded-[14px] bg-neutral-100 text-neutral-700 font-bold text-sm"
             >
               Cancel
             </button>
@@ -447,7 +447,7 @@ export default function PropertyDetail() {
               type="button"
               onClick={() => saveProperty.mutate()}
               disabled={saveProperty.isPending}
-              className="flex-1 h-11 rounded-[14px] bg-bronze-500 text-white font-bold text-sm shadow-bronze hover:bg-bronze-600 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+              className="flex-1 h-11 rounded-[14px] bg-accent-500 text-white font-bold text-sm shadow-accent hover:bg-accent-600 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
               {saveProperty.isPending ? "Saving…" : "Save"}
@@ -461,15 +461,15 @@ export default function PropertyDetail() {
           <div className="tp-card p-4 space-y-3">
             <SectionLabel>Property</SectionLabel>
             <div className="flex items-start gap-2">
-              <MapPin className="h-4 w-4 mt-0.5 text-green-800 shrink-0" strokeWidth={2.2} />
+              <MapPin className="h-4 w-4 mt-0.5 text-brand-800 shrink-0" strokeWidth={2.2} />
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-ink-900">{property.address}</div>
+                <div className="font-semibold text-sm text-neutral-900">{property.address}</div>
                 {property.lat != null && property.lng != null && (
                   <a
                     href={`https://www.google.com/maps?q=${property.lat},${property.lng}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs text-green-800 underline font-semibold"
+                    className="text-xs text-brand-800 underline font-semibold"
                   >
                     Open in Maps
                   </a>
@@ -539,7 +539,7 @@ export default function PropertyDetail() {
               {!property.pet_safe_only &&
                 !property.irrigation_present &&
                 !property.bag_clippings && (
-                  <div className="text-xs text-ink-500">
+                  <div className="text-xs text-neutral-500">
                     No lawn-care flags set. Edit to record grass type, mow height,
                     irrigation, etc.
                   </div>
@@ -551,13 +551,13 @@ export default function PropertyDetail() {
 
       {/* ── Plans for this property ──────────────────────────────────── */}
       <section className="mx-4 mb-4">
-        <h2 className="tp-display text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5 px-1 pb-2">
-          <Repeat className="h-4 w-4 text-green-800" strokeWidth={2.2} />
+        <h2 className="tp-display text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5 px-1 pb-2">
+          <Repeat className="h-4 w-4 text-brand-800" strokeWidth={2.2} />
           Plans for this property
-          <span className="text-ink-500 font-semibold text-xs ml-0.5">({plans.length})</span>
+          <span className="text-neutral-500 font-semibold text-xs ml-0.5">({plans.length})</span>
         </h2>
         {plans.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">No plans yet for this property.</div>
+          <div className="tp-card p-4 text-sm text-neutral-500">No plans yet for this property.</div>
         ) : (
           <div className="space-y-2">
             {plans.map((p) => {
@@ -571,36 +571,36 @@ export default function PropertyDetail() {
                 <Link
                   key={p.id}
                   to={`/plans/${p.id}`}
-                  className="tp-card p-3.5 flex items-center justify-between gap-3 active:bg-ink-100 transition-colors"
+                  className="tp-card p-3.5 flex items-center justify-between gap-3 active:bg-neutral-100 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-bold text-ink-900 capitalize">
+                      <span className="text-sm font-bold text-neutral-900 capitalize">
                         {freq.replace("_", " ")}
                       </span>
                       {day && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-brand-100 text-brand-800 px-1.5 py-0.5 rounded-full">
                           {day}
                         </span>
                       )}
                       <span
                         className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${
                           isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-ink-100 text-ink-700"
+                            ? "bg-brand-100 text-brand-800"
+                            : "bg-neutral-100 text-neutral-700"
                         }`}
                       >
                         {p.status}
                       </span>
                     </div>
-                    <div className="text-[11px] text-ink-500 mt-0.5">
+                    <div className="text-[11px] text-neutral-500 mt-0.5">
                       every {p.interval_months} mo
                     </div>
                   </div>
-                  <div className="tp-display tp-num text-base font-bold text-ink-900 shrink-0">
+                  <div className="tp-display tp-num text-base font-bold text-neutral-900 shrink-0">
                     {fmtUSD(Number(p.amount))}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-ink-400 shrink-0" strokeWidth={2.2} />
+                  <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={2.2} />
                 </Link>
               );
             })}
@@ -610,14 +610,14 @@ export default function PropertyDetail() {
 
       {/* ── Recent applications ──────────────────────────────────────── */}
       <section className="mx-4 mb-4">
-        <h2 className="tp-display text-[15px] font-bold text-ink-900 inline-flex items-center gap-1.5 px-1 pb-2">
-          <Beaker className="h-4 w-4 text-bronze-600" strokeWidth={2.2} />
+        <h2 className="tp-display text-[15px] font-bold text-neutral-900 inline-flex items-center gap-1.5 px-1 pb-2">
+          <Beaker className="h-4 w-4 text-accent-600" strokeWidth={2.2} />
           Recent applications
-          <span className="text-ink-500 font-semibold text-xs ml-0.5">({chems.length})</span>
+          <span className="text-neutral-500 font-semibold text-xs ml-0.5">({chems.length})</span>
         </h2>
         {chems.length === 0 ? (
-          <div className="tp-card p-4 text-sm text-ink-500">
-            <Trees className="h-4 w-4 inline -mt-0.5 mr-1 text-ink-400" strokeWidth={1.8} />
+          <div className="tp-card p-4 text-sm text-neutral-500">
+            <Trees className="h-4 w-4 inline -mt-0.5 mr-1 text-neutral-400" strokeWidth={1.8} />
             No chemical applications logged yet for this property.
           </div>
         ) : (
@@ -626,14 +626,14 @@ export default function PropertyDetail() {
               <div
                 key={c.id}
                 className={`p-3.5 flex items-center justify-between gap-3 ${
-                  i ? "border-t border-ink-200" : ""
+                  i ? "border-t border-neutral-200" : ""
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-ink-900 truncate">
+                  <div className="text-sm font-semibold text-neutral-900 truncate">
                     {c.product_name}
                   </div>
-                  <div className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1.5">
+                  <div className="text-[11px] text-neutral-500 mt-0.5 flex items-center gap-1.5">
                     <span>{new Date(c.applied_at).toLocaleDateString()}</span>
                     {c.application_type && (
                       <>
@@ -645,10 +645,10 @@ export default function PropertyDetail() {
                 </div>
                 {c.area_sqft != null && (
                   <div className="text-right shrink-0">
-                    <div className="tp-num text-sm font-bold text-ink-900">
+                    <div className="tp-num text-sm font-bold text-neutral-900">
                       {c.area_sqft.toLocaleString()}
                     </div>
-                    <div className="text-[10px] text-ink-500">sqft</div>
+                    <div className="text-[10px] text-neutral-500">sqft</div>
                   </div>
                 )}
               </div>
@@ -672,15 +672,15 @@ export default function PropertyDetail() {
           width: 100%;
           padding: 10px 12px;
           border-radius: 10px;
-          border: 1.5px solid hsl(var(--ink-200));
+          border: 1.5px solid hsl(var(--neutral-200));
           background: hsl(var(--card));
-          color: hsl(var(--ink-900));
+          color: hsl(var(--neutral-900));
           font-size: 14px;
           font-weight: 500;
           outline: none;
           transition: border-color 0.15s;
         }
-        .tp-input:focus { border-color: hsl(var(--green-800)); }
+        .tp-input:focus { border-color: hsl(var(--brand-800)); }
       `}</style>
     </div>
   );
@@ -694,7 +694,7 @@ function SectionLabel({
   accent?: "green" | "bronze";
 }) {
   const tone =
-    accent === "green" ? "text-green-800" : accent === "bronze" ? "text-bronze-600" : "text-ink-500";
+    accent === "green" ? "text-brand-800" : accent === "bronze" ? "text-accent-600" : "text-neutral-500";
   return (
     <div className={`text-[10px] font-bold uppercase tracking-[0.1em] ${tone}`}>
       {children}
@@ -705,7 +705,7 @@ function SectionLabel({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-1">
+      <span className="block text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-500 mb-1">
         {label}
       </span>
       {children}
@@ -716,10 +716,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-0.5">
+      <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-500 mb-0.5">
         {label}
       </div>
-      <div className="tp-num text-sm font-bold text-ink-900">{value}</div>
+      <div className="tp-num text-sm font-bold text-neutral-900">{value}</div>
     </div>
   );
 }
@@ -737,8 +737,8 @@ function InfoRow({
     tone === "destructive"
       ? "text-destructive"
       : tone === "warning"
-      ? "text-bronze-700"
-      : "text-ink-700";
+      ? "text-accent-700"
+      : "text-neutral-700";
   return (
     <div className={`flex items-center gap-2 text-sm font-semibold ${cls}`}>
       {icon}
@@ -758,9 +758,9 @@ function Pill({
 }) {
   const cls =
     tone === "green"
-      ? "bg-green-100 text-green-800"
+      ? "bg-brand-100 text-brand-800"
       : tone === "bronze"
-      ? "bg-bronze-100 text-bronze-700"
+      ? "bg-accent-100 text-accent-700"
       : "bg-[hsl(var(--rain-bg))] text-[hsl(var(--rain))]";
   return (
     <span
@@ -785,8 +785,8 @@ function ToggleRow({
 }) {
   return (
     <label className="flex items-center justify-between gap-3 py-1 cursor-pointer select-none">
-      <span className="inline-flex items-center gap-2 text-sm font-semibold text-ink-900">
-        {icon && <span className="text-ink-500">{icon}</span>}
+      <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-900">
+        {icon && <span className="text-neutral-500">{icon}</span>}
         {label}
       </span>
       <button
@@ -795,7 +795,7 @@ function ToggleRow({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`relative h-6 w-10 rounded-full transition-colors ${
-          checked ? "bg-green-700" : "bg-ink-200"
+          checked ? "bg-brand-700" : "bg-neutral-200"
         }`}
       >
         <span

@@ -71,7 +71,7 @@ const InvoiceView = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-green-800" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-800" />
       </div>
     );
   }
@@ -148,7 +148,7 @@ const InvoiceView = () => {
   return (
     <div className="min-h-screen bg-background">
       <BrandHeader business={business.business}>
-        <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-bronze-400">
+        <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-accent-400">
           {formatInvoiceNumber(invoice.invoice_number)} · {issued.toUpperCase()}
         </div>
         <h1 className="font-display text-[30px] text-white mt-1.5">
@@ -160,7 +160,7 @@ const InvoiceView = () => {
             : "Here's your invoice."}
         </p>
         <div className="mt-5">
-          <div className="tp-display tp-num text-[64px] leading-none text-bronze-400 font-extrabold">
+          <div className="tp-display tp-num text-[64px] leading-none text-accent-400 font-extrabold">
             {fmtUSD(isVoid ? total : amountDue)}
           </div>
           <div className="text-white/70 text-xs mt-1.5">
@@ -180,7 +180,7 @@ const InvoiceView = () => {
             </span>
           )}
           {isComplete && (
-            <span className="px-2.5 py-1 rounded-full bg-bronze-500 text-green-900 text-[11px] font-bold uppercase tracking-wider">
+            <span className="px-2.5 py-1 rounded-full bg-accent-500 text-brand-900 text-[11px] font-bold uppercase tracking-wider">
               Work complete
             </span>
           )}
@@ -211,23 +211,23 @@ const InvoiceView = () => {
                 }
               >
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm text-ink-900">{l.name}</div>
+                  <div className="font-bold text-sm text-neutral-900">{l.name}</div>
                   {l.qty !== 1 && (
                     <div className="text-[11px] text-muted-foreground mt-0.5 tp-num">
                       {l.qty} × {fmtUSD(l.rate)}
                     </div>
                   )}
                 </div>
-                <span className="tp-num font-bold text-sm text-ink-900">
+                <span className="tp-num font-bold text-sm text-neutral-900">
                   {fmtUSD(l.total)}
                 </span>
               </div>
             ))}
-            <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-green-50">
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-green-800">
+            <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-brand-50">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-brand-800">
                 Total
               </div>
-              <div className="tp-num font-extrabold text-base text-green-900">
+              <div className="tp-num font-extrabold text-base text-brand-900">
                 {fmtUSD(total)}
               </div>
             </div>
@@ -236,17 +236,17 @@ const InvoiceView = () => {
                 <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">
                   Paid
                 </div>
-                <div className="tp-num font-bold text-sm text-ink-900">
+                <div className="tp-num font-bold text-sm text-neutral-900">
                   −{fmtUSD(amountPaid)}
                 </div>
               </div>
             )}
             {hasBalance && (
-              <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-green-50">
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-green-800">
+              <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-brand-50">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-brand-800">
                   Balance due
                 </div>
-                <div className="tp-num font-extrabold text-base text-green-900">
+                <div className="tp-num font-extrabold text-base text-brand-900">
                   {fmtUSD(amountDue)}
                 </div>
               </div>
@@ -264,8 +264,8 @@ const InvoiceView = () => {
             </h2>
             <div className="tp-card p-4">
               <div className="flex items-baseline justify-between mb-1">
-                <span className="text-sm font-bold text-ink-900">Deposit</span>
-                <span className="tp-num font-extrabold text-lg text-green-900">
+                <span className="text-sm font-bold text-neutral-900">Deposit</span>
+                <span className="tp-num font-extrabold text-lg text-brand-900">
                   {fmtUSD(depositAmount)}
                 </span>
               </div>
@@ -276,7 +276,7 @@ const InvoiceView = () => {
               <button
                 onClick={payBalance}
                 disabled={payLoading}
-                className="w-full h-12 rounded-2xl bg-green-800 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+                className="w-full h-12 rounded-2xl bg-brand-800 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
               >
                 {payLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -300,8 +300,8 @@ const InvoiceView = () => {
             </h2>
             <div className="tp-card p-4">
               <div className="flex items-baseline justify-between mb-1">
-                <span className="text-sm font-bold text-ink-900">Balance due</span>
-                <span className="tp-num font-extrabold text-lg text-green-900">
+                <span className="text-sm font-bold text-neutral-900">Balance due</span>
+                <span className="tp-num font-extrabold text-lg text-brand-900">
                   {fmtUSD(amountDue)}
                 </span>
               </div>
@@ -312,7 +312,7 @@ const InvoiceView = () => {
               <button
                 onClick={payBalance}
                 disabled={payLoading}
-                className="w-full h-12 rounded-2xl bg-green-800 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+                className="w-full h-12 rounded-2xl bg-brand-800 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
               >
                 {payLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -335,7 +335,7 @@ const InvoiceView = () => {
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div className="text-sm">
-              <div className="font-extrabold text-ink-900">Paid in full</div>
+              <div className="font-extrabold text-neutral-900">Paid in full</div>
               <div className="text-muted-foreground text-xs mt-0.5">
                 Thanks{firstName ? `, ${firstName}` : ""} — we appreciate your
                 business.
@@ -346,7 +346,7 @@ const InvoiceView = () => {
 
         {/* Deposit received (balance still outstanding) */}
         {!isPaid && depositPaid && depositAmount > 0 && (
-          <section className="tp-card p-3.5 mt-4 text-sm text-green-800 font-bold flex items-center gap-2">
+          <section className="tp-card p-3.5 mt-4 text-sm text-brand-800 font-bold flex items-center gap-2">
             <ShieldCheck className="h-4 w-4" /> Deposit received — you're on the
             route.
           </section>
@@ -364,7 +364,7 @@ const InvoiceView = () => {
         </div>
 
         <div className="text-center text-[11px] text-muted-foreground pt-6 pb-10">
-          Powered by <span className="font-semibold text-green-800">TurfPro</span>
+          Powered by <span className="font-semibold text-brand-800">TurfPro</span>
         </div>
       </main>
     </div>
