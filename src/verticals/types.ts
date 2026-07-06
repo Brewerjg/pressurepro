@@ -7,6 +7,7 @@
 
 import type { QuoteLineModule } from "./quote-line";
 import type { CatalogModule } from "./catalog";
+import type { VerticalRoute, NavEntry, HomeAction } from "./shell";
 
 export type AppId = "turfpro" | "pressurepro";
 
@@ -25,4 +26,10 @@ export interface Vertical {
   };
   quoteLine: QuoteLineModule;
   catalog: CatalogModule;
+  /** Routes this vertical injects into the shared router (lawn: calc, chem-log, routes). */
+  extraRoutes: VerticalRoute[];
+  /** Bottom tab-bar entries for this vertical. */
+  navEntries: NavEntry[];
+  /** Home quick-action tiles specific to this vertical. */
+  homeActions: HomeAction[];
 }
