@@ -6,6 +6,7 @@
 // pieces are extracted out of the shared core. Do not add unused seams early.
 
 import type { QuoteLineModule } from "./quote-line";
+import type { CatalogModule } from "./catalog";
 
 export type AppId = "turfpro" | "pressurepro";
 
@@ -23,4 +24,5 @@ export interface Vertical {
     themeColor: string;
   };
   quoteLine: QuoteLineModule;
+  catalog: CatalogModule;
 }
