@@ -77,9 +77,12 @@ export interface PlanLineItem {
  *   single $55/visit item, not $220.
  */
 export function deriveInitialLineItems(lines: QuoteLine[]): PlanLineItem[] {
+  // The shared QuoteLine is opaque; this transform reads only these lawn fields.
+  type ConvertibleLine = { id: string; name?: string; rate?: number };
   const seen = new Set<string>();
   const out: PlanLineItem[] = [];
-  for (const l of lines) {
+  for (const raw of lines) {
+    const l = raw as ConvertibleLine;
     const name = l.name?.trim();
     if (!name || seen.has(name)) continue;
     seen.add(name);

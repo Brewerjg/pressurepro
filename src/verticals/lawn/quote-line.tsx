@@ -8,6 +8,17 @@ import type {
 } from "@/verticals/quote-line";
 import { Section, Field } from "@/components/quotes/FormSection";
 
+// The concrete lawn line. The shared QuoteLine is opaque; this module is the one
+// place that knows the lawn shape, so it casts at its boundary (parse/build emit
+// these as QuoteLine; the readers below cast back).
+interface LawnQuoteLine extends QuoteLine {
+  catalog_item_id?: string;
+  name: string;
+  qty: number;
+  rate: number;
+  total: number;
+}
+
 // Lawn line math/parse — relocated verbatim from src/components/quotes/types.ts.
 function lawnLineTotal(l: { qty: number; rate: number }): number {
   return Math.round((l.qty ?? 0) * (l.rate ?? 0) * 100) / 100;
@@ -80,7 +91,8 @@ function lawnCatalogToLine(item: CatalogItem): QuoteLine {
   return { id: crypto.randomUUID(), catalog_item_id: item.id, name: item.name, qty: 1, rate, total: rate };
 }
 
-function lawnDescribe(l: QuoteLine): LineDescription {
+function lawnDescribe(line: QuoteLine): LineDescription {
+  const l = line as LawnQuoteLine;
   const qty = String(l.qty);
   const rate = typeof l.rate === "number" ? fmtLawnMoney(l.rate) : "—";
   return {
@@ -93,18 +105,19 @@ function lawnDescribe(l: QuoteLine): LineDescription {
 }
 
 function LawnLineEditor({ lines, catalog, onChange }: LineEditorProps) {
-  const addCatalogLine = (item: CatalogItem) => onChange([...lines, lawnCatalogToLine(item)]);
-  const addCustomLine = () => onChange([...lines, lawnBlankLine()]);
-  const updateLine = (id: string, patch: Partial<QuoteLine>) =>
+  const rows = lines as LawnQuoteLine[];
+  const addCatalogLine = (item: CatalogItem) => onChange([...rows, lawnCatalogToLine(item)]);
+  const addCustomLine = () => onChange([...rows, lawnBlankLine()]);
+  const updateLine = (id: string, patch: Partial<LawnQuoteLine>) =>
     onChange(
-      lines.map((l) => {
+      rows.map((l) => {
         if (l.id !== id) return l;
         const next = { ...l, ...patch };
         next.total = lawnLineTotal(next);
         return next;
       }),
     );
-  const removeLine = (id: string) => onChange(lines.filter((l) => l.id !== id));
+  const removeLine = (id: string) => onChange(rows.filter((l) => l.id !== id));
 
   return (
     <Section
@@ -146,9 +159,9 @@ function LawnLineEditor({ lines, catalog, onChange }: LineEditorProps) {
         Add custom line
       </button>
 
-      {lines.length > 0 && (
+      {rows.length > 0 && (
         <ul className="space-y-2 pt-1">
-          {lines.map((l) => (
+          {rows.map((l) => (
             <li key={l.id} className="rounded-xl border border-neutral-200 bg-card p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <input
@@ -207,7 +220,7 @@ export const lawnQuoteLine: QuoteLineModule = {
   catalogKindFilter: "service",
   blankLine: lawnBlankLine,
   catalogToLine: lawnCatalogToLine,
-  lineTotal: (l) => lawnLineTotal(l),
+  lineTotal: (l) => lawnLineTotal(l as LawnQuoteLine),
   parseLines: lawnParseLines,
   describe: lawnDescribe,
   LineEditor: LawnLineEditor,

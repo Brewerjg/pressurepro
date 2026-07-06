@@ -3,16 +3,17 @@ import type { ComponentType } from "react";
 // The quote-line seam — everything trade-specific about a quote's line items.
 // 0c-1a: concrete lawn QuoteLine shape. 0c-1b (Task 1) enriches LineDescription
 // and hardens describe/parseLines. QuoteLine loosens to { id; total; [k]: unknown }
-// in the FINAL task of this slice, not here.
+// in the FINAL task of this slice (Task 4) — the compiler-enforced seam.
 
-export type QuoteLine = {
+// Shared line — OPAQUE to the shared core. Display consumers know only id+total;
+// every trade-specific field is the active vertical's private shape, read for
+// display only through describe(). The lawn module casts to its concrete
+// LawnQuoteLine at its own boundary.
+export interface QuoteLine {
   id: string;
-  catalog_item_id?: string;
-  name: string;
-  qty: number;
-  rate: number;
   total: number;
-};
+  [key: string]: unknown;
+}
 
 export interface CatalogItem {
   id: string;
