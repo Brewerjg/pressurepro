@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
 import { getInvoiceByToken, formatInvoiceNumber, type Invoice } from "@/lib/invoices";
-import { parseLines, type QuoteLine } from "@/components/quotes/types";
+import { parseLines, describe, type QuoteLine } from "@/components/quotes/types";
 
 // Customer-facing PUBLIC invoice (no auth). Resolved by invoices.public_token
 // via getInvoiceByToken (the anon supabase client reads it through the public
@@ -202,27 +202,30 @@ const InvoiceView = () => {
             {lines.length === 0 && (
               <div className="p-4 text-sm text-muted-foreground">No line items.</div>
             )}
-            {lines.map((l, i) => (
-              <div
-                key={l.id ?? i}
-                className={
-                  "flex items-center gap-2.5 p-3.5 " +
-                  (i ? "border-t border-hairline" : "")
-                }
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm text-neutral-900">{l.name}</div>
-                  {l.qty !== 1 && (
-                    <div className="text-[11px] text-muted-foreground mt-0.5 tp-num">
-                      {l.qty} × {fmtUSD(l.rate)}
-                    </div>
-                  )}
+            {lines.map((l, i) => {
+              const d = describe(l);
+              return (
+                <div
+                  key={l.id ?? i}
+                  className={
+                    "flex items-center gap-2.5 p-3.5 " +
+                    (i ? "border-t border-hairline" : "")
+                  }
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-neutral-900">{d.label}</div>
+                    {d.detail && (
+                      <div className="text-[11px] text-muted-foreground mt-0.5 tp-num">
+                        {d.detail}
+                      </div>
+                    )}
+                  </div>
+                  <span className="tp-num font-bold text-sm text-neutral-900">
+                    {fmtUSD(d.amount)}
+                  </span>
                 </div>
-                <span className="tp-num font-bold text-sm text-neutral-900">
-                  {fmtUSD(l.total)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             <div className="border-t border-hairline p-3.5 flex items-center justify-between bg-brand-50">
               <div className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-brand-800">
                 Total

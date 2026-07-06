@@ -4,32 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { Check, Phone, Loader2, Printer, ShieldCheck, Repeat, CreditCard } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
-
-// TurfPro lines are service-based (mow, edge, fert, aeration, cleanup, etc.).
-// We deliberately drop PressurePro's surface_type/emoji vocabulary — lawn
-// services are not surface-typed and rendering "🧱" next to "Spring cleanup"
-// would be wrong. We accept either { name, total } or PressurePro-shape lines
-// (with surface label) so legacy rows in the shared DB don't break the page.
-interface QuoteLine {
-  id?: string;
-  name?: string;
-  label?: string;
-  custom?: boolean;
-  qty?: number;
-  rate?: number;
-  total?: number;
-  area_sqft?: number;
-  // PressurePro legacy fields — used as fallback for line labeling.
-  surface?: string;
-  sqft?: number;
-  mode?: string;
-}
+import { parseLines, describe, quoteTotal } from "@/components/quotes/types";
 
 interface PublicQuote {
   id: string;
   customer_name: string;
   address: string;
-  lines: QuoteLine[];
+  lines: unknown;
   status: string;
   recurring_months: number | null;
   total: number;
@@ -47,31 +28,6 @@ interface BusinessInfo {
 
 const fmtUSD = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-
-const lineLabel = (l: QuoteLine): string => {
-  if (l.custom && l.label) return l.label;
-  if (l.name) return l.name;
-  if (l.label) return l.label;
-  // Fall back to PressurePro-style surface label (humanized).
-  if (l.surface) {
-    return l.surface.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-  return "Service";
-};
-
-const lineSubtitle = (l: QuoteLine): string | null => {
-  if (l.area_sqft) return `${l.area_sqft.toLocaleString()} sqft`;
-  if (l.sqft) return `${l.sqft.toLocaleString()} sqft`;
-  if (l.qty && l.qty !== 1) return `Qty ${l.qty}`;
-  return null;
-};
-
-const lineAmount = (l: QuoteLine): number => {
-  if (typeof l.total === "number") return l.total;
-  if (typeof l.rate === "number" && typeof l.qty === "number") return l.rate * l.qty;
-  if (typeof l.rate === "number" && typeof l.sqft === "number") return l.rate * l.sqft;
-  return 0;
-};
 
 const MIN_NAME_CHARS = 2;
 const MAX_NAME_CHARS = 120;
@@ -289,8 +245,8 @@ const Accept = () => {
     }
   };
 
-  const lines = Array.isArray(q.lines) ? q.lines : [];
-  const computedTotal = lines.reduce((s, l) => s + lineAmount(l), 0);
+  const lines = parseLines(q.lines);
+  const computedTotal = quoteTotal(lines);
   const total = q.total ?? computedTotal;
   const accepted = q.status === "accepted";
   const firstName = q.customer_name.split(" ")[0];
@@ -338,7 +294,7 @@ const Accept = () => {
               <div className="p-4 text-sm text-muted-foreground">No line items.</div>
             )}
             {lines.map((l, i) => {
-              const subtitle = lineSubtitle(l);
+              const d = describe(l);
               return (
                 <div
                   key={l.id ?? i}
@@ -348,13 +304,15 @@ const Accept = () => {
                   }
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-neutral-900">{lineLabel(l)}</div>
-                    {subtitle && (
-                      <div className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</div>
+                    <div className="font-bold text-sm text-neutral-900">{d.label}</div>
+                    {d.detail && (
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {d.detail}
+                      </div>
                     )}
                   </div>
                   <span className="tp-num font-bold text-sm text-neutral-900">
-                    {fmtUSD(lineAmount(l))}
+                    {fmtUSD(d.amount)}
                   </span>
                 </div>
               );
