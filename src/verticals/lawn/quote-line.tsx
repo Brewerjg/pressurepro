@@ -8,29 +8,64 @@ import type {
 } from "@/verticals/quote-line";
 import { Section, Field } from "@/components/quotes/FormSection";
 
+// The concrete lawn line. The shared QuoteLine is opaque; this module is the one
+// place that knows the lawn shape, so it casts at its boundary (parse/build emit
+// these as QuoteLine; the readers below cast back).
+interface LawnQuoteLine extends QuoteLine {
+  catalog_item_id?: string;
+  name: string;
+  qty: number;
+  rate: number;
+  total: number;
+}
+
 // Lawn line math/parse — relocated verbatim from src/components/quotes/types.ts.
 function lawnLineTotal(l: { qty: number; rate: number }): number {
   return Math.round((l.qty ?? 0) * (l.rate ?? 0) * 100) / 100;
+}
+
+// One money formatter for both the rate column and the detail subtitle so they
+// never diverge. `$${n.toFixed(2)}` matches the print tables' existing rate cell.
+function fmtLawnMoney(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+// "front_walk" → "Front Walk". Absorbs QuotePrint/Accept's local surface label logic.
+function humanizeSurface(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Line name precedence — absorbs the legacy label/custom/surface fallbacks the
+// public pages used to do in local `lineLabel` helpers.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lineName(r: any): string {
+  if (r.custom && typeof r.label === "string" && r.label) return r.label;
+  if (typeof r.name === "string" && r.name) return r.name;
+  if (typeof r.label === "string" && r.label) return r.label;
+  if (typeof r.surface === "string" && r.surface) return humanizeSurface(r.surface);
+  return "Service";
 }
 
 function lawnParseLines(raw: unknown): QuoteLine[] {
   if (!Array.isArray(raw)) return [];
   return raw
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((r: any) => {
+    .map((r: any): QuoteLine | null => {
       if (!r || typeof r !== "object") return null;
+      // Legacy pressure-shaped rows carried area in sqft/area_sqft and no qty key.
       const isLegacy =
-        typeof r.sqft === "number" && typeof r.rate === "number" && !("qty" in r);
+        (typeof r.sqft === "number" || typeof r.area_sqft === "number") &&
+        !("qty" in r);
       if (isLegacy) {
-        const qty = Number(r.sqft) || 0;
+        const qty = Number(r.area_sqft) || Number(r.sqft) || 0;
         const rate = Number(r.rate) || 0;
         return {
           id: typeof r.id === "string" ? r.id : crypto.randomUUID(),
-          name: r.label ?? r.surface ?? "Line",
+          name: lineName(r),
           qty,
           rate,
-          total: lawnLineTotal({ qty, rate }),
-        } as QuoteLine;
+          total: typeof r.total === "number" ? r.total : lawnLineTotal({ qty, rate }),
+        };
       }
       const qty = Number(r.qty) || 0;
       const rate = Number(r.rate) || 0;
@@ -38,11 +73,11 @@ function lawnParseLines(raw: unknown): QuoteLine[] {
         id: typeof r.id === "string" ? r.id : crypto.randomUUID(),
         catalog_item_id:
           typeof r.catalog_item_id === "string" ? r.catalog_item_id : undefined,
-        name: typeof r.name === "string" ? r.name : "Line",
+        name: lineName(r),
         qty,
         rate,
         total: typeof r.total === "number" ? r.total : lawnLineTotal({ qty, rate }),
-      } as QuoteLine;
+      };
     })
     .filter((l): l is QuoteLine => l !== null);
 }
@@ -56,23 +91,33 @@ function lawnCatalogToLine(item: CatalogItem): QuoteLine {
   return { id: crypto.randomUUID(), catalog_item_id: item.id, name: item.name, qty: 1, rate, total: rate };
 }
 
-function lawnDescribe(l: QuoteLine): LineDescription {
-  return { label: l.name, detail: l.qty === 1 ? null : `${l.qty} × $${l.rate}`, amount: l.total };
+function lawnDescribe(line: QuoteLine): LineDescription {
+  const l = line as LawnQuoteLine;
+  const qty = String(l.qty);
+  const rate = typeof l.rate === "number" ? fmtLawnMoney(l.rate) : "—";
+  return {
+    label: l.name,
+    detail: l.qty === 1 ? null : `${qty} × ${rate}`,
+    qty,
+    rate,
+    amount: l.total,
+  };
 }
 
 function LawnLineEditor({ lines, catalog, onChange }: LineEditorProps) {
-  const addCatalogLine = (item: CatalogItem) => onChange([...lines, lawnCatalogToLine(item)]);
-  const addCustomLine = () => onChange([...lines, lawnBlankLine()]);
-  const updateLine = (id: string, patch: Partial<QuoteLine>) =>
+  const rows = lines as LawnQuoteLine[];
+  const addCatalogLine = (item: CatalogItem) => onChange([...rows, lawnCatalogToLine(item)]);
+  const addCustomLine = () => onChange([...rows, lawnBlankLine()]);
+  const updateLine = (id: string, patch: Partial<LawnQuoteLine>) =>
     onChange(
-      lines.map((l) => {
+      rows.map((l) => {
         if (l.id !== id) return l;
         const next = { ...l, ...patch };
         next.total = lawnLineTotal(next);
         return next;
       }),
     );
-  const removeLine = (id: string) => onChange(lines.filter((l) => l.id !== id));
+  const removeLine = (id: string) => onChange(rows.filter((l) => l.id !== id));
 
   return (
     <Section
@@ -114,9 +159,9 @@ function LawnLineEditor({ lines, catalog, onChange }: LineEditorProps) {
         Add custom line
       </button>
 
-      {lines.length > 0 && (
+      {rows.length > 0 && (
         <ul className="space-y-2 pt-1">
-          {lines.map((l) => (
+          {rows.map((l) => (
             <li key={l.id} className="rounded-xl border border-neutral-200 bg-card p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <input
@@ -175,7 +220,7 @@ export const lawnQuoteLine: QuoteLineModule = {
   catalogKindFilter: "service",
   blankLine: lawnBlankLine,
   catalogToLine: lawnCatalogToLine,
-  lineTotal: (l) => lawnLineTotal(l),
+  lineTotal: (l) => lawnLineTotal(l as LawnQuoteLine),
   parseLines: lawnParseLines,
   describe: lawnDescribe,
   LineEditor: LawnLineEditor,

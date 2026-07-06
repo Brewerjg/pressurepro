@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { parseLines, type QuoteLine } from "@/components/quotes/types";
+import { parseLines, describe, type QuoteLine } from "@/components/quotes/types";
 import { deriveInitialLineItems } from "@/components/quotes/convertHelpers";
 import ConvertToPlanForm from "@/components/quotes/ConvertToPlanForm";
 import QuoteManualPaymentForm from "@/components/quotes/QuoteManualPaymentForm";
@@ -565,21 +565,26 @@ export default function InvoiceDetail() {
           <div className="tp-card p-4 text-sm text-neutral-500">No line items.</div>
         ) : (
           <ul className="space-y-2">
-            {lines.map((l) => (
-              <li key={l.id} className="tp-card p-3 flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm text-neutral-900 truncate">
-                    {l.name}
+            {lines.map((l) => {
+              const d = describe(l);
+              return (
+                <li key={l.id} className="tp-card p-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm text-neutral-900 truncate">
+                      {d.label}
+                    </div>
+                    {d.detail && (
+                      <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
+                        {d.detail}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
-                    {l.qty} × {fmtUSD(l.rate)}
+                  <div className="tp-num font-bold text-sm text-neutral-900 shrink-0">
+                    {fmtUSD(d.amount)}
                   </div>
-                </div>
-                <div className="tp-num font-bold text-sm text-neutral-900 shrink-0">
-                  {fmtUSD(l.total)}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import QuoteForm from "@/components/quotes/QuoteForm";
-import { parseLines, quoteTotal, type QuoteLine } from "@/components/quotes/types";
+import { parseLines, quoteTotal, describe, type QuoteLine } from "@/components/quotes/types";
 import { getInvoiceByQuote, formatInvoiceNumber } from "@/lib/invoices";
 import { publicAppOrigin } from "@/lib/public-url";
 import { sendQuote } from "@/lib/customer-email";
@@ -600,24 +600,26 @@ export default function QuoteDetail() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {lines.map((l) => (
-              <li
-                key={l.id}
-                className="tp-card p-3 flex items-center gap-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm text-neutral-900 truncate">
-                    {l.name}
+            {lines.map((l) => {
+              const d = describe(l);
+              return (
+                <li key={l.id} className="tp-card p-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm text-neutral-900 truncate">
+                      {d.label}
+                    </div>
+                    {d.detail && (
+                      <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
+                        {d.detail}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[11px] text-neutral-500 tp-num mt-0.5">
-                    {l.qty} × {fmtUSD(l.rate)}
+                  <div className="tp-num font-bold text-sm text-neutral-900 shrink-0">
+                    {fmtUSD(d.amount)}
                   </div>
-                </div>
-                <div className="tp-num font-bold text-sm text-neutral-900 shrink-0">
-                  {fmtUSD(l.total)}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
