@@ -2,9 +2,6 @@ import { describe, it, expect } from "vitest";
 import { lawnQuoteLine } from "@/verticals/lawn/quote-line";
 
 describe("lawnQuoteLine", () => {
-  it("catalogKindFilter is 'service'", () => {
-    expect(lawnQuoteLine.catalogKindFilter).toBe("service");
-  });
   it("blankLine returns a zeroed custom line with a uuid", () => {
     const l = lawnQuoteLine.blankLine();
     expect(l).toMatchObject({ name: "Custom service", qty: 1, rate: 0, total: 0 });

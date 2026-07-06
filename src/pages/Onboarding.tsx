@@ -17,7 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { seedDefaultLawnCatalog } from "@/components/onboarding/seedCatalog";
+import { seedDefaultCatalog } from "@/components/onboarding/seedCatalog";
 import {
   refreshConnectStatus,
   startConnectOnboarding,
@@ -317,7 +317,7 @@ export default function Onboarding() {
   const seedMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
-      await seedDefaultLawnCatalog(user.id);
+      await seedDefaultCatalog(user.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["catalog_items", user?.id] });
