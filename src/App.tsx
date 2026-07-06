@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/AppShell";
+import { vertical } from "@/vertical";
 
 // Eagerly-loaded routes: anything an authenticated user lands on within the
 // first few seconds (Home, the tab-bar destinations, Auth). Splitting these
@@ -15,7 +16,6 @@ import Home from "./pages/Home";
 import Test from "./pages/Test";
 import SignOut from "./pages/SignOut";
 import Customers from "./pages/Customers";
-import RoutesPage from "./pages/Routes";
 import Plans from "./pages/Plans";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -29,9 +29,6 @@ import RequireOnboarded from "./components/onboarding/RequireOnboarded";
 const Reports = lazy(() => import("./pages/Reports"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const CheckoutReturn = lazy(() => import("./pages/CheckoutReturn"));
-const RouteMode = lazy(() => import("./pages/RouteMode"));
-const ApplicationCalc = lazy(() => import("./pages/ApplicationCalc"));
-const ChemicalLog = lazy(() => import("./pages/ChemicalLog"));
 const Photos = lazy(() => import("./pages/Photos"));
 const NewPhotoPair = lazy(() => import("./pages/NewPhotoPair"));
 const PhotoDetail = lazy(() => import("./pages/PhotoDetail"));
@@ -89,6 +86,9 @@ const Paid = ({ children }: { children: React.ReactNode }) => (
   </ProtectedRoute>
 );
 
+// Maps a vertical route's guard name to the wrapper that enforces it.
+const GUARDS = { protected: Protected, paid: Paid, fullBleed: ProtectedFullBleed } as const;
+
 // Centered spinner used while a lazy route's chunk is downloading. Keeps the
 // background color so the screen doesn't flash white between routes.
 const RouteSuspense = () => (
@@ -124,8 +124,6 @@ const App = () => (
           <Route path="/customers" element={<Protected><Customers /></Protected>} />
           <Route path="/customers/:id" element={<Protected><CustomerDetail /></Protected>} />
           <Route path="/properties/:id" element={<Protected><PropertyDetail /></Protected>} />
-          <Route path="/routes" element={<Paid><RoutesPage /></Paid>} />
-          <Route path="/routes/run/:routeId" element={<ProtectedFullBleed><RouteMode /></ProtectedFullBleed>} />
           <Route path="/plans" element={<Paid><Plans /></Paid>} />
           <Route path="/plans/new" element={<Paid><NewPlan /></Paid>} />
           <Route path="/plans/:id" element={<Paid><PlanDetail /></Paid>} />
@@ -138,12 +136,14 @@ const App = () => (
           <Route path="/campaigns" element={<Protected><Campaigns /></Protected>} />
           <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
           <Route path="/inbox/:customerId" element={<Protected><Inbox /></Protected>} />
-          <Route path="/calc" element={<Protected><ApplicationCalc /></Protected>} />
-          <Route path="/chem-log" element={<Protected><ChemicalLog /></Protected>} />
           <Route path="/photos" element={<Protected><Photos /></Protected>} />
           <Route path="/photos/new" element={<Protected><NewPhotoPair /></Protected>} />
           <Route path="/photos/:id" element={<Protected><PhotoDetail /></Protected>} />
           <Route path="/settings" element={<Protected><Settings /></Protected>} />
+          {vertical.extraRoutes.map(({ path, element, guard }) => {
+            const Guard = GUARDS[guard];
+            return <Route key={path} path={path} element={<Guard>{element}</Guard>} />;
+          })}
           <Route path="*" element={<NotFound />} />
         </Routes>
         </Suspense>
