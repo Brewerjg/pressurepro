@@ -104,7 +104,7 @@ export default function QuoteForm({
         .from("catalog_items")
         .select("*")
         .eq("app", APP_ID)
-        .eq("kind", vertical.quoteLine.catalogKindFilter as CatalogItem["kind"])
+        .eq("kind", vertical.catalog.serviceKind)
         .eq("archived", false)
         .order("sort_order");
       if (error) throw error;

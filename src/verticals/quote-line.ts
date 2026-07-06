@@ -38,8 +38,6 @@ export interface LineEditorProps {
 }
 
 export interface QuoteLineModule {
-  /** The `kind` value this vertical's services use in the catalog_items query. */
-  catalogKindFilter: string;
   /** A fresh empty custom line. */
   blankLine(): QuoteLine;
   /** Build a line from a catalog item. */

@@ -217,7 +217,6 @@ function LawnLineEditor({ lines, catalog, onChange }: LineEditorProps) {
 }
 
 export const lawnQuoteLine: QuoteLineModule = {
-  catalogKindFilter: "service",
   blankLine: lawnBlankLine,
   catalogToLine: lawnCatalogToLine,
   lineTotal: (l) => lawnLineTotal(l as LawnQuoteLine),

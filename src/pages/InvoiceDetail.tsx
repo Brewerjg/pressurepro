@@ -33,6 +33,7 @@ import {
   type ManualPaymentMethod,
 } from "@/lib/manual-payments";
 import { APP_ID } from "@/lib/app-context";
+import { vertical } from "@/vertical";
 import { getQuickBooksStatus } from "@/lib/quickbooks";
 import { syncInvoiceToQuickBooks } from "@/lib/quickbooks-sync";
 
@@ -104,7 +105,7 @@ export default function InvoiceDetail() {
         .from("catalog_items")
         .select("id, name, default_rate")
         .eq("app", APP_ID)
-        .eq("kind", "service")
+        .eq("kind", vertical.catalog.serviceKind)
         .order("name", { ascending: true });
       if (error) throw error;
       return (data ?? []) as CatalogEntry[];

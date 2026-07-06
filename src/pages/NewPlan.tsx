@@ -8,6 +8,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { createPlanSubscription, type NewPlanInput } from "@/lib/plan-stripe";
 import { APP_ID } from "@/lib/app-context";
+import { vertical } from "@/vertical";
 
 // NewPlan creates a maintenance_plan with the lawn-care extensions
 // (day_of_week, frequency, season_pause, plan_kind) defined in
@@ -142,7 +143,7 @@ export default function NewPlan() {
         .from("catalog_items")
         .select("*")
         .eq("app", APP_ID)
-        .eq("kind", "service")
+        .eq("kind", vertical.catalog.serviceKind)
         .eq("archived", false)
         .order("sort_order");
       if (error) throw error;
