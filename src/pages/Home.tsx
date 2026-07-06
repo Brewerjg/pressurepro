@@ -11,8 +11,6 @@ import {
   Wind,
   Snowflake,
   Camera,
-  Calculator,
-  StickyNote,
   BarChart3,
   TrendingUp,
   Users,
@@ -34,6 +32,7 @@ import DayDetailSheet from "@/components/weather/DayDetailSheet";
 import { useSeason } from "@/lib/season";
 import { TWILIO_ENABLED } from "@/lib/feature-flags";
 import { APP_ID } from "@/lib/app-context";
+import { vertical } from "@/vertical";
 import { plannedStopsForDate, type SchedulablePlan } from "@/lib/planned-jobs";
 
 // Ported from design/turf/project/screen-home.jsx. MRR/hero card numbers stay
@@ -104,8 +103,6 @@ const quickActions = [
   { icon: ReceiptText,  label: "Invoices",      sub: "Accepted jobs",      accent: "text-brand-700",  to: "/invoices" },
   { icon: MessageSquare,label: "Inbox",         sub: "Customer texts",     accent: "text-brand-700",  to: "/inbox" },
   { icon: Camera,       label: "Photo pair",    sub: "Before / after",     accent: "text-brand-600",  to: "/photos/new" },
-  { icon: Calculator,   label: "Application",   sub: "NPK · per 1000ft²",  accent: "text-accent-600", to: "/calc" },
-  { icon: StickyNote,   label: "Chemical log",  sub: "Compliance record",  accent: "text-brand-700",  to: "/chem-log" },
   { icon: BarChart3,    label: "Reports",       sub: "MRR · churn · $/hr", accent: "text-neutral-700",    to: "/reports" },
 ];
 
@@ -646,7 +643,7 @@ export default function Home() {
       <section className="mx-4 mt-3.5 mb-1">
         <h2 className="text-[13px] font-semibold text-neutral-700 px-1 pb-2">Quick actions</h2>
         <div className="grid grid-cols-2 gap-2.5">
-          {quickActions
+          {[...quickActions, ...vertical.homeActions]
             .filter((t) => t.to !== "/inbox" || TWILIO_ENABLED)
             .map(({ icon: Icon, label, sub, accent, to }) => {
             const inner = (
