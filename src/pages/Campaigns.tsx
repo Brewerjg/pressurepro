@@ -22,11 +22,8 @@ import AudienceStep, {
   type AudienceFilter,
 } from "@/components/campaigns/AudienceStep";
 import ChannelsStep from "@/components/campaigns/ChannelsStep";
-import {
-  TEMPLATES,
-  type CampaignKind,
-  type CampaignTemplate,
-} from "@/components/campaigns/templates";
+import { type CampaignTemplate } from "@/components/campaigns/templates";
+import { vertical } from "@/vertical";
 import { APP_ID } from "@/lib/app-context";
 
 // Campaigns — the seasonal blast tool. List + wizard live on the same
@@ -48,7 +45,7 @@ interface CampaignRow {
   id: string;
   user_id: string;
   name: string;
-  kind: CampaignKind;
+  kind: string;
   channels: string[];
   subject: string | null;
   body: string;
@@ -136,7 +133,7 @@ export default function Campaigns() {
             Campaigns
           </h1>
           <div className="text-[12px] text-neutral-500 mt-1">
-            Seasonal blasts — aeration, leaf cleanup, spring restart.
+            {vertical.campaigns.copy.pageSubtitle}
           </div>
         </div>
         <button
@@ -170,8 +167,7 @@ export default function Campaigns() {
               No campaigns yet.
             </p>
             <p className="text-xs text-neutral-500 mt-1 max-w-[280px] mx-auto">
-              Aeration in August, leaf cleanup in October, spring restart in
-              March. Pick a template and blast your customer list in two minutes.
+              {vertical.campaigns.copy.emptyStateBlurb}
             </p>
             <button
               type="button"
@@ -221,7 +217,7 @@ function CampaignRowItem({
 }) {
   const tone = STATUS_STYLE[campaign.status];
   const tplLabel =
-    TEMPLATES.find((t) => t.kind === campaign.kind)?.label ?? campaign.kind;
+    vertical.campaigns.templates.find((t) => t.kind === campaign.kind)?.label ?? campaign.kind;
   return (
     <li>
       <button
@@ -326,7 +322,7 @@ function CampaignEditor({
       const fname = (sample?.name as string | null)?.trim().split(/\s+/)[0] ?? "";
       return {
         businessName:
-          (prof?.business_name as string | null) ?? "your lawn crew",
+          (prof?.business_name as string | null) ?? vertical.campaigns.copy.previewFallbackBusinessName,
         sampleFirstName: fname || "Pat",
         sampleAddress:
           (sample?.primary_address as string | null) ?? "123 Maple St",
@@ -335,7 +331,7 @@ function CampaignEditor({
   });
 
   // Wizard state.
-  const [kind, setKind] = useState<CampaignKind>("aeration");
+  const [kind, setKind] = useState<string>(vertical.campaigns.defaultKind);
   const [name, setName] = useState<string>("");
   const [subject, setSubject] = useState<string>("");
   const [body, setBody] = useState<string>("");
@@ -346,7 +342,7 @@ function CampaignEditor({
   useEffect(() => {
     if (!existing) {
       // Default to the aeration template for a brand-new draft.
-      const t = TEMPLATES[0];
+      const t = vertical.campaigns.templates[0];
       setKind(t.kind);
       setName(t.label);
       setSubject(t.subject);
@@ -520,7 +516,7 @@ function CampaignEditor({
             selectedKind={kind}
             sampleFirstName={previewCtx?.sampleFirstName ?? "Pat"}
             sampleAddress={previewCtx?.sampleAddress ?? "123 Maple St"}
-            businessName={previewCtx?.businessName ?? "your lawn crew"}
+            businessName={previewCtx?.businessName ?? vertical.campaigns.copy.previewFallbackBusinessName}
             bodyDraft={body}
             subjectDraft={subject}
             onSelect={applyTemplate}
@@ -604,7 +600,7 @@ function CampaignEditor({
 function SentSummary({ campaign }: { campaign: CampaignRow }) {
   const tone = STATUS_STYLE[campaign.status];
   const tplLabel =
-    TEMPLATES.find((t) => t.kind === campaign.kind)?.label ?? campaign.kind;
+    vertical.campaigns.templates.find((t) => t.kind === campaign.kind)?.label ?? campaign.kind;
   return (
     <div className="mx-4 space-y-3">
       <div className="tp-card p-4">

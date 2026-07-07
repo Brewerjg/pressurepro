@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { TEMPLATES, applyMergeTags, type CampaignTemplate } from "./templates";
+import { applyMergeTags, type CampaignTemplate } from "./templates";
+import { vertical } from "@/vertical";
 
 // Step 1 of the campaign wizard — operator picks one of six built-in
 // templates (or "custom" for a blank slate). The right column shows a
@@ -38,7 +39,7 @@ export default function TemplatePicker({
       applyMergeTags(bodyDraft, {
         first_name: sampleFirstName || "Pat",
         address: sampleAddress || "123 Maple St",
-        business_name: businessName || "your lawn crew",
+        business_name: businessName || vertical.campaigns.copy.previewFallbackBusinessName,
       }),
     [bodyDraft, sampleFirstName, sampleAddress, businessName],
   );
@@ -47,7 +48,7 @@ export default function TemplatePicker({
       applyMergeTags(subjectDraft, {
         first_name: sampleFirstName || "Pat",
         address: sampleAddress || "123 Maple St",
-        business_name: businessName || "your lawn crew",
+        business_name: businessName || vertical.campaigns.copy.previewFallbackBusinessName,
       }),
     [subjectDraft, sampleFirstName, sampleAddress, businessName],
   );
@@ -59,7 +60,7 @@ export default function TemplatePicker({
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        {TEMPLATES.map((t) => {
+        {vertical.campaigns.templates.map((t) => {
           const Icon = t.icon;
           const active = t.kind === selectedKind;
           return (
@@ -110,7 +111,7 @@ export default function TemplatePicker({
           type="text"
           value={subjectDraft}
           onChange={(e) => onEditSubject(e.target.value)}
-          placeholder="An update from your lawn crew"
+          placeholder={`An update from ${vertical.campaigns.copy.previewFallbackBusinessName}`}
           className="mt-1 w-full h-10 px-3 rounded-xl border border-neutral-200 bg-white text-[13.5px] font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
         />
       </div>
