@@ -99,23 +99,3 @@ export function deriveInitialLineItems(lines: QuoteLine[]): PlanLineItem[] {
   return out;
 }
 
-/**
- * Suggest a service-frequency based on the names of the items currently
- * checked. Looks for explicit cadence hints in the name ("biweekly mow",
- * "monthly fert") before falling back to weekly — which covers the vast
- * majority of mow/edge/trim/blow combos.
- *
- * Returns the suggestion. The form decides whether to apply it (only when
- * the user hasn't manually overridden frequency).
- */
-export function suggestFrequency(
-  items: PlanLineItem[],
-): "weekly" | "biweekly" | "monthly" | "fert_program" {
-  const checkedNames = items
-    .filter((i) => i.isRecurring)
-    .map((i) => i.name.toLowerCase());
-  if (checkedNames.some((n) => n.includes("biweekly"))) return "biweekly";
-  if (checkedNames.some((n) => n.includes("monthly"))) return "monthly";
-  if (checkedNames.some((n) => n.includes("fert"))) return "fert_program";
-  return "weekly";
-}

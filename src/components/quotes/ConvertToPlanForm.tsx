@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Ban, Check, Loader2, Plus, Repeat, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { suggestFrequency, type PlanLineItem } from "@/components/quotes/convertHelpers";
+import { type PlanLineItem } from "@/components/quotes/convertHelpers";
+import { vertical } from "@/vertical";
 
 // =====================================================================
 // ConvertToPlanForm — rebuilt from scratch around the operator's actual
@@ -41,33 +42,12 @@ const DAY_FULL = [
   "Saturday",
 ] as const;
 
-const FREQ_OPTIONS = [
-  { key: "weekly" as const, label: "Weekly" },
-  { key: "biweekly" as const, label: "Biweekly" },
-  { key: "monthly" as const, label: "Monthly" },
-  { key: "fert_program" as const, label: "Fert" },
-];
-
 const BILLING_OPTIONS = [
   { months: 1 as const, label: "Monthly" },
   { months: 3 as const, label: "Quarterly" },
   { months: 6 as const, label: "Every 6mo" },
   { months: 12 as const, label: "Yearly" },
 ];
-
-// Visits per month per service frequency. Fert program is 5 visits/year
-// (early/late spring, summer, early/late fall) — store as a fraction here
-// so the billing-preview math works for any interval length; the preview
-// renders the "5 visits/yr" copy separately.
-const VISITS_PER_MONTH: Record<
-  "weekly" | "biweekly" | "monthly" | "fert_program",
-  number
-> = {
-  weekly: 4,
-  biweekly: 2,
-  monthly: 1,
-  fert_program: 5 / 12,
-};
 
 const PERIOD_NAME: Record<1 | 3 | 6 | 12, string> = {
   1: "month",
@@ -91,7 +71,7 @@ interface ConvertToPlanFormProps {
   onSubmit: (values: {
     services: string[];
     per_visit_rate: number;
-    frequency: "weekly" | "biweekly" | "monthly" | "fert_program";
+    frequency: string;
     day_of_week: number;
     interval_months: 1 | 3 | 6 | 12;
     start_date: string;
@@ -115,9 +95,9 @@ export default function ConvertToPlanForm({
 
   // Cadence + day + billing + start date + the optional post-create
   // "save card" SMS/email.
-  const [frequency, setFrequency] = useState<
-    "weekly" | "biweekly" | "monthly" | "fert_program"
-  >(() => suggestFrequency(initialLineItems));
+  const [frequency, setFrequency] = useState<string>(() =>
+    vertical.planCadence.suggestFrequency(initialLineItems),
+  );
   const [dayOfWeek, setDayOfWeek] = useState<number>(3); // Wednesday
   const [intervalMonths, setIntervalMonths] = useState<1 | 3 | 6 | 12>(3);
   const [startDate, setStartDate] = useState<string>(() => {
@@ -154,7 +134,7 @@ export default function ConvertToPlanForm({
   // we stop touching it.
   useEffect(() => {
     if (frequencyTouched.current) return;
-    const suggested = suggestFrequency(items);
+    const suggested = vertical.planCadence.suggestFrequency(items);
     setFrequency((prev) => (prev === suggested ? prev : suggested));
   }, [items]);
 
@@ -175,7 +155,7 @@ export default function ConvertToPlanForm({
   // per-visit rate. For fert_program the visits-per-month is a fraction;
   // we render the human copy as "5 visits/yr" rather than "0.42 visits/mo".
   const billingPreview = useMemo(() => {
-    const visitsPerMonth = VISITS_PER_MONTH[frequency];
+    const visitsPerMonth = vertical.planCadence.visitsPerMonth(frequency);
     const visitsLabel =
       frequency === "fert_program"
         ? "5 visits/yr"
@@ -616,7 +596,7 @@ export default function ConvertToPlanForm({
             How often
           </div>
           <div className="grid grid-cols-4 gap-1.5">
-            {FREQ_OPTIONS.map((f) => {
+            {vertical.planCadence.frequencies.map((f) => {
               const on = frequency === f.key;
               return (
                 <button

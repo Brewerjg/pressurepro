@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { APP_ID } from "./app-context";
+import { vertical } from "@/vertical";
 
 export type Season = "spring" | "summer" | "fall" | "winter";
 export const ALL_SEASONS: Season[] = ["spring", "summer", "fall", "winter"];
@@ -92,9 +93,9 @@ export async function countAffectedPlans(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("app", APP_ID)
-      .eq("plan_kind", "mow")
+      .eq("plan_kind", vertical.planCadence.seasonSwap.planKind)
       .eq("status", "active")
-      .in("frequency", ["weekly", "biweekly", "monthly"]);
+      .in("frequency", vertical.planCadence.seasonSwap.frequencies as string[]);
     if (error) throw error;
     return count ?? 0;
   }
@@ -151,9 +152,9 @@ async function swapSeasonFallback(
       .update({ status: "paused", pause_reason: "winter_swap" })
       .eq("user_id", userId)
       .eq("app", APP_ID)
-      .eq("plan_kind", "mow")
+      .eq("plan_kind", vertical.planCadence.seasonSwap.planKind)
       .eq("status", "active")
-      .in("frequency", ["weekly", "biweekly", "monthly"])
+      .in("frequency", vertical.planCadence.seasonSwap.frequencies as string[])
       .select("id");
     if (error) throw error;
     affected = data?.length ?? 0;
