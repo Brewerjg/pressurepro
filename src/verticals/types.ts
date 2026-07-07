@@ -8,6 +8,7 @@
 import type { QuoteLineModule } from "./quote-line";
 import type { CatalogModule } from "./catalog";
 import type { VerticalRoute, NavEntry, HomeAction } from "./shell";
+import type { PlanCadenceModule } from "./plan-cadence";
 
 export type AppId = "turfpro" | "pressurepro";
 
@@ -32,4 +33,6 @@ export interface Vertical {
   navEntries: NavEntry[];
   /** Home quick-action tiles specific to this vertical. */
   homeActions: HomeAction[];
+  /** Recurring-service cadence config (frequencies, labels, season swap). */
+  planCadence: PlanCadenceModule;
 }
