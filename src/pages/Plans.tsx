@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { APP_ID } from "@/lib/app-context";
+import { vertical } from "@/vertical";
 
 // Plans is TurfPro's PRIMARY work surface — recurring is the lawn-care default.
 // We retain PressurePro's maintenance_plans table verbatim and additively read
@@ -38,13 +39,6 @@ const isPlanDunning = (plan: LawnPlan): boolean => {
 };
 
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-
-const FREQUENCY_LABEL: Record<LawnPlan["frequency"], string> = {
-  weekly: "Weekly",
-  biweekly: "Biweekly",
-  monthly: "Monthly",
-  fert_program: "Fert program",
-};
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: "active", label: "Active" },
@@ -257,7 +251,7 @@ function PlanRow({ plan }: { plan: LawnPlan }) {
     plan.day_of_week != null && plan.day_of_week >= 0 && plan.day_of_week <= 6
       ? DAY_SHORT[plan.day_of_week]
       : null;
-  const freqLabel = FREQUENCY_LABEL[plan.frequency] ?? "Weekly";
+  const freqLabel = vertical.planCadence.frequencyLabel(plan.frequency);
 
   const services = plan.services ?? [];
   const visibleServices = services.slice(0, 3);

@@ -32,6 +32,7 @@ import { sendPaymentRetryLink } from "@/lib/customer-email";
 import { sendPaymentRetryLinkSms } from "@/lib/customer-sms";
 import MessageCustomerButton from "@/components/messaging/MessageCustomerButton";
 import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
+import { vertical } from "@/vertical";
 
 // PlanDetail. Mirrors PressurePro's PlanDetail but reads lawn-care extras
 // (day_of_week, frequency, season_pause, plan_kind) added in
@@ -51,7 +52,6 @@ type LawnPlan = Database["public"]["Tables"]["maintenance_plans"]["Row"] & {
 };
 
 type PlanStatus = "active" | "paused" | "canceled";
-type Frequency = LawnPlan["frequency"];
 
 type ChargeEntry = {
   date?: string;
@@ -62,14 +62,6 @@ type ChargeEntry = {
 const DAY_LABEL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-const FREQUENCY_LABEL: Record<Frequency, string> = {
-  weekly: "Weekly",
-  biweekly: "Biweekly",
-  monthly: "Monthly",
-  fert_program: "Fert program",
-};
-
-const FREQ_OPTIONS: Frequency[] = ["weekly", "biweekly", "monthly", "fert_program"];
 const BILLING_OPTIONS: (3 | 6 | 12)[] = [3, 6, 12];
 const SEASONS = ["winter", "spring", "summer", "fall"] as const;
 
@@ -600,7 +592,7 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
     plan.day_of_week != null && plan.day_of_week >= 0 && plan.day_of_week <= 6
       ? DAY_LABEL[plan.day_of_week]
       : "Not set";
-  const freqLabel = FREQUENCY_LABEL[plan.frequency] ?? "Weekly";
+  const freqLabel = vertical.planCadence.frequencyLabel(plan.frequency);
   const services = plan.services ?? [];
   const seasonPause = plan.season_pause ?? [];
 
@@ -687,7 +679,7 @@ function EditCard({
   isSaving: boolean;
 }) {
   const [amount, setAmount] = useState(String(plan.amount));
-  const [frequency, setFrequency] = useState<Frequency>(plan.frequency ?? "weekly");
+  const [frequency, setFrequency] = useState<string>(plan.frequency ?? "weekly");
   const [dayOfWeek, setDayOfWeek] = useState<number>(plan.day_of_week ?? 3);
   const [intervalMonths, setIntervalMonths] = useState<3 | 6 | 12>(
     (plan.interval_months as 3 | 6 | 12) ?? 3,
@@ -740,13 +732,13 @@ function EditCard({
       <div>
         <FieldLabel>Frequency</FieldLabel>
         <div className="grid grid-cols-2 gap-1.5">
-          {FREQ_OPTIONS.map((f) => {
-            const on = frequency === f;
+          {vertical.planCadence.frequencies.map((opt) => {
+            const on = frequency === opt.key;
             return (
               <button
-                key={f}
+                key={opt.key}
                 type="button"
-                onClick={() => setFrequency(f)}
+                onClick={() => setFrequency(opt.key)}
                 className={cn(
                   "py-2 rounded-xl text-[12.5px] font-semibold transition-colors border",
                   on
@@ -754,7 +746,7 @@ function EditCard({
                     : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
                 )}
               >
-                {FREQUENCY_LABEL[f]}
+                {opt.label}
               </button>
             );
           })}
