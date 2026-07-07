@@ -10,6 +10,7 @@ import type { CatalogModule } from "./catalog";
 import type { VerticalRoute, NavEntry, HomeAction } from "./shell";
 import type { PlanCadenceModule } from "./plan-cadence";
 import type { CampaignsModule } from "./campaigns";
+import type { PropertyFieldsModule } from "./property-fields";
 
 export type AppId = "turfpro" | "pressurepro";
 
@@ -38,4 +39,6 @@ export interface Vertical {
   planCadence: PlanCadenceModule;
   /** Campaign message templates + campaign-surface copy for this vertical. */
   campaigns: CampaignsModule;
+  /** Editable custom property fields + section copy for this vertical. */
+  propertyFields: PropertyFieldsModule;
 }
