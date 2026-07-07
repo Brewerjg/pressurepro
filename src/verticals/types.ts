@@ -9,6 +9,7 @@ import type { QuoteLineModule } from "./quote-line";
 import type { CatalogModule } from "./catalog";
 import type { VerticalRoute, NavEntry, HomeAction } from "./shell";
 import type { PlanCadenceModule } from "./plan-cadence";
+import type { CampaignsModule } from "./campaigns";
 
 export type AppId = "turfpro" | "pressurepro";
 
@@ -35,4 +36,6 @@ export interface Vertical {
   homeActions: HomeAction[];
   /** Recurring-service cadence config (frequencies, labels, season swap). */
   planCadence: PlanCadenceModule;
+  /** Campaign message templates + campaign-surface copy for this vertical. */
+  campaigns: CampaignsModule;
 }

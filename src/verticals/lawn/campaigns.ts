@@ -1,25 +1,10 @@
-// Campaign templates — built-in starting points the wizard offers in Step 1.
-//
-// Each preset prefills the campaign's `kind`, `subject`, and `body`. The
-// body uses three merge tags that the send-campaign edge fn resolves per
-// recipient: {first_name}, {address}, {business_name}.
-//
-// Tip: the SMS path auto-trims to ~320 chars, so SMS-heavy templates
-// stay deliberately short. Email-only templates can be longer.
-
 import { CloudSnow, Leaf, MessageCircle, Sparkles, Sprout } from "lucide-react";
-import type { CampaignTemplate } from "@/verticals/campaigns";
-export type { CampaignTemplate };
+import type { CampaignTemplate, CampaignsModule } from "@/verticals/campaigns";
 
-export type CampaignKind =
-  | "aeration"
-  | "leaf_cleanup"
-  | "spring_restart"
-  | "fert_program"
-  | "snow_signup"
-  | "custom";
-
-export const TEMPLATES: CampaignTemplate[] = [
+// The six lawn campaign templates (relocated verbatim from the former
+// components/campaigns/templates.ts TEMPLATES array). Merge tags {first_name},
+// {address}, {business_name} are resolved by the send-campaign edge fn.
+const LAWN_TEMPLATES: CampaignTemplate[] = [
   {
     kind: "aeration",
     label: "Aeration push",
@@ -118,16 +103,13 @@ Reserved customers get priority before storms. Reply to claim your spot or with 
   },
 ];
 
-// Available merge-tag keys for the preview pane.
-export const MERGE_TAGS = ["{first_name}", "{address}", "{business_name}"] as const;
-
-/** Apply merge tags client-side for the preview. */
-export function applyMergeTags(
-  template: string,
-  vars: { first_name: string; address: string; business_name: string },
-): string {
-  return template
-    .replaceAll("{first_name}", vars.first_name)
-    .replaceAll("{address}", vars.address)
-    .replaceAll("{business_name}", vars.business_name);
-}
+export const lawnCampaigns: CampaignsModule = {
+  templates: LAWN_TEMPLATES,
+  defaultKind: "aeration",
+  copy: {
+    pageSubtitle: "Seasonal blasts — aeration, leaf cleanup, spring restart.",
+    emptyStateBlurb:
+      "Aeration in August, leaf cleanup in October, spring restart in March. Pick a template and blast your customer list in two minutes.",
+    previewFallbackBusinessName: "your lawn crew",
+  },
+};
