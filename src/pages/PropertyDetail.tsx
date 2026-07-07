@@ -13,14 +13,12 @@ import {
   Save,
   Trash2,
   Repeat,
-  Leaf,
   ChevronRight,
-  Droplets,
-  Scissors,
-  PawPrint,
   Beaker,
   Trees,
 } from "lucide-react";
+import { vertical } from "@/vertical";
+import type { PropertyFieldDef } from "@/verticals/property-fields";
 
 // Ported from pressure-pro-quoter/src/pages/PropertyDetail.tsx. Removes the
 // surface picker (concrete/siding/roof/etc) which doesn't apply to lawn care;
@@ -29,18 +27,6 @@ import {
 //   turf_sqft, grass_type, mow_height_in,
 //   pet_safe_only, irrigation_present, slope_warning, bag_clippings
 // Those columns aren't in the generated types yet, so we cast at I/O boundaries.
-
-const COMMON_GRASS_TYPES = [
-  "Bermuda",
-  "Fescue",
-  "Zoysia",
-  "Kentucky Bluegrass",
-  "St. Augustine",
-  "Centipede",
-  "Ryegrass",
-  "Buffalo",
-  "mixed",
-];
 
 const DAY_LABELS: Record<number, string> = {
   0: "Sun",
@@ -130,6 +116,7 @@ export default function PropertyDetail() {
   const [editing, setEditing] = useState(false);
   const [edit, setEdit] = useState<EditState>(emptyEdit);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const SectionIcon = vertical.propertyFields.sectionIcon;
 
   const { data, isLoading } = useQuery({
     queryKey: ["property-detail", id],
@@ -361,53 +348,49 @@ export default function PropertyDetail() {
             />
           </div>
 
-          {/* Lawn details — NEW for TurfPro */}
-          <div className="tp-card p-4 space-y-3">
-            <SectionLabel accent="green">Lawn details</SectionLabel>
-            <Field label="Grass type">
-              <input
-                list="grass-types"
-                value={edit.grass_type}
-                onChange={(e) => setEdit({ ...edit, grass_type: e.target.value })}
-                placeholder="e.g. Bermuda, Fescue, Zoysia…"
-                className="tp-input"
-              />
-              <datalist id="grass-types">
-                {COMMON_GRASS_TYPES.map((g) => (
-                  <option value={g} key={g} />
-                ))}
-              </datalist>
-            </Field>
-            <Field label="Mow height (in)">
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                value={edit.mow_height_in}
-                onChange={(e) => setEdit({ ...edit, mow_height_in: e.target.value })}
-                placeholder="e.g. 3.5"
-                className="tp-input"
-              />
-            </Field>
-            <ToggleRow
-              label="Pet-safe chems only"
-              icon={<PawPrint className="h-3.5 w-3.5" />}
-              checked={edit.pet_safe_only}
-              onChange={(v) => setEdit({ ...edit, pet_safe_only: v })}
-            />
-            <ToggleRow
-              label="Irrigation present"
-              icon={<Droplets className="h-3.5 w-3.5" />}
-              checked={edit.irrigation_present}
-              onChange={(v) => setEdit({ ...edit, irrigation_present: v })}
-            />
-            <ToggleRow
-              label="Bag clippings"
-              icon={<Scissors className="h-3.5 w-3.5" />}
-              checked={edit.bag_clippings}
-              onChange={(v) => setEdit({ ...edit, bag_clippings: v })}
-            />
-          </div>
+          {/* Lawn details — driven by the active vertical */}
+          {vertical.propertyFields.fields.length > 0 && (
+            <div className="tp-card p-4 space-y-3">
+              <SectionLabel accent="green">{vertical.propertyFields.sectionLabel}</SectionLabel>
+              {vertical.propertyFields.fields.map((f) => {
+                const state = edit as unknown as Record<string, string | boolean>;
+                if (f.type === "toggle") {
+                  const Icon = f.icon;
+                  return (
+                    <ToggleRow
+                      key={f.key}
+                      label={f.label}
+                      icon={<Icon className="h-3.5 w-3.5" />}
+                      checked={state[f.key] as boolean}
+                      onChange={(v) => setEdit({ ...edit, [f.key]: v } as EditState)}
+                    />
+                  );
+                }
+                const listId = `datalist-${f.key}`;
+                return (
+                  <Field key={f.key} label={f.label}>
+                    <input
+                      type={f.type === "number" ? "number" : "text"}
+                      {...(f.type === "number"
+                        ? { inputMode: "decimal" as const, step: f.step }
+                        : { list: listId })}
+                      value={state[f.key] as string}
+                      onChange={(e) => setEdit({ ...edit, [f.key]: e.target.value } as EditState)}
+                      placeholder={f.placeholder}
+                      className="tp-input"
+                    />
+                    {f.type === "datalist" && (
+                      <datalist id={listId}>
+                        {f.suggestions.map((s) => (
+                          <option value={s} key={s} />
+                        ))}
+                      </datalist>
+                    )}
+                  </Field>
+                );
+              })}
+            </div>
+          )}
 
           {saveError && (
             <div className="tp-card p-3 text-xs font-semibold text-destructive">
@@ -505,47 +488,55 @@ export default function PropertyDetail() {
             )}
           </div>
 
-          {/* Lawn details */}
-          <div className="tp-card p-4 space-y-3">
-            <SectionLabel accent="green">
-              <Leaf className="h-3.5 w-3.5 inline -mt-0.5 mr-1" strokeWidth={2.2} />
-              Lawn details
-            </SectionLabel>
-            <div className="grid grid-cols-2 gap-3">
-              <Stat label="Grass type" value={property.grass_type || "—"} />
-              <Stat
-                label="Mow height"
-                value={
-                  property.mow_height_in != null ? `${property.mow_height_in}"` : "—"
-                }
-              />
+          {/* Lawn details — driven by the active vertical */}
+          {vertical.propertyFields.fields.length > 0 && (
+            <div className="tp-card p-4 space-y-3">
+              <SectionLabel accent="green">
+                <SectionIcon className="h-3.5 w-3.5 inline -mt-0.5 mr-1" strokeWidth={2.2} />
+                {vertical.propertyFields.sectionLabel}
+              </SectionLabel>
+              <div className="grid grid-cols-2 gap-3">
+                {vertical.propertyFields.fields
+                  .filter(
+                    (f): f is Extract<PropertyFieldDef, { type: "datalist" | "number" }> =>
+                      f.type !== "toggle",
+                  )
+                  .map((f) => {
+                    const raw = (property as unknown as Record<string, unknown>)[f.key];
+                    const value =
+                      f.type === "number"
+                        ? raw != null
+                          ? `${raw}${f.displaySuffix ?? ""}`
+                          : "—"
+                        : String(raw ?? "") || "—";
+                    return <Stat key={f.key} label={f.readLabel ?? f.label} value={value} />;
+                  })}
+              </div>
+              <div className="grid grid-cols-1 gap-1.5 pt-1">
+                {vertical.propertyFields.fields.map((f) => {
+                  if (f.type !== "toggle") return null;
+                  if (!(property as unknown as Record<string, unknown>)[f.key]) return null;
+                  const Icon = f.icon;
+                  return (
+                    <Pill key={f.key} icon={<Icon className="h-3 w-3" />} tone={f.pillTone}>
+                      {f.label}
+                    </Pill>
+                  );
+                })}
+                {(() => {
+                  const toggles = vertical.propertyFields.fields.filter((f) => f.type === "toggle");
+                  const noneSet = toggles.every(
+                    (f) => !(property as unknown as Record<string, unknown>)[f.key],
+                  );
+                  return toggles.length > 0 && noneSet ? (
+                    <div className="text-xs text-neutral-500">
+                      {vertical.propertyFields.emptyStateHint}
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-1.5 pt-1">
-              {property.pet_safe_only && (
-                <Pill icon={<PawPrint className="h-3 w-3" />} tone="green">
-                  Pet-safe chems only
-                </Pill>
-              )}
-              {property.irrigation_present && (
-                <Pill icon={<Droplets className="h-3 w-3" />} tone="rain">
-                  Irrigation present
-                </Pill>
-              )}
-              {property.bag_clippings && (
-                <Pill icon={<Scissors className="h-3 w-3" />} tone="bronze">
-                  Bag clippings
-                </Pill>
-              )}
-              {!property.pet_safe_only &&
-                !property.irrigation_present &&
-                !property.bag_clippings && (
-                  <div className="text-xs text-neutral-500">
-                    No lawn-care flags set. Edit to record grass type, mow height,
-                    irrigation, etc.
-                  </div>
-                )}
-            </div>
-          </div>
+          )}
         </section>
       )}
 
