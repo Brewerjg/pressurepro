@@ -201,7 +201,7 @@ export default function InvoiceDetail() {
     mutationFn: async (args: {
       services: string[];
       per_visit_rate: number;
-      frequency: "weekly" | "biweekly" | "monthly" | "fert_program";
+      frequency: string;
       day_of_week: number;
       interval_months: 1 | 3 | 6 | 12;
       start_date: string;
