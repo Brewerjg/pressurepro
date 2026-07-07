@@ -592,7 +592,7 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
     plan.day_of_week != null && plan.day_of_week >= 0 && plan.day_of_week <= 6
       ? DAY_LABEL[plan.day_of_week]
       : "Not set";
-  const freqLabel = vertical.planCadence.frequencyLabel(plan.frequency);
+  const freqLabel = vertical.planCadence.frequencyLabel(plan.frequency ?? "weekly");
   const services = plan.services ?? [];
   const seasonPause = plan.season_pause ?? [];
 

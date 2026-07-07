@@ -251,7 +251,7 @@ function PlanRow({ plan }: { plan: LawnPlan }) {
     plan.day_of_week != null && plan.day_of_week >= 0 && plan.day_of_week <= 6
       ? DAY_SHORT[plan.day_of_week]
       : null;
-  const freqLabel = vertical.planCadence.frequencyLabel(plan.frequency);
+  const freqLabel = vertical.planCadence.frequencyLabel(plan.frequency ?? "weekly");
 
   const services = plan.services ?? [];
   const visibleServices = services.slice(0, 3);
