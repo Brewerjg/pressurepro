@@ -25,17 +25,9 @@ type Customer = Database["public"]["Tables"]["customers"]["Row"];
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type CatalogItem = Database["public"]["Tables"]["catalog_items"]["Row"];
 
-type Frequency = "weekly" | "biweekly" | "monthly" | "fert_program";
 type BillingInterval = 1 | 3 | 6 | 12;
 type Season = "winter" | "spring" | "summer" | "fall";
 type PlanKind = "mow" | "fert_program" | "other";
-
-const FREQ_OPTIONS: { key: Frequency; label: string; sub: string }[] = [
-  { key: "weekly", label: "Weekly", sub: "Peak season mow" },
-  { key: "biweekly", label: "Biweekly", sub: "Every 2 weeks" },
-  { key: "monthly", label: "Monthly", sub: "Light touch" },
-  { key: "fert_program", label: "Fert program", sub: "Scheduled apps" },
-];
 
 const BILLING_OPTIONS: { months: BillingInterval; label: string }[] = [
   { months: 1,  label: "Monthly" },
@@ -44,25 +36,14 @@ const BILLING_OPTIONS: { months: BillingInterval; label: string }[] = [
   { months: 12, label: "Yearly" },
 ];
 
-// Visits per month per service frequency. Uses operator-simplified math
-// (weekly=4, not the calendar-precise 4.33) since that's what operators
-// actually quote — "I do 4 mows a month at $55." Fert program is
-// approximated as 5 visits / 12 months across the year.
-const VISITS_PER_MONTH: Record<Frequency, number> = {
-  weekly: 4,
-  biweekly: 2,
-  monthly: 1,
-  fert_program: 5 / 12,
-};
-
 // Round to 2 decimals — billing amounts shouldn't carry float drift.
 function calcBillingAmount(
   perVisitRate: number,
-  frequency: Frequency,
+  frequency: string,
   intervalMonths: number,
 ): number {
   if (!perVisitRate || perVisitRate <= 0) return 0;
-  const raw = perVisitRate * VISITS_PER_MONTH[frequency] * intervalMonths;
+  const raw = perVisitRate * vertical.planCadence.visitsPerMonth(frequency) * intervalMonths;
   return Math.round(raw * 100) / 100;
 }
 
@@ -89,9 +70,9 @@ export default function NewPlan() {
   // calculated value. Non-empty = use this number instead (custom-priced plan).
   const [amountOverride, setAmountOverride] = useState<string>("");
   const [showOverride, setShowOverride] = useState<boolean>(false);
-  const [frequency, setFrequency] = useState<Frequency>("weekly");
+  const [frequency, setFrequency] = useState<string>(vertical.planCadence.defaultFrequency);
   const [dayOfWeek, setDayOfWeek] = useState<number>(3); // default Wednesday
-  const [intervalMonths, setIntervalMonths] = useState<BillingInterval>(3);
+  const [intervalMonths, setIntervalMonths] = useState<BillingInterval>(vertical.planCadence.defaultIntervalMonths as BillingInterval);
   const [startDate, setStartDate] = useState<string>(
     () => new Date().toISOString().slice(0, 10),
   );
@@ -262,7 +243,7 @@ export default function NewPlan() {
   // fert programs reads more naturally than "visit".
   const perVisitLabel = frequency === "fert_program" ? "Per-application rate" : "Per-visit rate";
   // Operator-shorthand visit count surfaced in the math caption.
-  const visitsPerMonthLabel: Record<Frequency, string> = {
+  const visitsPerMonthLabel: Record<string, string> = {
     weekly: "4 visits/mo",
     biweekly: "2 visits/mo",
     monthly: "1 visit/mo",
@@ -389,7 +370,7 @@ export default function NewPlan() {
           subtitle="How often crews show up. Independent from billing cadence."
         >
           <div className="grid grid-cols-2 gap-2">
-            {FREQ_OPTIONS.map((opt) => {
+            {vertical.planCadence.frequencies.map((opt) => {
               const on = frequency === opt.key;
               return (
                 <button
@@ -597,7 +578,7 @@ export default function NewPlan() {
           </div>
           <div className="flex items-center gap-2 text-white/80 text-[12px] mt-2">
             <Repeat className="h-3.5 w-3.5" />
-            {DAY_LABEL[dayOfWeek]} · {FREQ_OPTIONS.find((f) => f.key === frequency)?.label}
+            {DAY_LABEL[dayOfWeek]} · {vertical.planCadence.frequencies.find((f) => f.key === frequency)?.label}
             {seasonPause.length > 0 && (
               <span className="text-accent-400">
                 · pauses {seasonPause.join(", ")}
