@@ -4,6 +4,7 @@ import { lawnCatalog } from "./catalog";
 import { lawnRoutes, lawnNavEntries, lawnHomeActions } from "./shell";
 import { lawnPlanCadence } from "./plan-cadence";
 import { lawnCampaigns } from "./campaigns";
+import { lawnPropertyFields } from "./property-fields";
 
 // Lawn-care vertical (TurfPro). Phase 0a holds identity only; the lawn domain
 // (catalog seed, calculators, GDD/season/weather, quote-line model, theme) is
@@ -23,4 +24,5 @@ export const lawnVertical: Vertical = {
   homeActions: lawnHomeActions,
   planCadence: lawnPlanCadence,
   campaigns: lawnCampaigns,
+  propertyFields: lawnPropertyFields,
 };
