@@ -214,7 +214,7 @@ const Gallery = () => {
           </Link>
         </div>
         <p className="text-center text-[11px] text-muted-foreground pt-6 font-mono tracking-[0.08em]">
-          {(business || vertical.brand.fallbackBusinessName).toUpperCase()}
+          {(business || vertical.brand.name).toUpperCase()}
         </p>
       </footer>
 
