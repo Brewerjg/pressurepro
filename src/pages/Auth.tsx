@@ -232,7 +232,7 @@ export default function Auth() {
             {vertical.brand.name}
           </div>
           <p className="text-sm text-white/80 mt-1">
-            Routes, plans, and recurring lawn-care ops.
+            {vertical.brand.authTagline}
           </p>
         </div>
 

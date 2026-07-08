@@ -315,7 +315,7 @@ export default function Pricing() {
             Pick your plan
           </h1>
           <p className="text-[13px] sm:text-sm text-neutral-500 mt-2">
-            Built for lawn-care crews. Cancel anytime.
+            {vertical.copy.pricingTagline} Cancel anytime.
           </p>
         </div>
 

@@ -32,7 +32,7 @@ export function BrandHeader({ business, children, className }: BrandHeaderProps)
               {vertical.brand.name}
             </span>
             <span className="font-extrabold text-sm leading-tight">
-              {business || "Lawn Care"}
+              {business || vertical.brand.fallbackBusinessName}
             </span>
           </div>
         </div>

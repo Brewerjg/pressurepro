@@ -123,7 +123,7 @@ const Gallery = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-10">
-      <BrandHeader business={business || "Lawn Care"}>
+      <BrandHeader business={business || vertical.brand.fallbackBusinessName}>
         <h1 className="font-display text-[28px] text-white">{property.address}</h1>
         <p className="text-white/75 text-[13px] mt-1.5">
           {pairs.length} before / after pair{pairs.length === 1 ? "" : "s"}
@@ -214,7 +214,7 @@ const Gallery = () => {
           </Link>
         </div>
         <p className="text-center text-[11px] text-muted-foreground pt-6 font-mono tracking-[0.08em]">
-          {(business || "TURFPRO").toUpperCase()}
+          {(business || vertical.brand.fallbackBusinessName).toUpperCase()}
         </p>
       </footer>
 

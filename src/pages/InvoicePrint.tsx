@@ -138,7 +138,7 @@ const InvoicePrint = () => {
             <div className="text-xs uppercase tracking-widest text-neutral-500 font-bold">
               Invoice
             </div>
-            <h1 className="text-3xl mt-1 brand">{biz.business || "Lawn Care"}</h1>
+            <h1 className="text-3xl mt-1 brand">{biz.business || vertical.brand.fallbackBusinessName}</h1>
             <div className="text-sm text-neutral-600 mt-1 leading-relaxed">
               {biz.phone && <div>{biz.phone}</div>}
               <div className="text-xs uppercase tracking-widest mt-1 text-neutral-400 font-bold">
