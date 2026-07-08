@@ -60,7 +60,6 @@ const CREW_COLORS = [
   "#6b3a6b", // purple
 ];
 
-
 type Step = 1 | 2 | 3 | 4 | 5;
 
 // Step 5 sub-state. When the wizard mounts at /onboarding?connect=return
