@@ -1,4 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Stub the Supabase client so the module loads in the Node test environment
+// (the real client calls localStorage at import time, which Node does not have).
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
+
 import { lawnCatalog } from "@/verticals/lawn/catalog";
 
 describe("lawnCatalog", () => {
@@ -25,5 +30,9 @@ describe("lawnCatalog", () => {
     for (let i = 1; i < orders.length; i++) {
       expect(orders[i]).toBeGreaterThan(orders[i - 1]);
     }
+  });
+  it("exposes vertical-aware data-access methods", () => {
+    expect(typeof lawnCatalog.loadServiceCatalog).toBe("function");
+    expect(typeof lawnCatalog.seed).toBe("function");
   });
 });

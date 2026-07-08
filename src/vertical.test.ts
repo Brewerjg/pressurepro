@@ -1,4 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Stub the Supabase client so lawn/catalog.ts loads in the Node test environment.
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
+
 import { vertical } from "@/vertical";
 import { VERTICALS } from "@/verticals/registry";
 
