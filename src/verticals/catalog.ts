@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import type { CatalogItem } from "./quote-line";
 
 // The catalog seam — everything trade-specific about the service catalog:
 // the starter seed, the `kind` this trade's billable services live under, the
@@ -14,6 +15,8 @@ export interface CatalogSeedItem {
   min_charge: number;
   unit: PricingUnit;
   sort_order: number;
+  surface_type?: string; // pressure: SurfaceKey (e.g. "roof")
+  mode?: string;         // pressure: "soft" | "power"
 }
 
 export interface CatalogModule {
@@ -31,4 +34,8 @@ export interface CatalogModule {
     emptyStateHint: string;
     seedButtonLabel: string;
   };
+  /** Load this vertical's billable services for the quote/plan line editor. */
+  loadServiceCatalog(userId: string, appId: string): Promise<CatalogItem[]>;
+  /** Idempotently seed this vertical's starter catalog for a user. */
+  seed(userId: string, appId: string): Promise<void>;
 }

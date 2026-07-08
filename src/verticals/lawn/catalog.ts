@@ -1,3 +1,6 @@
+import { supabase } from "@/integrations/supabase/client";
+import type { CatalogItem } from "@/verticals/quote-line";
+import type { Database } from "@/integrations/supabase/types";
 import type { CatalogModule, CatalogSeedItem } from "@/verticals/catalog";
 
 // Canonical lawn-care starter catalog. The one client-side source of truth
@@ -28,6 +31,45 @@ export const LAWN_CATALOG_SEED: readonly CatalogSeedItem[] = [
   { name: "Snow shovel (per visit)", unit: "flat", default_rate: 55, min_charge: 55, sort_order: 910 },
 ];
 
+type CatalogInsert = Database["public"]["Tables"]["catalog_items"]["Insert"];
+
+async function lawnLoadServiceCatalog(_userId: string, appId: string): Promise<CatalogItem[]> {
+  const { data, error } = await supabase
+    .from("catalog_items")
+    .select("*")
+    .eq("app", appId)
+    .eq("kind", "service")
+    .eq("archived", false)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []) as unknown as CatalogItem[];
+}
+
+async function lawnSeed(userId: string, appId: string): Promise<void> {
+  // Try the SECURITY DEFINER RPC first; fall back to a direct insert if EXECUTE
+  // is revoked (the prod state). Ported verbatim from onboarding/seedCatalog.ts.
+  const rpcResult = await (
+    supabase.rpc as unknown as (
+      name: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>
+  )("seed_default_lawn_catalog", { _user_id: userId });
+  if (!rpcResult.error) return;
+
+  const rows = LAWN_CATALOG_SEED.map((r) => ({
+    user_id: userId,
+    kind: "service",
+    name: r.name,
+    unit: r.unit,
+    default_rate: r.default_rate,
+    min_charge: r.min_charge,
+    sort_order: r.sort_order,
+    app: appId,
+  })) as unknown as CatalogInsert[];
+  const { error } = await supabase.from("catalog_items").insert(rows);
+  if (error) throw error;
+}
+
 export const lawnCatalog: CatalogModule = {
   serviceKind: "service",
   defaultUnit: "flat",
@@ -40,4 +82,6 @@ export const lawnCatalog: CatalogModule = {
       "Get started with the canonical lawn-care services (weekly mow, fert steps, cleanups, snow). You can edit any of them after.",
     seedButtonLabel: "Seed default lawn catalog",
   },
+  loadServiceCatalog: lawnLoadServiceCatalog,
+  seed: lawnSeed,
 };
