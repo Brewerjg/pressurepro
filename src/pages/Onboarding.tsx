@@ -22,6 +22,7 @@ import {
   refreshConnectStatus,
   startConnectOnboarding,
 } from "@/lib/connect-onboarding";
+import { vertical } from "@/vertical";
 
 // First-run wizard. Five steps; stepper at top; "Skip for now" anywhere bails
 // out but still stamps profiles.onboarded_at so the gate doesn't re-fire (we'd
@@ -428,7 +429,7 @@ export default function Onboarding() {
         {/* Brand header — mirrors Auth.tsx */}
         <div className="text-center mb-6">
           <div className="tp-display text-[34px] font-bold text-brand-800 tracking-tight">
-            TurfPro
+            {vertical.brand.name}
           </div>
           <p className="text-sm text-neutral-500 mt-1">Let's get you set up.</p>
         </div>
@@ -992,7 +993,7 @@ function Step5(props: {
       <StepHeader
         icon={props.icon}
         title="Connect your payouts"
-        subtitle="TurfPro charges your customers and deposits the money in your bank account. Connect Stripe once — takes about 2 minutes."
+        subtitle={`${vertical.brand.name} charges your customers and deposits the money in your bank account. Connect Stripe once — takes about 2 minutes.`}
       />
 
       {isChecking && (

@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { vertical } from "@/vertical";
 
 type Mode = "sign-in" | "sign-up" | "forgot";
 
@@ -228,7 +229,7 @@ export default function Auth() {
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="tp-display text-[34px] font-bold text-white tracking-tight drop-shadow">
-            TurfPro
+            {vertical.brand.name}
           </div>
           <p className="text-sm text-white/80 mt-1">
             Routes, plans, and recurring lawn-care ops.

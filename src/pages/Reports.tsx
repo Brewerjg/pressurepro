@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { vertical } from "@/vertical";
 import {
   Bar,
   BarChart,
@@ -1202,14 +1203,14 @@ function TurfProFeesCard({
       <div className="flex items-center gap-1.5 mb-1">
         <Receipt className="h-3.5 w-3.5 text-neutral-500" strokeWidth={2} />
         <div className="text-[11px] font-semibold tracking-[0.3px] uppercase text-neutral-500">
-          TurfPro fees · this month
+          {vertical.brand.name} fees · this month
         </div>
       </div>
       <div className="tp-num tp-display text-[26px] font-bold leading-none text-brand-700">
         {fmtUSD(feeDollars)}
       </div>
       <div className="text-[11px] text-neutral-500 mt-1.5">
-        TurfPro takes 0% — you keep 100% of customer payments.
+        {vertical.brand.name} takes 0% — you keep 100% of customer payments.
       </div>
 
       {hasCharges && (

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
+import { vertical } from "@/vertical";
 
 const REVIEW_GOOGLE_THRESHOLD = 4;
 const COMMENT_MAX_CHARS = 2000;
@@ -295,7 +296,7 @@ const Review = () => {
         )}
 
         <p className="text-xs text-center text-muted-foreground py-6">
-          Powered by TurfPro
+          Powered by {vertical.brand.name}
         </p>
       </main>
     </div>

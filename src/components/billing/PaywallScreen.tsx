@@ -11,6 +11,7 @@ import {
   type IapPackage,
 } from "@/lib/iap";
 import { cn } from "@/lib/utils";
+import { vertical } from "@/vertical";
 
 // Full-screen lockout shown when the operator's trial is over and they
 // don't have an active subscription. This is the marketing-visible
@@ -117,7 +118,7 @@ export default function PaywallScreen() {
               <Leaf className="h-[18px] w-[18px]" strokeWidth={2.2} />
             </div>
             <div className="font-display font-extrabold text-lg text-neutral-900">
-              TurfPro
+              {vertical.brand.name}
             </div>
           </div>
           <Link
@@ -253,7 +254,7 @@ export default function PaywallScreen() {
             <Leaf className="h-[18px] w-[18px]" strokeWidth={2.2} />
           </div>
           <div className="font-display font-extrabold text-lg text-neutral-900">
-            TurfPro
+            {vertical.brand.name}
           </div>
         </div>
         <Link

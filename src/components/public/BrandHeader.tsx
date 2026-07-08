@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Leaf } from "lucide-react";
+import { vertical } from "@/vertical";
 
 // Shared header for all customer-facing public pages (Accept, Review,
 // Gallery, PlanPortal). TurfPro brand: green gradient hero, bronze accent
@@ -28,7 +29,7 @@ export function BrandHeader({ business, children, className }: BrandHeaderProps)
           </div>
           <div className="flex flex-col">
             <span className="tp-display font-extrabold text-[11px] tracking-[0.18em] text-accent-400 uppercase">
-              TurfPro
+              {vertical.brand.name}
             </span>
             <span className="font-extrabold text-sm leading-tight">
               {business || "Lawn Care"}

@@ -4,6 +4,7 @@ import { Loader2, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment, tierFromPriceId, getTier } from "@/lib/stripe";
 import { cn } from "@/lib/utils";
+import { vertical } from "@/vertical";
 
 // Return URL Stripe sends the user to after Checkout. Handles BOTH:
 //   - SaaS subscription (default): verify the session, forward to Settings.
@@ -217,7 +218,7 @@ function SuccessCard({
         {tier ? `You're subscribed to ${tier.name}` : "You're subscribed"}
       </h1>
       <p className="text-sm text-neutral-500 mb-5">
-        Welcome to TurfPro. Taking you to your settings…
+        Welcome to {vertical.brand.name}. Taking you to your settings…
       </p>
       <button
         type="button"

@@ -231,7 +231,7 @@ export default function QuoteForm({
       {/* Deposit + expiry */}
       <Section
         title="Terms"
-        subtitle="Optional deposit and expiry — TurfPro defaults to 0% deposit and a 14-day window."
+        subtitle={`Optional deposit and expiry — ${vertical.brand.name} defaults to 0% deposit and a 14-day window.`}
       >
         <div className="grid grid-cols-2 gap-2">
           <Field label="Deposit %">

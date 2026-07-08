@@ -11,6 +11,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Share2, X, Leaf } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
+import { vertical } from "@/vertical";
 
 interface PhotoRow {
   id: string;
@@ -209,7 +210,7 @@ const Gallery = () => {
             to="/pricing"
             className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-brand-800 text-white font-bold text-sm"
           >
-            Get a quote from TurfPro
+            Get a quote from {vertical.brand.name}
           </Link>
         </div>
         <p className="text-center text-[11px] text-muted-foreground pt-6 font-mono tracking-[0.08em]">

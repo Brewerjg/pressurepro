@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { vertical } from "@/vertical";
 
 // Public page reached from a password-reset email link.
 //
@@ -97,7 +98,7 @@ export default function ResetPassword() {
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="tp-display text-[34px] font-bold text-white tracking-tight drop-shadow">
-            TurfPro
+            {vertical.brand.name}
           </div>
           <p className="text-sm text-white/80 mt-1">Reset your password</p>
         </div>

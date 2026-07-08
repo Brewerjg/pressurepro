@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
 import { nextVisitDate } from "@/lib/next-visit";
+import { vertical } from "@/vertical";
 
 // Public plan-management portal for TurfPro maintenance customers.
 // Unlike PressurePro (which immediately mints a Stripe billing portal
@@ -433,7 +434,7 @@ const PlanPortal = () => {
         )}
 
         <p className="text-center text-[11px] text-muted-foreground pt-4">
-          Powered by TurfPro
+          Powered by {vertical.brand.name}
         </p>
       </main>
     </div>

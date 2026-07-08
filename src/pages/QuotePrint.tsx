@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Printer } from "lucide-react";
 import { parseLines, describe, quoteTotal } from "@/components/quotes/types";
+import { vertical } from "@/vertical";
 
 // Customer-facing printable quote. Auto-opens the print dialog so any
 // modern browser's "Save as PDF" is the de-facto PDF generator with zero
@@ -153,7 +154,7 @@ const QuotePrint = () => {
             <div className="text-sm text-neutral-600 mt-1 leading-relaxed">
               {biz.phone && <div>{biz.phone}</div>}
               <div className="text-xs uppercase tracking-widest mt-1 text-neutral-400 font-bold">
-                Powered by TurfPro
+                Powered by {vertical.brand.name}
               </div>
             </div>
           </div>

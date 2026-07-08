@@ -4,6 +4,7 @@ import { Lock, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { vertical } from "@/vertical";
 
 // Inline banner — drop into a screen anywhere we want to nudge the operator
 // toward an active subscription. Renders nothing while loading or when the
@@ -70,12 +71,12 @@ export default function SubscriptionGate({ message, className }: Props) {
     if (state.kind === "trial") {
       copy =
         state.daysLeft === 1
-          ? "Your trial ends tomorrow — pick a plan to keep TurfPro."
+          ? `Your trial ends tomorrow — pick a plan to keep ${vertical.brand.name}.`
           : `${state.daysLeft} days left in your trial.`;
     } else if (state.kind === "expired") {
       copy = "Your subscription has lapsed. Reactivate to keep going.";
     } else {
-      copy = "Subscribe to unlock TurfPro.";
+      copy = `Subscribe to unlock ${vertical.brand.name}.`;
     }
   }
 
