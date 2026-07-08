@@ -7,8 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { createPlanSubscription, type NewPlanInput } from "@/lib/plan-stripe";
-import { APP_ID } from "@/lib/app-context";
 import { vertical } from "@/vertical";
+import { useServiceCatalog } from "@/hooks/useServiceCatalog";
 
 // NewPlan creates a maintenance_plan with the lawn-care extensions
 // (day_of_week, frequency, season_pause, plan_kind) defined in
@@ -23,7 +23,6 @@ import { vertical } from "@/vertical";
 
 type Customer = Database["public"]["Tables"]["customers"]["Row"];
 type Property = Database["public"]["Tables"]["properties"]["Row"];
-type CatalogItem = Database["public"]["Tables"]["catalog_items"]["Row"];
 
 type BillingInterval = 1 | 3 | 6 | 12;
 type Season = "winter" | "spring" | "summer" | "fall";
@@ -117,21 +116,7 @@ export default function NewPlan() {
     enabled: !!customerId,
   });
 
-  const { data: catalog } = useQuery({
-    queryKey: ["catalog", "service", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("catalog_items")
-        .select("*")
-        .eq("app", APP_ID)
-        .eq("kind", vertical.catalog.serviceKind)
-        .eq("archived", false)
-        .order("sort_order");
-      if (error) throw error;
-      return (data ?? []) as CatalogItem[];
-    },
-    enabled: !!user,
-  });
+  const { data: catalog } = useServiceCatalog();
 
   const selectedCustomer = useMemo(
     () => customers?.find((c) => c.id === customerId) ?? null,

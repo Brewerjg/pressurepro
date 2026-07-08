@@ -6,8 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { QuoteLine } from "./types";
 import { defaultExpiresAt, quoteTotal } from "./types";
-import { APP_ID } from "@/lib/app-context";
 import { vertical } from "@/vertical";
+import { useServiceCatalog } from "@/hooks/useServiceCatalog";
 import { Section, Field } from "@/components/quotes/FormSection";
 
 // Shared editor used by NewQuote (create) and QuoteDetail (edit). The form
@@ -18,7 +18,6 @@ import { Section, Field } from "@/components/quotes/FormSection";
 
 type Customer = Database["public"]["Tables"]["customers"]["Row"];
 type Property = Database["public"]["Tables"]["properties"]["Row"];
-type CatalogItem = Database["public"]["Tables"]["catalog_items"]["Row"];
 
 export interface QuoteFormValues {
   customer_id: string;
@@ -96,22 +95,8 @@ export default function QuoteForm({
     enabled: !!customerId,
   });
 
-  // Catalog (services only)
-  const { data: catalog } = useQuery({
-    queryKey: ["catalog", "service", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("catalog_items")
-        .select("*")
-        .eq("app", APP_ID)
-        .eq("kind", vertical.catalog.serviceKind)
-        .eq("archived", false)
-        .order("sort_order");
-      if (error) throw error;
-      return (data ?? []) as CatalogItem[];
-    },
-    enabled: !!user,
-  });
+  // Catalog (services only) — vertical-aware (lawn: catalog_items; pressure: surface_pricing)
+  const { data: catalog } = useServiceCatalog();
 
   // Apply the customer pre-select once data loads. We keep this defensive —
   // if `initial.customer_id` is already populated, leave it alone.
