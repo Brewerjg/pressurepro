@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Check, ChevronRight, CreditCard, Loader2, Lock, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import BusinessProfile from "@/components/settings/BusinessProfile";
-import CatalogEditor from "@/components/settings/CatalogEditor";
+import { vertical } from "@/vertical";
 import CrewEditor from "@/components/settings/CrewEditor";
 import MessagingPreferences from "@/components/settings/MessagingPreferences";
 import SubscriptionCard from "@/components/settings/SubscriptionCard";
@@ -88,7 +88,9 @@ export default function Settings() {
 
       {/* Service catalog */}
       <Section icon={<Wrench className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Service catalog">
-        <CatalogEditor />
+        <Suspense fallback={<div className="text-sm text-neutral-500 py-2">Loading…</div>}>
+          <vertical.catalog.SettingsEditor />
+        </Suspense>
       </Section>
 
       {/* Crews */}

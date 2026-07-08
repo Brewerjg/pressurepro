@@ -1,3 +1,4 @@
+import type { LazyExoticComponent, ComponentType } from "react";
 import type { Database } from "@/integrations/supabase/types";
 import type { CatalogItem } from "./quote-line";
 
@@ -38,4 +39,7 @@ export interface CatalogModule {
   loadServiceCatalog(userId: string, appId: string): Promise<CatalogItem[]>;
   /** Idempotently seed this vertical's starter catalog for a user. */
   seed(userId: string, appId: string): Promise<void>;
+  /** Settings > catalog editor for this vertical (lazy — editors import
+   *  `vertical`, so a lazy ref avoids the app-context→vertical load cycle). */
+  SettingsEditor: LazyExoticComponent<ComponentType>;
 }

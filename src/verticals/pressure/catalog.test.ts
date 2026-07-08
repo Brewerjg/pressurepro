@@ -46,4 +46,7 @@ describe("pressureCatalog", () => {
     expect(typeof pressureCatalog.loadServiceCatalog).toBe("function");
     expect(typeof pressureCatalog.seed).toBe("function");
   });
+  it("provides a Settings editor component", () => {
+    expect(pressureCatalog.SettingsEditor).toBeTruthy();
+  });
 });

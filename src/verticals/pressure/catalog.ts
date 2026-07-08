@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogModule, CatalogSeedItem } from "@/verticals/catalog";
 import type { CatalogItem } from "@/verticals/quote-line";
@@ -80,4 +81,5 @@ export const pressureCatalog: CatalogModule = {
   },
   loadServiceCatalog: pressureLoadServiceCatalog,
   seed: pressureSeed,
+  SettingsEditor: lazy(() => import("./SurfacePricingEditor")),
 };

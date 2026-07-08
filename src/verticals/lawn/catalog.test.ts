@@ -35,4 +35,7 @@ describe("lawnCatalog", () => {
     expect(typeof lawnCatalog.loadServiceCatalog).toBe("function");
     expect(typeof lawnCatalog.seed).toBe("function");
   });
+  it("provides a Settings editor component", () => {
+    expect(lawnCatalog.SettingsEditor).toBeTruthy();
+  });
 });

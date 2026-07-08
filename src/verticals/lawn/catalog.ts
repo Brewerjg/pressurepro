@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogItem } from "@/verticals/quote-line";
 import type { Database } from "@/integrations/supabase/types";
@@ -84,4 +85,5 @@ export const lawnCatalog: CatalogModule = {
   },
   loadServiceCatalog: lawnLoadServiceCatalog,
   seed: lawnSeed,
+  SettingsEditor: lazy(() => import("@/components/settings/CatalogEditor")),
 };
