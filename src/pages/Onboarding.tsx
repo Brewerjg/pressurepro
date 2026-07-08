@@ -22,6 +22,7 @@ import {
   refreshConnectStatus,
   startConnectOnboarding,
 } from "@/lib/connect-onboarding";
+import { vertical } from "@/vertical";
 
 // First-run wizard. Five steps; stepper at top; "Skip for now" anywhere bails
 // out but still stamps profiles.onboarded_at so the gate doesn't re-fire (we'd
@@ -57,15 +58,6 @@ const CREW_COLORS = [
   "#7a4b1f", // brown
   "#3a6b6b", // teal
   "#6b3a6b", // purple
-];
-
-const SEED_PREVIEW: ReadonlyArray<{ name: string; price: string }> = [
-  { name: "Weekly mow", price: "$45" },
-  { name: "Biweekly mow", price: "$55" },
-  { name: "Spring cleanup", price: "$175" },
-  { name: "Aeration", price: "$125" },
-  { name: "Fert step 1 (pre-emergent)", price: "$85" },
-  { name: "+ 17 more (cleanups, fert, snow…)", price: "" },
 ];
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -428,7 +420,7 @@ export default function Onboarding() {
         {/* Brand header — mirrors Auth.tsx */}
         <div className="text-center mb-6">
           <div className="tp-display text-[34px] font-bold text-brand-800 tracking-tight">
-            TurfPro
+            {vertical.brand.name}
           </div>
           <p className="text-sm text-neutral-500 mt-1">Let's get you set up.</p>
         </div>
@@ -473,8 +465,8 @@ export default function Onboarding() {
           {step === 3 && (
             <Step3
               icon={<Wrench className="h-5 w-5 text-brand-700" strokeWidth={2} />}
-              title="Lawn services catalog"
-              subtitle="Want us to drop in the standard lawn-care services? You can edit them anytime."
+              title={vertical.copy.onboardingCatalogTitle}
+              subtitle={vertical.copy.onboardingCatalogSubtitle}
               submitting={seedMutation.isPending}
               onSeed={() => seedMutation.mutate()}
               onSkip={() => {
@@ -651,7 +643,7 @@ function Step1(props: {
         required
         value={props.businessName}
         onChange={(e) => props.setBusinessName(e.target.value)}
-        placeholder="Acme Lawn Care"
+        placeholder={vertical.copy.businessNamePlaceholder}
         className={inputCls}
       />
 
@@ -859,7 +851,7 @@ function Step3(props: {
       <StepHeader icon={props.icon} title={props.title} subtitle={props.subtitle} />
 
       <ul className="rounded-xl bg-brand-50/60 border border-brand-700/20 p-3 space-y-1.5">
-        {SEED_PREVIEW.map((row) => (
+        {vertical.copy.onboardingSeedPreview.map((row) => (
           <li
             key={row.name}
             className="flex items-center justify-between text-[12.5px] text-neutral-700"
@@ -992,7 +984,7 @@ function Step5(props: {
       <StepHeader
         icon={props.icon}
         title="Connect your payouts"
-        subtitle="TurfPro charges your customers and deposits the money in your bank account. Connect Stripe once — takes about 2 minutes."
+        subtitle={`${vertical.brand.name} charges your customers and deposits the money in your bank account. Connect Stripe once — takes about 2 minutes.`}
       />
 
       {isChecking && (

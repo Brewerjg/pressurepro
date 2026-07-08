@@ -11,6 +11,7 @@ import type { VerticalRoute, NavEntry, HomeAction } from "./shell";
 import type { PlanCadenceModule } from "./plan-cadence";
 import type { CampaignsModule } from "./campaigns";
 import type { PropertyFieldsModule } from "./property-fields";
+import type { CopyModule } from "./copy";
 
 export type AppId = "turfpro" | "pressurepro";
 
@@ -26,6 +27,10 @@ export interface Vertical {
     bundleId: string;
     /** Native status-bar / web theme-color hex. */
     themeColor: string;
+    /** Public print/gallery header fallback when no business name is set ("Lawn Care"). */
+    fallbackBusinessName: string;
+    /** Auth screen subtitle. */
+    authTagline: string;
   };
   quoteLine: QuoteLineModule;
   catalog: CatalogModule;
@@ -41,4 +46,6 @@ export interface Vertical {
   campaigns: CampaignsModule;
   /** Editable custom property fields + section copy for this vertical. */
   propertyFields: PropertyFieldsModule;
+  /** Lawn-flavored domain copy rendered by shared screens. */
+  copy: CopyModule;
 }

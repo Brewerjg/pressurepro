@@ -372,7 +372,7 @@ export default function PlanDetail() {
             onMarkResolved={() => {
               if (
                 !window.confirm(
-                  "Mark this failure as resolved? Stripe will keep retrying — this just hides the alert in TurfPro.",
+                  `Mark this failure as resolved? Stripe will keep retrying — this just hides the alert in ${vertical.brand.name}.`,
                 )
               ) {
                 return;

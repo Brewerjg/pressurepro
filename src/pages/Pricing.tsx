@@ -21,6 +21,7 @@ import {
   purchasePackage,
   type IapPackage
 } from "@/lib/iap";
+import { vertical } from "@/vertical";
 
 // Public marketing surface — no AppShell, no tab bar. The route is
 // registered as public in App.tsx so non-authenticated visitors can land
@@ -296,7 +297,7 @@ export default function Pricing() {
           <div className="h-8 w-8 rounded-[10px] bg-brand-800 text-accent-400 flex items-center justify-center">
             <Leaf className="h-[18px] w-[18px]" strokeWidth={2.2} />
           </div>
-          <div className="font-display font-extrabold text-lg text-neutral-900">TurfPro</div>
+          <div className="font-display font-extrabold text-lg text-neutral-900">{vertical.brand.name}</div>
         </Link>
         {!user && !authLoading && (
           <Link
@@ -314,7 +315,7 @@ export default function Pricing() {
             Pick your plan
           </h1>
           <p className="text-[13px] sm:text-sm text-neutral-500 mt-2">
-            Built for lawn-care crews. Cancel anytime.
+            {vertical.copy.pricingTagline} Cancel anytime.
           </p>
         </div>
 

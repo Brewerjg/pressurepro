@@ -5,6 +5,7 @@ import { lawnRoutes, lawnNavEntries, lawnHomeActions } from "./shell";
 import { lawnPlanCadence } from "./plan-cadence";
 import { lawnCampaigns } from "./campaigns";
 import { lawnPropertyFields } from "./property-fields";
+import { lawnCopy } from "./copy";
 
 // Lawn-care vertical (TurfPro). Phase 0a holds identity only; the lawn domain
 // (catalog seed, calculators, GDD/season/weather, quote-line model, theme) is
@@ -16,6 +17,8 @@ export const lawnVertical: Vertical = {
     tagline: "Lawn care quoting, scheduling, and billing.",
     bundleId: "com.turfpro.beta",
     themeColor: "#f5f1e8",
+    fallbackBusinessName: "Lawn Care",
+    authTagline: "Routes, plans, and recurring lawn-care ops.",
   },
   quoteLine: lawnQuoteLine,
   catalog: lawnCatalog,
@@ -25,4 +28,5 @@ export const lawnVertical: Vertical = {
   planCadence: lawnPlanCadence,
   campaigns: lawnCampaigns,
   propertyFields: lawnPropertyFields,
+  copy: lawnCopy,
 };

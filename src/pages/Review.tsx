@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
+import { vertical } from "@/vertical";
 
 const REVIEW_GOOGLE_THRESHOLD = 4;
 const COMMENT_MAX_CHARS = 2000;
@@ -192,10 +193,10 @@ const Review = () => {
           >
             <div className="text-2xl mb-1.5">🌱</div>
             <div className="font-extrabold text-sm mb-1">
-              Help us reach more lawns
+              {vertical.copy.reviewCalloutHeadline}
             </div>
             <p className="text-xs text-muted-foreground mb-3">
-              A quick Google review goes a long way for a small lawn-care business.
+              {vertical.copy.reviewCalloutBody}
             </p>
             <button
               onClick={onClickGoogle}
@@ -295,7 +296,7 @@ const Review = () => {
         )}
 
         <p className="text-xs text-center text-muted-foreground py-6">
-          Powered by TurfPro
+          Powered by {vertical.brand.name}
         </p>
       </main>
     </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
 import { nextVisitDate } from "@/lib/next-visit";
+import { vertical } from "@/vertical";
 
 // Public plan-management portal for TurfPro maintenance customers.
 // Unlike PressurePro (which immediately mints a Stripe billing portal
@@ -281,7 +282,7 @@ const PlanPortal = () => {
         <h1 className="font-display text-[28px] text-white mt-1.5">
           Hi {plan.customer_name.split(" ")[0]},
         </h1>
-        <p className="text-white/75 text-sm mt-1.5">Manage your lawn-care plan below.</p>
+        <p className="text-white/75 text-sm mt-1.5">{vertical.copy.planPortalSubtitle}</p>
       </BrandHeader>
 
       <main className="max-w-md mx-auto px-4 pt-5 space-y-4">
@@ -433,7 +434,7 @@ const PlanPortal = () => {
         )}
 
         <p className="text-center text-[11px] text-muted-foreground pt-4">
-          Powered by TurfPro
+          Powered by {vertical.brand.name}
         </p>
       </main>
     </div>

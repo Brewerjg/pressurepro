@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { vertical } from "@/vertical";
 
 export function DemoBanner() {
   const { user } = useAuth();
@@ -69,7 +70,7 @@ export function DemoBanner() {
         <div className="flex items-center gap-2 text-sm text-accent-700">
           <AlertCircle className="h-4 w-4" />
           <span>
-            <strong>Demo Mode:</strong> You're exploring TurfPro with a demo account. Data won't be saved.
+            <strong>Demo Mode:</strong> You're exploring {vertical.brand.name} with a demo account. Data won't be saved.
           </span>
         </div>
         <button

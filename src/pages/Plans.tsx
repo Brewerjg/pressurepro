@@ -219,8 +219,7 @@ export default function Plans() {
               No plans yet.
             </p>
             <p className="text-xs text-neutral-500 mt-1 max-w-[260px] mx-auto">
-              Recurring is the default for lawn care — add your first plan to get
-              started.
+              {vertical.copy.plansEmptyStateBody}
             </p>
             <Link
               to="/plans/new"

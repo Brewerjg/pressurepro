@@ -11,6 +11,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Share2, X, Leaf } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
+import { vertical } from "@/vertical";
 
 interface PhotoRow {
   id: string;
@@ -122,7 +123,7 @@ const Gallery = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-10">
-      <BrandHeader business={business || "Lawn Care"}>
+      <BrandHeader business={business || vertical.brand.fallbackBusinessName}>
         <h1 className="font-display text-[28px] text-white">{property.address}</h1>
         <p className="text-white/75 text-[13px] mt-1.5">
           {pairs.length} before / after pair{pairs.length === 1 ? "" : "s"}
@@ -177,7 +178,7 @@ const Gallery = () => {
             </div>
             <div className="px-3.5 py-3 flex items-center justify-between">
               <div>
-                <div className="font-bold text-[13px] text-neutral-900">Lawn care visit</div>
+                <div className="font-bold text-[13px] text-neutral-900">{vertical.copy.photoPairLabel}</div>
                 <div className="text-[11px] text-muted-foreground">
                   {new Date(p.createdAt).toLocaleDateString(undefined, {
                     year: "numeric",
@@ -200,20 +201,20 @@ const Gallery = () => {
         >
           <div className="text-2xl mb-1">🌿</div>
           <div className="font-extrabold text-sm text-neutral-900">
-            Want a lawn like this?
+            {vertical.copy.galleryCtaHeadline}
           </div>
           <p className="text-xs text-muted-foreground mt-1 mb-3">
-            Get a quote from {business || "us"} for your own yard.
+            {vertical.copy.galleryCtaBody.replace("{business}", business || "us")}
           </p>
           <Link
             to="/pricing"
             className="inline-flex items-center justify-center h-11 px-5 rounded-2xl bg-brand-800 text-white font-bold text-sm"
           >
-            Get a quote from TurfPro
+            Get a quote from {vertical.brand.name}
           </Link>
         </div>
         <p className="text-center text-[11px] text-muted-foreground pt-6 font-mono tracking-[0.08em]">
-          {(business || "TURFPRO").toUpperCase()}
+          {(business || vertical.brand.name).toUpperCase()}
         </p>
       </footer>
 

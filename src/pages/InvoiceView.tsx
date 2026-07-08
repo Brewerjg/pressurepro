@@ -12,6 +12,7 @@ import {
 import { BrandHeader } from "@/components/public/BrandHeader";
 import { getInvoiceByToken, formatInvoiceNumber, type Invoice } from "@/lib/invoices";
 import { parseLines, describe, type QuoteLine } from "@/components/quotes/types";
+import { vertical } from "@/vertical";
 
 // Customer-facing PUBLIC invoice (no auth). Resolved by invoices.public_token
 // via getInvoiceByToken (the anon supabase client reads it through the public
@@ -367,7 +368,7 @@ const InvoiceView = () => {
         </div>
 
         <div className="text-center text-[11px] text-muted-foreground pt-6 pb-10">
-          Powered by <span className="font-semibold text-brand-800">TurfPro</span>
+          Powered by <span className="font-semibold text-brand-800">{vertical.brand.name}</span>
         </div>
       </main>
     </div>

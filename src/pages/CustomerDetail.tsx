@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { NotesTimeline } from "@/components/customers/NotesTimeline";
 import { APP_ID } from "@/lib/app-context";
+import { vertical } from "@/vertical";
 
 // Ported from pressure-pro-quoter/src/pages/CustomerDetail.tsx with two key
 // TurfPro changes:
@@ -369,8 +370,7 @@ export default function CustomerDetail() {
         </div>
         {data!.plans.length === 0 ? (
           <div className="tp-card p-4 text-sm text-neutral-500">
-            No plans yet. Recurring service is the TurfPro default — add a plan to put this
-            customer on a route.
+            {vertical.copy.customerPlansEmptyState.replace("{brand}", vertical.brand.name)}
           </div>
         ) : (
           <div className="space-y-2">

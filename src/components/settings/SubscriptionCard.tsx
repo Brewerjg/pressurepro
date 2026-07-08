@@ -11,6 +11,7 @@ import {
   manageSubscriptions,
   type IapPackage,
 } from "@/lib/iap";
+import { vertical } from "@/vertical";
 
 // Subscription management card for the Settings → Billing section.
 //
@@ -165,7 +166,7 @@ export default function SubscriptionCard() {
       <div className="tp-card p-4 space-y-3">
         {planSummary}
         <p className="text-[12.5px] text-neutral-700 leading-relaxed">
-          Subscriptions are managed in the TurfPro mobile app. Open the app on
+          Subscriptions are managed in the {vertical.brand.name} mobile app. Open the app on
           your phone to change plans, update billing, or cancel.
         </p>
       </div>

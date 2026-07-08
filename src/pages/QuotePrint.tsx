@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Printer } from "lucide-react";
 import { parseLines, describe, quoteTotal } from "@/components/quotes/types";
+import { vertical } from "@/vertical";
 
 // Customer-facing printable quote. Auto-opens the print dialog so any
 // modern browser's "Save as PDF" is the de-facto PDF generator with zero
@@ -149,11 +150,11 @@ const QuotePrint = () => {
             <div className="text-xs uppercase tracking-widest text-neutral-500 font-bold">
               Quote
             </div>
-            <h1 className="text-3xl mt-1 brand">{biz.business || "Lawn Care"}</h1>
+            <h1 className="text-3xl mt-1 brand">{biz.business || vertical.brand.fallbackBusinessName}</h1>
             <div className="text-sm text-neutral-600 mt-1 leading-relaxed">
               {biz.phone && <div>{biz.phone}</div>}
               <div className="text-xs uppercase tracking-widest mt-1 text-neutral-400 font-bold">
-                Powered by TurfPro
+                Powered by {vertical.brand.name}
               </div>
             </div>
           </div>
@@ -229,7 +230,7 @@ const QuotePrint = () => {
           <section className="mt-6 p-4 rounded-lg border border-neutral-200 bg-neutral-50 text-sm">
             <div className="font-semibold">Recommended recurring service</div>
             <div className="text-neutral-700 mt-0.5">
-              We'll keep the lawn on schedule every {q.recurring_months} months.
+              {vertical.copy.quoteRecurringBlurb.replace("{months}", String(q.recurring_months))}
             </div>
           </section>
         )}
@@ -244,7 +245,7 @@ const QuotePrint = () => {
         )}
 
         <footer className="mt-12 pt-6 border-t border-neutral-200 text-xs text-neutral-500 text-center">
-          Thank you for the opportunity to quote your lawn.
+          {vertical.copy.quoteFooterThankYou}
         </footer>
       </main>
     </div>

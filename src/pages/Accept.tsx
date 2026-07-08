@@ -5,6 +5,7 @@ import { getStripeEnvironment } from "@/lib/stripe";
 import { Check, Phone, Loader2, Printer, ShieldCheck, Repeat, CreditCard } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
 import { parseLines, describe, quoteTotal } from "@/components/quotes/types";
+import { vertical } from "@/vertical";
 
 interface PublicQuote {
   id: string;
@@ -499,7 +500,7 @@ const Accept = () => {
           {q.expires_at && !isExpired && !accepted && (
             <>Quote expires {new Date(q.expires_at).toLocaleDateString()}<br /></>
           )}
-          Powered by <span className="font-semibold text-brand-800">TurfPro</span>
+          Powered by <span className="font-semibold text-brand-800">{vertical.brand.name}</span>
         </div>
       </main>
     </div>
