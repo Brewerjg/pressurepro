@@ -193,10 +193,10 @@ const Review = () => {
           >
             <div className="text-2xl mb-1.5">🌱</div>
             <div className="font-extrabold text-sm mb-1">
-              Help us reach more lawns
+              {vertical.copy.reviewCalloutHeadline}
             </div>
             <p className="text-xs text-muted-foreground mb-3">
-              A quick Google review goes a long way for a small lawn-care business.
+              {vertical.copy.reviewCalloutBody}
             </p>
             <button
               onClick={onClickGoogle}

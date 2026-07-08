@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { RESEND_ENABLED, TWILIO_ENABLED } from "@/lib/feature-flags";
+import { vertical } from "@/vertical";
 
 // MessagingPreferences — operator-facing toggles for the customer email +
 // SMS comms layer. The columns live on public.user_settings (email in
@@ -64,7 +65,7 @@ const ROWS: {
   {
     kind: "completed",
     label: "Completed",
-    blurb: "Thanks-for-letting-us-mow message after each stop wraps.",
+    blurb: vertical.copy.completedNotificationBlurb,
     emailKey: "send_completed_email",
     smsKey: "send_completed_sms",
   },

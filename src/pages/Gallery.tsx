@@ -178,7 +178,7 @@ const Gallery = () => {
             </div>
             <div className="px-3.5 py-3 flex items-center justify-between">
               <div>
-                <div className="font-bold text-[13px] text-neutral-900">Lawn care visit</div>
+                <div className="font-bold text-[13px] text-neutral-900">{vertical.copy.photoPairLabel}</div>
                 <div className="text-[11px] text-muted-foreground">
                   {new Date(p.createdAt).toLocaleDateString(undefined, {
                     year: "numeric",
@@ -201,10 +201,10 @@ const Gallery = () => {
         >
           <div className="text-2xl mb-1">🌿</div>
           <div className="font-extrabold text-sm text-neutral-900">
-            Want a lawn like this?
+            {vertical.copy.galleryCtaHeadline}
           </div>
           <p className="text-xs text-muted-foreground mt-1 mb-3">
-            Get a quote from {business || "us"} for your own yard.
+            {vertical.copy.galleryCtaBody.replace("{business}", business || "us")}
           </p>
           <Link
             to="/pricing"

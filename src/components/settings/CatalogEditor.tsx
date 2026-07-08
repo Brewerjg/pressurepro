@@ -379,7 +379,7 @@ function NewItemForm({
     <div className="rounded-xl border border-brand-700/30 bg-brand-50 p-3 space-y-2">
       <input
         autoFocus
-        placeholder="Weekly mow"
+        placeholder={vertical.copy.catalogItemNamePlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
         className={formInput}

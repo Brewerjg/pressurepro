@@ -230,7 +230,7 @@ const QuotePrint = () => {
           <section className="mt-6 p-4 rounded-lg border border-neutral-200 bg-neutral-50 text-sm">
             <div className="font-semibold">Recommended recurring service</div>
             <div className="text-neutral-700 mt-0.5">
-              We'll keep the lawn on schedule every {q.recurring_months} months.
+              {vertical.copy.quoteRecurringBlurb.replace("{months}", String(q.recurring_months))}
             </div>
           </section>
         )}
@@ -245,7 +245,7 @@ const QuotePrint = () => {
         )}
 
         <footer className="mt-12 pt-6 border-t border-neutral-200 text-xs text-neutral-500 text-center">
-          Thank you for the opportunity to quote your lawn.
+          {vertical.copy.quoteFooterThankYou}
         </footer>
       </main>
     </div>

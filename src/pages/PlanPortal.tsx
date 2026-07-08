@@ -282,7 +282,7 @@ const PlanPortal = () => {
         <h1 className="font-display text-[28px] text-white mt-1.5">
           Hi {plan.customer_name.split(" ")[0]},
         </h1>
-        <p className="text-white/75 text-sm mt-1.5">Manage your lawn-care plan below.</p>
+        <p className="text-white/75 text-sm mt-1.5">{vertical.copy.planPortalSubtitle}</p>
       </BrandHeader>
 
       <main className="max-w-md mx-auto px-4 pt-5 space-y-4">

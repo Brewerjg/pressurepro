@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { vertical } from "@/vertical";
 
 // Business profile editor — writes to public.profiles for the current user.
 // Profile row is upsert-style: select-where-user_id, insert if missing.
@@ -113,7 +114,7 @@ export default function BusinessProfile() {
                 setDraft((d) => ({ ...d, business_name: e.target.value }))
               }
               onBlur={handleBlur}
-              placeholder="Acme Lawn Care"
+              placeholder={vertical.copy.businessNamePlaceholder}
               className={inputCls}
             />
           </Field>
