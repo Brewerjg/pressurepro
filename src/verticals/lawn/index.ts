@@ -21,6 +21,7 @@ export const lawnVertical: Vertical = {
     themeColor: "#f5f1e8",
     fallbackBusinessName: "Lawn Care",
     authTagline: "Routes, plans, and recurring lawn-care ops.",
+    deepLinkScheme: "turfpro",
   },
   quoteLine: lawnQuoteLine,
   catalog: lawnCatalog,
