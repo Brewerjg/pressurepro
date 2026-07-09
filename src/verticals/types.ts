@@ -5,6 +5,7 @@
 // plan cadence, weather semantics, property fields, copy, extraRoutes) as those
 // pieces are extracted out of the shared core. Do not add unused seams early.
 
+import type { BillingModule } from "./billing";
 import type { QuoteLineModule } from "./quote-line";
 import type { CatalogModule } from "./catalog";
 import type { VerticalRoute, NavEntry, HomeAction } from "./shell";
@@ -32,6 +33,8 @@ export interface Vertical {
     /** Auth screen subtitle. */
     authTagline: string;
   };
+  /** Subscription tiers + Stripe price mapping for this vertical. */
+  billing: BillingModule;
   quoteLine: QuoteLineModule;
   catalog: CatalogModule;
   /** Routes this vertical injects into the shared router (lawn: calc, chem-log, routes). */

@@ -1,4 +1,5 @@
 import type { Vertical } from "@/verticals/types";
+import { lawnBilling } from "./billing";
 import { lawnQuoteLine } from "./quote-line";
 import { lawnCatalog } from "./catalog";
 import { lawnRoutes, lawnNavEntries, lawnHomeActions } from "./shell";
@@ -12,6 +13,7 @@ import { lawnCopy } from "./copy";
 // extracted here in Phase 0c.
 export const lawnVertical: Vertical = {
   id: "turfpro",
+  billing: lawnBilling,
   brand: {
     name: "TurfPro",
     tagline: "Lawn care quoting, scheduling, and billing.",

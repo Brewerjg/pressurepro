@@ -11,6 +11,7 @@
 // VITE_PAYMENTS_CLIENT_TOKEN, the publishable key. `pk_test_*` means sandbox.
 
 import { openInAppBrowser } from "@/lib/native-browser";
+import { vertical } from "@/vertical";
 
 type StripeEnv = "sandbox" | "live";
 
@@ -48,7 +49,7 @@ export function getStripeEnvironment(): StripeEnv {
   return environment;
 }
 
-export type TierId = "payg" | "solo" | "crew";
+export type TierId = "payg" | "solo" | "pro" | "crew";
 export type Cycle = "monthly" | "yearly";
 
 export interface Tier {
@@ -88,75 +89,10 @@ export interface Tier {
 // The edge function `create-checkout-session` resolves these via
 // `stripe.prices.list({ lookup_keys: [priceId] })`, so they should be set
 // as the price's lookup_key in Stripe — not the `price_xxx` ID.
-export const TIERS: Tier[] = [
-  {
-    id: "payg",
-    name: "Base",
-    tagline: "Low flat price — keep 100%",
-    monthly: { priceId: "turfpro_payg_monthly", price: 8 },
-    yearly: { priceId: "turfpro_payg_yearly", price: 80, saveLabel: "Save $16" },
-    seats: 1,
-    extraSeatPrice: null,
-    weeklyStopLimit: 25,
-    highlights: [
-      "$8/mo flat",
-      "0% payout fees — keep 100%",
-      "1 user seat",
-      "Up to 25 stops / week",
-      "All operator features",
-    ],
-    applicationFeePercent: 0,
-  },
-  {
-    id: "solo",
-    name: "Solo",
-    tagline: "One truck, one operator",
-    monthly: { priceId: "turfpro_solo_monthly", price: 15 },
-    yearly: { priceId: "turfpro_solo_yearly", price: 150, saveLabel: "Save $30" },
-    seats: 1,
-    extraSeatPrice: null,
-    weeklyStopLimit: 50,
-    highlights: [
-      "1 user seat",
-      "Up to 50 stops / week",
-      "0% payout fees — keep 100%",
-      "Photo before/after, chemical log",
-      "Weather & spray-day planner (beta)",
-    ],
-    applicationFeePercent: 0,
-  },
-  {
-    id: "crew",
-    name: "Crew",
-    tagline: "Multi-truck operation",
-    monthly: { priceId: "turfpro_crew_monthly", price: 59 },
-    yearly: { priceId: "turfpro_crew_yearly", price: 590, saveLabel: "Save $118" },
-    seats: 5,
-    extraSeatPrice: 10,
-    weeklyStopLimit: null,
-    highlights: [
-      "5 seats included (+$10/seat after)",
-      "Unlimited stops",
-      "Multi-truck routing & route optimization (beta)",
-      "QuickBooks sync (coming soon)",
-      "Recurring billing + maintenance plans",
-      "Fleet view, crew calendar & report export",
-    ],
-    applicationFeePercent: 0,
-  },
-];
 
-// Map any priceId / lookup_key back to a tier. Used by the Pricing page +
-// SubscriptionGate to identify the user's current tier from the
-// subscriptions row.
-const PRICE_TO_TIER: Record<string, TierId> = {
-  turfpro_payg_monthly: "payg",
-  turfpro_payg_yearly: "payg",
-  turfpro_solo_monthly: "solo",
-  turfpro_solo_yearly: "solo",
-  turfpro_crew_monthly: "crew",
-  turfpro_crew_yearly: "crew",
-};
+// Tiers + price map come from the active vertical (src/verticals/<slug>/billing.ts).
+export const TIERS: Tier[] = vertical.billing.tiers;
+const PRICE_TO_TIER: Record<string, TierId> = vertical.billing.priceToTier;
 
 /**
  * Resolve the application-fee percentage for a given tier id.
@@ -167,9 +103,8 @@ const PRICE_TO_TIER: Record<string, TierId> = {
  * reintroduced in one place, and so existing callers don't change.
  */
 export function feeForTier(tierId: TierId | null | undefined): number {
-  if (!tierId) return 0;
-  const tier = TIERS.find((t) => t.id === tierId);
-  return tier?.applicationFeePercent ?? 0;
+  const tier = tierId ? TIERS.find((t) => t.id === tierId) : undefined;
+  return (tier ?? getTier("payg")).applicationFeePercent;
 }
 
 /**
