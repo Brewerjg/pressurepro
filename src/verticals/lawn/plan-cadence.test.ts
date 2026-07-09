@@ -37,4 +37,11 @@ describe("lawnPlanCadence", () => {
       frequencies: ["weekly", "biweekly", "monthly"],
     });
   });
+  it("uses the lawn per-visit plan model with all cadence sections", () => {
+    expect(lawnPlanCadence.billingModel).toBe("per-visit");
+    expect(lawnPlanCadence.hasServiceFrequency).toBe(true);
+    expect(lawnPlanCadence.hasRouteDay).toBe(true);
+    expect(lawnPlanCadence.hasSeasonPause).toBe(true);
+    expect(lawnPlanCadence.defaultPlanKind).toBe("mow");
+  });
 });

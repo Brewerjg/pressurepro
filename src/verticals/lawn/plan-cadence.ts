@@ -25,4 +25,9 @@ export const lawnPlanCadence: PlanCadenceModule = {
     return "weekly";
   },
   seasonSwap: { planKind: "mow", frequencies: ["weekly", "biweekly", "monthly"] },
+  billingModel: "per-visit",
+  hasServiceFrequency: true,
+  hasRouteDay: true,
+  hasSeasonPause: true,
+  defaultPlanKind: "mow",
 };

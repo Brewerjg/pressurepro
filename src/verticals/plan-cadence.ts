@@ -24,4 +24,14 @@ export interface PlanCadenceModule {
   suggestFrequency(items: ReadonlyArray<{ name: string; isRecurring: boolean }>): string;
   /** The plan-set a season swap pauses/resumes (season slice reads this). */
   seasonSwap: { planKind: string; frequencies: readonly string[] };
+  /** "per-visit" = amount = perVisitRate × visitsPerMonth × interval; "flat" = amount entered directly. */
+  billingModel: "per-visit" | "flat";
+  /** Show the service-frequency picker. */
+  hasServiceFrequency: boolean;
+  /** Show the day-of-week "route day" picker. */
+  hasRouteDay: boolean;
+  /** Show the season-pause controls. */
+  hasSeasonPause: boolean;
+  /** plan_kind written when there is no frequency-derived kind. */
+  defaultPlanKind: string;
 }
