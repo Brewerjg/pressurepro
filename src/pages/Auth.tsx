@@ -69,7 +69,7 @@ export default function Auth() {
     try {
       // Generate random demo credentials
       const demoId = Math.random().toString(36).substring(7);
-      const demoEmail = `demo-${demoId}@turfpro.demo`;
+      const demoEmail = `demo-${demoId}@${vertical.id}.demo`;
       const demoPassword = `demo-${demoId}-password`;
 
       // Create demo account
@@ -126,7 +126,7 @@ export default function Auth() {
     try {
       const isNative = Capacitor.isNativePlatform();
       const redirectTo = isNative
-        ? "turfpro://auth-callback"
+        ? `${vertical.brand.deepLinkScheme}://auth-callback`
         : window.location.origin;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -172,7 +172,7 @@ export default function Auth() {
         // custom scheme; on web, send the user to the /reset-password page
         // where supabase-js parses the recovery token from the URL.
         const redirectTo = Capacitor.isNativePlatform()
-          ? "turfpro://auth-callback?type=recovery"
+          ? `${vertical.brand.deepLinkScheme}://auth-callback?type=recovery`
           : `${window.location.origin}/reset-password`;
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo,
@@ -196,7 +196,7 @@ export default function Auth() {
               is_demo: false, // Explicitly mark as NOT demo for regular signups
             },
             emailRedirectTo: Capacitor.isNativePlatform()
-              ? "turfpro://auth-callback"
+              ? `${vertical.brand.deepLinkScheme}://auth-callback`
               : window.location.origin,
           },
         });

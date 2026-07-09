@@ -38,6 +38,7 @@
 
 import { Capacitor } from "@capacitor/core";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { APP_ID } from "@/lib/app-context";
 
 // =====================================================================
 // Types
@@ -62,8 +63,8 @@ interface StoredMutation {
 // Storage keys
 // =====================================================================
 
-const PENDING_KEY = "turfpro_pending_mutations";
-const ROUTE_KEY_PREFIX = "turfpro_cached_route_";
+const PENDING_KEY = `${APP_ID}_pending_mutations`;
+const ROUTE_KEY_PREFIX = `${APP_ID}_cached_route_`;
 
 // =====================================================================
 // Backend abstraction — Preferences on native, localStorage on web.

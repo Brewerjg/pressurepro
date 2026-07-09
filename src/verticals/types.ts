@@ -32,6 +32,8 @@ export interface Vertical {
     fallbackBusinessName: string;
     /** Auth screen subtitle. */
     authTagline: string;
+    /** Custom URL scheme used for native deep links, e.g. "turfpro". */
+    deepLinkScheme: string;
   };
   /** Subscription tiers + Stripe price mapping for this vertical. */
   billing: BillingModule;

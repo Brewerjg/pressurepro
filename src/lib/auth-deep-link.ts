@@ -42,6 +42,7 @@
 
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
+import { vertical } from "@/vertical";
 
 let installed = false;
 
@@ -82,9 +83,9 @@ export async function installAuthDeepLinkListener(): Promise<void> {
       if (!event?.url) return;
 
       const isAuthCallback =
-        event.url.startsWith("turfpro://auth-callback") ||
+        event.url.startsWith(`${vertical.brand.deepLinkScheme}://auth-callback`) ||
         // Some OS/email-client combos lowercase the scheme; be lenient.
-        event.url.toLowerCase().startsWith("turfpro://auth-callback");
+        event.url.toLowerCase().startsWith(`${vertical.brand.deepLinkScheme}://auth-callback`);
 
       if (!isAuthCallback) return;
 
