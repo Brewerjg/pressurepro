@@ -87,6 +87,7 @@ interface EditState {
   gate_code: string;
   dog_warning: boolean;
   slope_warning: boolean;
+  surface_notes: string;
   grass_type: string;
   mow_height_in: string;
   pet_safe_only: boolean;
@@ -101,6 +102,7 @@ const emptyEdit: EditState = {
   gate_code: "",
   dog_warning: false,
   slope_warning: false,
+  surface_notes: "",
   grass_type: "",
   mow_height_in: "",
   pet_safe_only: false,
@@ -171,6 +173,7 @@ export default function PropertyDetail() {
       gate_code: p.gate_code ?? "",
       dog_warning: !!p.dog_warning,
       slope_warning: !!p.slope_warning,
+      surface_notes: p.surface_notes ?? "",
       grass_type: p.grass_type ?? "",
       mow_height_in: p.mow_height_in != null ? String(p.mow_height_in) : "",
       pet_safe_only: !!p.pet_safe_only,
@@ -195,6 +198,7 @@ export default function PropertyDetail() {
         address: edit.address.trim(),
         sqft,
         gate_code: edit.gate_code.trim() || null,
+        surface_notes: edit.surface_notes.trim() || null,
         dog_warning: edit.dog_warning,
         // Lawn-care additions
         turf_sqft: turfSqft,
@@ -366,6 +370,19 @@ export default function PropertyDetail() {
                     />
                   );
                 }
+                if (f.type === "textarea") {
+                  return (
+                    <Field key={f.key} label={f.label}>
+                      <textarea
+                        value={state[f.key] as string}
+                        onChange={(e) => setEdit({ ...edit, [f.key]: e.target.value } as EditState)}
+                        placeholder={f.placeholder}
+                        rows={3}
+                        className="tp-input"
+                      />
+                    </Field>
+                  );
+                }
                 const listId = `datalist-${f.key}`;
                 return (
                   <Field key={f.key} label={f.label}>
@@ -412,6 +429,7 @@ export default function PropertyDetail() {
                     gate_code: p.gate_code ?? "",
                     dog_warning: !!p.dog_warning,
                     slope_warning: !!p.slope_warning,
+                    surface_notes: p.surface_notes ?? "",
                     grass_type: p.grass_type ?? "",
                     mow_height_in: p.mow_height_in != null ? String(p.mow_height_in) : "",
                     pet_safe_only: !!p.pet_safe_only,
@@ -499,7 +517,7 @@ export default function PropertyDetail() {
                 {vertical.propertyFields.fields
                   .filter(
                     (f): f is Extract<PropertyFieldDef, { type: "datalist" | "number" }> =>
-                      f.type !== "toggle",
+                      f.type !== "toggle" && f.type !== "textarea",
                   )
                   .map((f) => {
                     const raw = (property as unknown as Record<string, unknown>)[f.key];
@@ -512,6 +530,17 @@ export default function PropertyDetail() {
                     return <Stat key={f.key} label={f.readLabel ?? f.label} value={value} />;
                   })}
               </div>
+              {vertical.propertyFields.fields.map((f) => {
+                if (f.type !== "textarea") return null;
+                const raw = (property as unknown as Record<string, unknown>)[f.key];
+                const value = String(raw ?? "");
+                if (!value) return null;
+                return (
+                  <p key={f.key} className="text-sm text-neutral-600 whitespace-pre-wrap">
+                    {value}
+                  </p>
+                );
+              })}
               <div className="grid grid-cols-1 gap-1.5 pt-1">
                 {vertical.propertyFields.fields.map((f) => {
                   if (f.type !== "toggle") return null;
