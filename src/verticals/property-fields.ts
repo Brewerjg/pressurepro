@@ -4,7 +4,8 @@ import type { LucideIcon } from "lucide-react";
 export type PropertyFieldDef =
   | { key: string; label: string; readLabel?: string; type: "datalist"; placeholder?: string; suggestions: string[] }
   | { key: string; label: string; readLabel?: string; type: "number"; placeholder?: string; step?: string; displaySuffix?: string }
-  | { key: string; label: string; type: "toggle"; icon: LucideIcon; pillTone: "green" | "rain" | "bronze" };
+  | { key: string; label: string; type: "toggle"; icon: LucideIcon; pillTone: "green" | "rain" | "bronze" }
+  | { key: string; label: string; readLabel?: string; type: "textarea"; placeholder?: string };
 
 export interface PropertyFieldsModule {
   /** Heading for the custom-fields card ("Lawn details"). */
