@@ -609,8 +609,12 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
         </button>
       </div>
       <dl className="grid grid-cols-2 gap-y-3 gap-x-3">
-        <Stat label="Frequency" value={freqLabel} />
-        <Stat label="Route day" value={dayLabel} />
+        {vertical.planCadence.hasServiceFrequency && (
+          <Stat label="Frequency" value={freqLabel} />
+        )}
+        {vertical.planCadence.hasRouteDay && (
+          <Stat label="Route day" value={dayLabel} />
+        )}
         <Stat label="Amount" value={fmtUSD(Number(plan.amount))} />
         <Stat label="Billing" value={`Every ${plan.interval_months}mo`} />
         <Stat label="Start date" value={fmtDateShort(plan.start_date)} />
@@ -635,7 +639,7 @@ function SummaryCard({ plan, onEdit }: { plan: LawnPlan; onEdit: () => void }) {
         </div>
       )}
 
-      {seasonPause.length > 0 && (
+      {vertical.planCadence.hasSeasonPause && seasonPause.length > 0 && (
         <div className="mt-3 pt-3 border-t border-neutral-200">
           <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
             Seasonal pauses
@@ -707,12 +711,13 @@ function EditCard({
       day_of_week: dayOfWeek,
       frequency,
       season_pause: seasonPause,
-      plan_kind:
-        frequency === "fert_program" && plan.plan_kind !== "other"
-          ? "fert_program"
-          : plan.plan_kind === "other"
-            ? "other"
-            : "mow",
+      plan_kind: vertical.planCadence.hasServiceFrequency
+        ? (frequency === "fert_program" && plan.plan_kind !== "other"
+            ? "fert_program"
+            : plan.plan_kind === "other"
+              ? "other"
+              : "mow")
+        : vertical.planCadence.defaultPlanKind,
     });
   };
 
@@ -729,53 +734,57 @@ function EditCard({
         </button>
       </div>
 
-      <div>
-        <FieldLabel>Frequency</FieldLabel>
-        <div className="grid grid-cols-2 gap-1.5">
-          {vertical.planCadence.frequencies.map((opt) => {
-            const on = frequency === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setFrequency(opt.key)}
-                className={cn(
-                  "py-2 rounded-xl text-[12.5px] font-semibold transition-colors border",
-                  on
-                    ? "border-brand-800 bg-brand-800 text-white"
-                    : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
-                )}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
+      {vertical.planCadence.hasServiceFrequency && (
+        <div>
+          <FieldLabel>Frequency</FieldLabel>
+          <div className="grid grid-cols-2 gap-1.5">
+            {vertical.planCadence.frequencies.map((opt) => {
+              const on = frequency === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setFrequency(opt.key)}
+                  className={cn(
+                    "py-2 rounded-xl text-[12.5px] font-semibold transition-colors border",
+                    on
+                      ? "border-brand-800 bg-brand-800 text-white"
+                      : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div>
-        <FieldLabel>Route day</FieldLabel>
-        <div className="grid grid-cols-7 gap-1.5">
-          {DAY_SHORT.map((label, i) => {
-            const on = dayOfWeek === i;
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setDayOfWeek(i)}
-                className={cn(
-                  "py-2 rounded-[10px] text-[11.5px] font-semibold transition-colors",
-                  on
-                    ? "bg-brand-800 text-white"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
+      {vertical.planCadence.hasRouteDay && (
+        <div>
+          <FieldLabel>Route day</FieldLabel>
+          <div className="grid grid-cols-7 gap-1.5">
+            {DAY_SHORT.map((label, i) => {
+              const on = dayOfWeek === i;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setDayOfWeek(i)}
+                  className={cn(
+                    "py-2 rounded-[10px] text-[11.5px] font-semibold transition-colors",
+                    on
+                      ? "bg-brand-800 text-white"
+                      : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -831,29 +840,31 @@ function EditCard({
         </div>
       </div>
 
-      <div>
-        <FieldLabel>Seasonal pauses</FieldLabel>
-        <div className="flex flex-wrap gap-1.5">
-          {SEASONS.map((s) => {
-            const on = seasonPause.includes(s);
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleSeason(s)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors border capitalize",
-                  on
-                    ? "bg-accent-100 text-accent-700 border-transparent"
-                    : "bg-card text-neutral-700 border-neutral-200 hover:border-brand-700",
-                )}
-              >
-                {s}
-              </button>
-            );
-          })}
+      {vertical.planCadence.hasSeasonPause && (
+        <div>
+          <FieldLabel>Seasonal pauses</FieldLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {SEASONS.map((s) => {
+              const on = seasonPause.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleSeason(s)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors border capitalize",
+                    on
+                      ? "bg-accent-100 text-accent-700 border-transparent"
+                      : "bg-card text-neutral-700 border-neutral-200 hover:border-brand-700",
+                  )}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <button
         type="button"
