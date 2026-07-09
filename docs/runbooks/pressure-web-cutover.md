@@ -7,9 +7,12 @@ Old deploy (from `Brewerjg/pressure-pro-quoter`) is the rollback — do not touc
 ## 1. DB gate — quote_status 'expired' (agent)
 
 ```powershell
-supabase db query -f supabase/migrations/0032_pressure_quote_status_expired.sql
-supabase db query "SELECT unnest(enum_range(NULL::public.quote_status)) AS status;"
+supabase db query -f supabase/migrations/0032_pressure_quote_status_expired.sql --linked
+supabase db query "SELECT unnest(enum_range(NULL::public.quote_status)) AS status;" --linked
 ```
+
+(`--linked` is required — without it the CLI targets a local dev DB, not the
+live linked project. Verified on CLI 2.108.0.)
 
 Expected: second command lists `draft, sent, accepted, scheduled, complete, paid, expired`.
 Additive + idempotent (`IF NOT EXISTS`); no rollback needed; lawn never writes 'expired'.
