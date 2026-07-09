@@ -71,46 +71,47 @@ onboardingSeedPreview: [
 pricingTagline: "Built for pressure-washing pros.",
 ```
 
-## Module 3 — `pressure/property-fields.ts` + `PropertyDetail` refactor
+## Module 3 — `pressure/property-fields.ts` (+ minimal `PropertyDetail` textarea support)
 
-Pressure's property fields are `gate_code` (text), `surface_notes` (textarea),
-`dog_warning` (toggle) — columns CONFIRMED present live on `properties`. The
-0c-6b `PropertyFieldDef` union only has `datalist`/`number`/`toggle`, and 0c-6b
-kept `PropertyDetail`'s `EditState`/save as fixed lawn-named keys (explicitly
-deferring the dynamic refactor to Phase 1). This slice completes both.
+**Key finding (from reading `PropertyDetail.tsx`):** `gate_code` and `dog_warning`
+are ALREADY fields in the shared Property card + `EditState` + save payload
+(inherited from the PressurePro base, shown for both verticals) — they already
+persist for pressure with ZERO change. The custom-fields card + read view are
+ALREADY config-driven over `vertical.propertyFields.fields` (0c-6b). So the only
+genuinely-new pressure field is **`surface_notes`** (a textarea), and it is added
+as a superset `EditState`/save field EXACTLY like the existing `gate_code`/
+`dog_warning` superset fields — **no dynamic refactor** (my earlier framing was
+wrong; the codebase already uses the superset pattern). `surface_notes` column
+CONFIRMED present live.
 
 ### Contract widening (`src/verticals/property-fields.ts`)
 
-Add two variants to `PropertyFieldDef`:
+Add ONE variant to `PropertyFieldDef` (only `textarea` is needed — `gate_code`
+stays a hardcoded Property-card input, not a config field):
 
 ```ts
-  | { key: string; label: string; readLabel?: string; type: "text"; placeholder?: string }
   | { key: string; label: string; readLabel?: string; type: "textarea"; placeholder?: string }
 ```
 
-### `PropertyDetail.tsx` — config-driven EditState/save (the 0c-6b-deferred refactor)
+### `PropertyDetail.tsx` — add `surface_notes` (superset) + a `textarea` branch
 
-Make the edit state + save payload DRIVEN BY `vertical.propertyFields.fields`
-rather than hardcoded lawn keys, so each vertical writes only its own columns
-(lawn unaffected; pressure persists its 3 fields):
-- `EditState` becomes a `Record<string, string | boolean>` initialized from the
-  config fields (toggles → `boolean`, scalars/text/textarea → `string`;
-  number/datalist keep the string-holding-number pattern). The Property-card
-  fields (`turf_sqft`/`slope_warning` for lawn) stay as they are — this refactor
-  covers only the custom-fields card that 0c-6b already made config-driven.
-- The save payload writes exactly the config fields' keys (numbers parsed via
-  `Number()`), so lawn saves write only lawn columns and pressure saves write only
-  `gate_code`/`surface_notes`/`dog_warning`. This removes the cross-vertical
-  column-write concern.
-- **Edit render** gains `text` → `<input type="text">` and `textarea` →
-  `<textarea>` branches (alongside the existing datalist/number/toggle).
-- **Read render** gains: `text` shown like a scalar `<Stat>` (label + value,
-  omitted when empty); `textarea` shown as a full-width paragraph under the card
-  (omitted when empty). Toggles unchanged (`<Pill>`).
-- **Behavior-identical for lawn:** lawn's fields are only datalist/number/toggle,
-  so the new branches never execute; the config-driven EditState/save reproduces
-  lawn's current writes for lawn's keys exactly (verified by the whole-branch
-  review). `PropertyDetail.tsx` is NOT in the tsc baseline — must stay clean.
+Matches the existing `gate_code`/`dog_warning` superset pattern; NO restructuring:
+- `EditState` gains `surface_notes: string`; `emptyEdit` gains `surface_notes: ""`;
+  the load `setEdit({…})` gains `surface_notes: p.surface_notes ?? ""`; the save
+  `payload` gains `surface_notes: edit.surface_notes.trim() || null` (lawn never
+  edits it → stays `""` → saved `null`, harmless — identical to how lawn already
+  writes `gate_code`).
+- The config-driven **edit map** gains a `textarea` branch (`<textarea
+  value={state[f.key]} onChange=… />`) alongside toggle/number/datalist.
+- The config-driven **read view**: `textarea` renders as a full-width paragraph
+  (omitted when empty), NOT a `<Stat>`. Adjust the scalar partition so `textarea`
+  is excluded from the 2-col Stat grid and rendered separately. The
+  `emptyStateHint` shows when the card has no set value.
+- **Behavior-identical for lawn:** lawn's config has no `textarea` field, so the
+  new branch never executes; `surface_notes` stays `""`/`null` on every lawn save
+  (same as the pre-existing superset `gate_code`). `PropertyDetail.tsx` is NOT in
+  the tsc baseline — must stay clean (`p.surface_notes` needs the `PropertyRow`
+  interface to include `surface_notes?: string | null`).
 
 ### `pressure/property-fields.ts`
 
@@ -118,18 +119,15 @@ rather than hardcoded lawn keys, so each vertical writes only its own columns
 export const pressurePropertyFields: PropertyFieldsModule = {
   sectionLabel: "Site details",
   sectionIcon: <a lucide icon, e.g. MapPin>,
-  emptyStateHint: "No site details yet. Edit to record a gate code, surface notes, or a dog warning.",
+  emptyStateHint: "No site notes yet. Edit to record surface materials, problem areas, or access notes.",
   fields: [
-    { key: "gate_code", label: "Gate code", type: "text", placeholder: "e.g. 1234#" },
     { key: "surface_notes", label: "Surface notes", type: "textarea", placeholder: "Materials, problem areas, access…" },
-    { key: "dog_warning", label: "Dog on property", type: "toggle", icon: <Dog/PawPrint>, pillTone: "bronze" },
   ],
 };
 ```
 
-(`pillTone` is the fixed `"green"|"rain"|"bronze"` union — `bronze` for the dog
-warning; the tone names are lawn-flavored but map to theme vars defined in both
-themes.)
+(`gate_code` + `dog_warning` are intentionally NOT in the config — they live in
+the shared Property card and already work for pressure.)
 
 ## Testing
 
@@ -140,9 +138,8 @@ themes.)
 - `pressure/copy.test.ts`: all 17 keys non-empty strings; `onboardingSeedPreview`
   6 items; token strings retain `{months}`/`{business}`/`{brand}`; spot-check
   `pricingTagline`, `businessNamePlaceholder`, `onboardingCatalogTitle`.
-- `pressure/property-fields.test.ts`: 3 fields with keys
-  `["gate_code","surface_notes","dog_warning"]`; types `text`/`textarea`/`toggle`;
-  `dog_warning` tone `bronze`; `sectionLabel === "Site details"`.
+- `pressure/property-fields.test.ts`: 1 field, key `surface_notes`, type
+  `textarea`; `sectionLabel === "Site details"`; `emptyStateHint` present.
 - `PropertyDetail` has no unit test (matches 0c-6b) — its lawn-identity is covered
   by the whole-branch review; the tsc baseline must stay clean and `npm run build`
   green.
