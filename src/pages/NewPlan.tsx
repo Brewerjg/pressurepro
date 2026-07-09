@@ -82,6 +82,7 @@ export default function NewPlan() {
   // plan_kind auto-tracks frequency unless operator picked "other" explicitly.
   // We keep planKind in state so the (future) "Other" option can override.
   useEffect(() => {
+    if (!vertical.planCadence.hasServiceFrequency) return;
     setPlanKind((current) => {
       if (current === "other") return "other";
       return frequency === "fert_program" ? "fert_program" : "mow";
@@ -156,19 +157,30 @@ export default function NewPlan() {
       if (!selectedCustomer) throw new Error("Pick a customer");
       if (!selectedProperty) throw new Error("Pick a property");
       if (services.length === 0) throw new Error("Pick at least one service");
-      const perVisitNum = Number(perVisitRate);
-      if (!perVisitNum || perVisitNum <= 0) {
-        throw new Error("Enter a per-visit rate greater than $0");
-      }
-      // Auto-derive billing amount from per-visit rate × frequency × interval.
-      // Override wins if the operator opened the override field with a value.
-      const calculatedAmount = calcBillingAmount(perVisitNum, frequency, intervalMonths);
-      const overrideNum = showOverride ? Number(amountOverride) : NaN;
-      const amountNum = Number.isFinite(overrideNum) && overrideNum > 0
-        ? overrideNum
-        : calculatedAmount;
-      if (!amountNum || amountNum <= 0) {
-        throw new Error("Couldn't compute a billing amount — check your inputs");
+      let amountNum: number;
+      let perVisitForPayload: number | null;
+      if (vertical.planCadence.billingModel === "flat") {
+        amountNum = Number(amountOverride) || 0;
+        if (!amountNum || amountNum <= 0) {
+          throw new Error("Enter a plan amount.");
+        }
+        perVisitForPayload = null;
+      } else {
+        const perVisitNum = Number(perVisitRate);
+        if (!perVisitNum || perVisitNum <= 0) {
+          throw new Error("Enter a per-visit rate greater than $0");
+        }
+        // Auto-derive billing amount from per-visit rate × frequency × interval.
+        // Override wins if the operator opened the override field with a value.
+        const calculatedAmount = calcBillingAmount(perVisitNum, frequency, intervalMonths);
+        const overrideNum = showOverride ? Number(amountOverride) : NaN;
+        amountNum = Number.isFinite(overrideNum) && overrideNum > 0
+          ? overrideNum
+          : calculatedAmount;
+        if (!amountNum || amountNum <= 0) {
+          throw new Error("Couldn't compute a billing amount — check your inputs");
+        }
+        perVisitForPayload = perVisitNum;
       }
       if (!startDate) throw new Error("Pick a start date");
 
@@ -184,7 +196,7 @@ export default function NewPlan() {
         // New column added in migration 0021. Stored so PlanDetail's edit
         // form can show the operator's mental-model number without having
         // to reverse-engineer from amount + frequency.
-        per_visit_rate: perVisitNum,
+        per_visit_rate: perVisitForPayload,
         interval_months: intervalMonths,
         start_date: startDate,
         next_charge_date: startDate,
@@ -192,7 +204,7 @@ export default function NewPlan() {
         day_of_week: dayOfWeek,
         frequency,
         season_pause: seasonPause,
-        plan_kind: planKind,
+        plan_kind: vertical.planCadence.hasServiceFrequency ? planKind : vertical.planCadence.defaultPlanKind,
       };
 
       return await createPlanSubscription(input);
@@ -350,135 +362,161 @@ export default function NewPlan() {
         </Section>
 
         {/* Service cadence */}
-        <Section
-          title="Service frequency"
-          subtitle="How often crews show up. Independent from billing cadence."
-        >
-          <div className="grid grid-cols-2 gap-2">
-            {vertical.planCadence.frequencies.map((opt) => {
-              const on = frequency === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setFrequency(opt.key)}
-                  className={cn(
-                    "text-left rounded-xl border p-3 transition-colors",
-                    on
-                      ? "border-brand-800 bg-brand-50"
-                      : "border-neutral-200 bg-card hover:border-brand-700",
-                  )}
-                >
-                  <div className="text-[13px] font-semibold text-neutral-900">
-                    {opt.label}
-                  </div>
-                  <div className="text-[11px] text-neutral-500 mt-0.5">{opt.sub}</div>
-                </button>
-              );
-            })}
-          </div>
-        </Section>
+        {vertical.planCadence.hasServiceFrequency && (
+          <Section
+            title="Service frequency"
+            subtitle="How often crews show up. Independent from billing cadence."
+          >
+            <div className="grid grid-cols-2 gap-2">
+              {vertical.planCadence.frequencies.map((opt) => {
+                const on = frequency === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setFrequency(opt.key)}
+                    className={cn(
+                      "text-left rounded-xl border p-3 transition-colors",
+                      on
+                        ? "border-brand-800 bg-brand-50"
+                        : "border-neutral-200 bg-card hover:border-brand-700",
+                    )}
+                  >
+                    <div className="text-[13px] font-semibold text-neutral-900">
+                      {opt.label}
+                    </div>
+                    <div className="text-[11px] text-neutral-500 mt-0.5">{opt.sub}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+        )}
 
         {/* Day-of-week picker */}
-        <Section
-          title="Route day"
-          subtitle="Which weekday this property normally falls on"
-        >
-          <div className="grid grid-cols-7 gap-1.5">
-            {DAY_LABEL.map((label, i) => {
-              const on = dayOfWeek === i;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setDayOfWeek(i)}
-                  className={cn(
-                    "py-2 rounded-[10px] text-[11.5px] font-semibold transition-colors",
-                    on
-                      ? "bg-brand-800 text-white"
-                      : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </Section>
+        {vertical.planCadence.hasRouteDay && (
+          <Section
+            title="Route day"
+            subtitle="Which weekday this property normally falls on"
+          >
+            <div className="grid grid-cols-7 gap-1.5">
+              {DAY_LABEL.map((label, i) => {
+                const on = dayOfWeek === i;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setDayOfWeek(i)}
+                    className={cn(
+                      "py-2 rounded-[10px] text-[11.5px] font-semibold transition-colors",
+                      on
+                        ? "bg-brand-800 text-white"
+                        : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+        )}
 
         {/* Pricing + billing */}
         <Section
           title="Pricing & billing"
           subtitle="The card is charged on the billing cadence below — service still runs on the frequency above."
         >
-          <Field label={perVisitLabel}>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">
-                $
-              </span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={perVisitRate}
-                onChange={(e) => setPerVisitRate(e.target.value)}
-                placeholder="0.00"
-                className="tp-input pl-7"
-                required
-              />
-            </div>
-          </Field>
-
-          {/* Auto-calculated billing total — shows the math so operators
-              don't have to compute it in their head. The override toggle
-              opens a manual amount input for discounted / custom plans. */}
-          {perVisitNum > 0 && (
-            <div className="rounded-[14px] bg-brand-50 border border-brand-100 p-3.5 text-[12.5px] text-neutral-700">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.5px] text-brand-700 mb-0.5">
-                    Billing total
-                  </div>
-                  <div className="tp-num font-bold text-[18px] text-brand-900">
-                    ${effectiveAmount.toFixed(2)} every {intervalMonths}mo
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showOverride) {
-                      setAmountOverride("");
-                      setShowOverride(false);
-                    } else {
-                      setAmountOverride(calculatedAmount.toFixed(2));
-                      setShowOverride(true);
-                    }
-                  }}
-                  className="text-[11.5px] font-semibold text-accent-600 hover:text-accent-700 underline-offset-2 hover:underline"
-                >
-                  {showOverride ? "Use auto" : "Override"}
-                </button>
-              </div>
-              <div className="text-[11.5px] text-neutral-600 mt-1.5 tp-num">
-                ${perVisitNum.toFixed(2)} × {visitsPerMonthLabel[frequency]} × {intervalMonths}{intervalMonths === 1 ? "mo" : "mo"} = ${calculatedAmount.toFixed(2)}
-              </div>
-              {showOverride && (
-                <div className="mt-2 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">$</span>
+          {vertical.planCadence.billingModel === "per-visit" && (
+            <>
+              <Field label={perVisitLabel}>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">
+                    $
+                  </span>
                   <input
                     type="number"
                     inputMode="decimal"
                     min="0"
                     step="0.01"
-                    value={amountOverride}
-                    onChange={(e) => setAmountOverride(e.target.value)}
-                    placeholder="Custom amount"
+                    value={perVisitRate}
+                    onChange={(e) => setPerVisitRate(e.target.value)}
+                    placeholder="0.00"
                     className="tp-input pl-7"
+                    required
                   />
                 </div>
+              </Field>
+
+              {/* Auto-calculated billing total — shows the math so operators
+                  don't have to compute it in their head. The override toggle
+                  opens a manual amount input for discounted / custom plans. */}
+              {perVisitNum > 0 && (
+                <div className="rounded-[14px] bg-brand-50 border border-brand-100 p-3.5 text-[12.5px] text-neutral-700">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.5px] text-brand-700 mb-0.5">
+                        Billing total
+                      </div>
+                      <div className="tp-num font-bold text-[18px] text-brand-900">
+                        ${effectiveAmount.toFixed(2)} every {intervalMonths}mo
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (showOverride) {
+                          setAmountOverride("");
+                          setShowOverride(false);
+                        } else {
+                          setAmountOverride(calculatedAmount.toFixed(2));
+                          setShowOverride(true);
+                        }
+                      }}
+                      className="text-[11.5px] font-semibold text-accent-600 hover:text-accent-700 underline-offset-2 hover:underline"
+                    >
+                      {showOverride ? "Use auto" : "Override"}
+                    </button>
+                  </div>
+                  <div className="text-[11.5px] text-neutral-600 mt-1.5 tp-num">
+                    ${perVisitNum.toFixed(2)} × {visitsPerMonthLabel[frequency]} × {intervalMonths}{intervalMonths === 1 ? "mo" : "mo"} = ${calculatedAmount.toFixed(2)}
+                  </div>
+                  {showOverride && (
+                    <div className="mt-2 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">$</span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        value={amountOverride}
+                        onChange={(e) => setAmountOverride(e.target.value)}
+                        placeholder="Custom amount"
+                        className="tp-input pl-7"
+                      />
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
+            </>
+          )}
+          {vertical.planCadence.billingModel === "flat" && (
+            <Field label="Plan amount">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={amountOverride}
+                  onChange={(e) => setAmountOverride(e.target.value)}
+                  placeholder="0.00"
+                  className="tp-input pl-7"
+                  required
+                />
+              </div>
+            </Field>
           )}
 
           <Field label="Billing cadence">
@@ -522,31 +560,33 @@ export default function NewPlan() {
         </Section>
 
         {/* Season pause */}
-        <Section
-          title="Seasonal pauses"
-          subtitle="Skip service automatically during these seasons (optional)."
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {SEASONS.map((s) => {
-              const on = seasonPause.includes(s.key);
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => toggleSeason(s.key)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors border",
-                    on
-                      ? `${s.tone} border-transparent`
-                      : "bg-card text-neutral-700 border-neutral-200 hover:border-brand-700",
-                  )}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-        </Section>
+        {vertical.planCadence.hasSeasonPause && (
+          <Section
+            title="Seasonal pauses"
+            subtitle="Skip service automatically during these seasons (optional)."
+          >
+            <div className="flex flex-wrap gap-1.5">
+              {SEASONS.map((s) => {
+                const on = seasonPause.includes(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => toggleSeason(s.key)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors border",
+                      on
+                        ? `${s.tone} border-transparent`
+                        : "bg-card text-neutral-700 border-neutral-200 hover:border-brand-700",
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+        )}
 
         {/* Summary card */}
         <div className="rounded-[18px] bg-gradient-hero-deep text-white p-[18px] relative overflow-hidden">
