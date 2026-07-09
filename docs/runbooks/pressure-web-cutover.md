@@ -74,3 +74,18 @@ DB change stays (additive, harmless).
 ## Results
 
 (appended by the verification pass)
+
+### Status 2026-07-09 — partially executed, paused at the Vercel gate
+
+- §1 DB gate: **DONE.** 0032 applied via `db query -f ... --linked`; live enum
+  verified = `draft, sent, accepted, scheduled, complete, paid, expired`
+  (before-state lacked `expired`). Idempotent; nothing to undo.
+- §2 Vercel project: **DEFERRED by user.** Not created yet. NOTE: the old
+  deploy at `https://pressure-pro-quoter.vercel.app` is alive and still serves
+  the old app (confirmed 2026-07-09) — it remains the rollback.
+- §3 auth allowlist / §4 verification: pending §2.
+- Known gap found during §2 smoke: turf `index.html` hardcodes
+  `<title>TurfPro</title>` + TurfPro og/meta tags — the pressure web deploy
+  will show a "TurfPro" browser-tab title. Needs a small 1e-followup (vertical
+  index.html title/meta via Vite transformIndexHtml or equivalent) BEFORE or
+  right after cutover; out of 1f's zero-code scope.
