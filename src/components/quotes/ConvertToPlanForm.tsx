@@ -70,7 +70,7 @@ interface ConvertToPlanFormProps {
   onCancel: () => void;
   onSubmit: (values: {
     services: string[];
-    per_visit_rate: number;
+    per_visit_rate: number | null;
     frequency: string;
     day_of_week: number;
     interval_months: 1 | 3 | 6 | 12;
@@ -133,6 +133,7 @@ export default function ConvertToPlanForm({
   // same pattern — stays at Wednesday until the operator chooses, then
   // we stop touching it.
   useEffect(() => {
+    if (!vertical.planCadence.hasServiceFrequency) return;
     if (frequencyTouched.current) return;
     const suggested = vertical.planCadence.suggestFrequency(items);
     setFrequency((prev) => (prev === suggested ? prev : suggested));
@@ -154,7 +155,15 @@ export default function ConvertToPlanForm({
   // Billing-preview math. Visits/month × months in the billing interval ×
   // per-visit rate. For fert_program the visits-per-month is a fraction;
   // we render the human copy as "5 visits/yr" rather than "0.42 visits/mo".
+  // For flat-billing verticals the amount is simply rate × interval months.
   const billingPreview = useMemo(() => {
+    if (vertical.planCadence.billingModel === "flat") {
+      return {
+        visitsLabel: "flat",
+        total: Math.round(effectiveRate * intervalMonths * 100) / 100,
+        periodName: PERIOD_NAME[intervalMonths],
+      };
+    }
     const visitsPerMonth = vertical.planCadence.visitsPerMonth(frequency);
     const visitsLabel =
       frequency === "fert_program"
@@ -270,7 +279,7 @@ export default function ConvertToPlanForm({
     if (!canSubmit) return;
     onSubmit({
       services: items.filter((i) => i.isRecurring).map((i) => i.name),
-      per_visit_rate: effectiveRate,
+      per_visit_rate: vertical.planCadence.billingModel === "per-visit" ? effectiveRate : null,
       frequency,
       day_of_week: dayOfWeek,
       interval_months: intervalMonths,
@@ -591,63 +600,67 @@ export default function ConvertToPlanForm({
 
       {/* ── Section 3: cadence + day ──────────────────────────────── */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
-            How often
+        {vertical.planCadence.hasServiceFrequency && (
+          <div>
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
+              How often
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {vertical.planCadence.frequencies.map((f) => {
+                const on = frequency === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => {
+                      frequencyTouched.current = true;
+                      setFrequency(f.key);
+                    }}
+                    className={cn(
+                      "py-2 rounded-xl text-[11.5px] font-bold transition-colors border",
+                      on
+                        ? "border-brand-800 bg-brand-800 text-white"
+                        : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="grid grid-cols-4 gap-1.5">
-            {vertical.planCadence.frequencies.map((f) => {
-              const on = frequency === f.key;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => {
-                    frequencyTouched.current = true;
-                    setFrequency(f.key);
-                  }}
-                  className={cn(
-                    "py-2 rounded-xl text-[11.5px] font-bold transition-colors border",
-                    on
-                      ? "border-brand-800 bg-brand-800 text-white"
-                      : "border-neutral-200 bg-card text-neutral-700 hover:border-brand-700",
-                  )}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
+        )}
+        {vertical.planCadence.hasRouteDay && (
+          <div>
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
+              Day
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {DAY_LABEL.map((label, i) => {
+                const on = dayOfWeek === i;
+                return (
+                  <button
+                    key={`${label}-${i}`}
+                    type="button"
+                    onClick={() => {
+                      dayTouched.current = true;
+                      setDayOfWeek(i);
+                    }}
+                    aria-label={DAY_FULL[i]}
+                    className={cn(
+                      "py-2 rounded-[10px] text-[11.5px] font-bold transition-colors",
+                      on
+                        ? "bg-brand-800 text-white"
+                        : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-        <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-neutral-500 mb-1.5">
-            Day
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {DAY_LABEL.map((label, i) => {
-              const on = dayOfWeek === i;
-              return (
-                <button
-                  key={`${label}-${i}`}
-                  type="button"
-                  onClick={() => {
-                    dayTouched.current = true;
-                    setDayOfWeek(i);
-                  }}
-                  aria-label={DAY_FULL[i]}
-                  className={cn(
-                    "py-2 rounded-[10px] text-[11.5px] font-bold transition-colors",
-                    on
-                      ? "bg-brand-800 text-white"
-                      : "bg-neutral-100 text-neutral-700 hover:bg-brand-50",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        )}
       </section>
 
       {/* ── Section 4: how the card gets charged ─────────────────── */}
