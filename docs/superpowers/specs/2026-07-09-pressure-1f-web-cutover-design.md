@@ -65,9 +65,9 @@ sequencing, config, and verification.
 ### Task A — cutover runbook (repo artifact)
 
 `docs/runbooks/pressure-web-cutover.md`: the ordered checklist below with exact
-commands/URLs, the env-var table for the new Vercel project, the Supabase auth
-allowlist steps, the verification list, and the rollback statement. This is the
-only file 1f adds.
+commands/URLs, the env-var table for the repointed Vercel project, the Supabase
+auth allowlist steps, the verification list, and the rollback statement. This
+is the only file 1f adds.
 
 ### Task B — DB gate: apply migration 0032
 
@@ -80,19 +80,31 @@ only file 1f adds.
 
 ### Task C — Vercel project (user drives, agent scripts)
 
-User creates project `pressurepro` (name flexible) in the Vercel dashboard:
-- Import `Brewerjg/turf`, framework Vite (auto from `vercel.json`).
-- Env vars (all environments): `VITE_VERTICAL=pressure`, plus
-  `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` /
-  `VITE_PAYMENTS_CLIENT_TOKEN` copied from the turf project.
-- Deploy `main`; note the production URL (e.g. `pressurepro-*.vercel.app`).
+User repoints the existing `pressure-pro-quoter` project at the turf repo
+(AMENDED 2026-07-10 — the original new-project approach hit the Vercel plan
+cap on projects per Git repo):
+- Settings → Git: disconnect the old `Brewerjg/pressure-pro-quoter` repo →
+  connect `Brewerjg/turf` (production branch `main`).
+- Env vars (Production + Preview):
+
+  | Name | Value |
+  |---|---|
+  | `VITE_VERTICAL` | `pressure` (ADDED) |
+  | `VITE_SUPABASE_URL` | already present from the old app (same name) |
+  | `VITE_SUPABASE_PUBLISHABLE_KEY` | already present from the old app |
+  | `VITE_PAYMENTS_CLIENT_TOKEN` | copy from the turf Vercel project if missing |
+
+- Redeploy `main` (connecting the repo usually triggers it).
+- Production URL is unchanged: `https://pressure-pro-quoter.vercel.app`.
 
 ### Task D — Supabase auth allowlist
 
-Dashboard → Authentication → URL Configuration: add the new production URL to
-Additional Redirect URLs (magic links, OAuth callbacks, password reset). Site
-URL stays turf's (shared project; redirect list is additive). If Google OAuth
-is enabled, its authorized origins likewise gain the new domain.
+Likely a **NO-OP** under the repoint: `pressure-pro-quoter.vercel.app` was the
+old live pressure app's domain, so it should already be allowlisted. Verify in
+the Supabase dashboard → Authentication → URL Configuration that the domain
+appears (Site URL or Additional Redirect URLs); add it only if absent. If
+Google OAuth is enabled, its authorized origins likewise should already carry
+the domain.
 
 ### Task E — live verification (agent drives via Playwright)
 
@@ -121,8 +133,9 @@ pp_* Stripe price IDs vs the live Stripe account; paid-tier checkout.
 
 ### Rollback
 
-Delete (or ignore) the new Vercel project; the old pressure deploy was never
-touched. DB change needs no rollback. Lawn is untouched throughout (no code
+Vercel Instant Rollback to the prior production deployment — the old app's
+deployments survive the repo swap, so no separate project needs deleting or
+recreating. DB change needs no rollback. Lawn is untouched throughout (no code
 changes, additive-only DB change).
 
 ## Testing

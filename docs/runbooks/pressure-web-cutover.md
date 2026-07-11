@@ -52,7 +52,7 @@ carry the domain.
 
 ## 4. Live verification (agent, browser)
 
-Against `https://<pressure-production-url>`:
+Against `https://pressure-pro-quoter.vercel.app`:
 
 - [ ] Boot + brand: navy theme, "PressurePro", 5 tabs (Home/Customers/Quotes/
       Schedule/Settings), Mix Calc home tile
@@ -73,7 +73,9 @@ the live Stripe account; paid-tier checkout verified only to the Stripe boundary
 
 ## 5. Rollback
 
-Delete (or ignore) the new Vercel project. Old pressure deploy untouched.
+Vercel Instant Rollback to the prior production deployment (§2 step 5) — the
+old app's deployments survive the repo swap, so rollback does not require
+recreating or touching a separate project.
 DB change stays (additive, harmless).
 
 ## Results
@@ -88,7 +90,10 @@ DB change stays (additive, harmless).
 - §2 Vercel project: **DEFERRED by user.** Not created yet. NOTE: the old
   deploy at `https://pressure-pro-quoter.vercel.app` is alive and still serves
   the old app (confirmed 2026-07-09) — it remains the rollback.
-- §3 auth allowlist / §4 verification: pending §2.
+  (SUPERSEDED 2026-07-10 — plan-cap hit; §2 now repoints the existing
+  pressure-pro-quoter project, repoint in progress.)
+- §3 auth allowlist / §4 verification: pending §2's redeploy under the
+  repoint framing.
 - Known gap found during §2 smoke: turf `index.html` hardcodes
   `<title>TurfPro</title>` + TurfPro og/meta tags — the pressure web deploy
   will show a "TurfPro" browser-tab title. Needs a small 1e-followup (vertical
