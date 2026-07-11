@@ -19,31 +19,36 @@ Additive + idempotent (`IF NOT EXISTS`); no rollback needed; lawn never writes '
 
 ## 2. Vercel project (user, dashboard)
 
-1. vercel.com → Add New → Project → Import `Brewerjg/turf`.
-2. Project name: `pressurepro` (any name; the domain follows it).
-3. Framework preset: Vite (auto-detected; `vercel.json` in the repo already
-   sets buildCommand/outputDirectory/SPA rewrites — no overrides needed).
-4. Environment variables (Production + Preview):
+AMENDED 2026-07-10: the Vercel plan caps projects per Git repo, so instead of
+a new project, REPOINT the existing `pressure-pro-quoter` project:
+
+1. Vercel → `pressure-pro-quoter` project → Settings → Git → disconnect the
+   old repo → connect `Brewerjg/turf` (production branch `main`).
+2. Settings → Environment Variables (Production + Preview):
 
    | Name | Value |
    |---|---|
-   | `VITE_VERTICAL` | `pressure` |
-   | `VITE_SUPABASE_URL` | copy from the turf Vercel project |
-   | `VITE_SUPABASE_PUBLISHABLE_KEY` | copy from the turf Vercel project |
-   | `VITE_PAYMENTS_CLIENT_TOKEN` | copy from the turf Vercel project |
+   | `VITE_VERTICAL` | `pressure` (ADD) |
+   | `VITE_SUPABASE_URL` | already present from the old app (same name) |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | already present from the old app |
+   | `VITE_PAYMENTS_CLIENT_TOKEN` | copy from the turf Vercel project if missing |
 
-   (`VITE_PUBLIC_APP_ORIGIN` / `VITE_REVENUECAT_*` are native-only — omit.)
-5. Deploy `main`. Record the production URL: `____________________`
+   (`VITE_PUBLIC_APP_ORIGIN` / `VITE_REVENUECAT_*` are native-only — omit.
+   Old-app-only vars like Sentry can stay; the unified build ignores them.)
+3. Redeploy `main` (connecting the repo usually triggers it).
+4. Production URL (unchanged): `https://pressure-pro-quoter.vercel.app`
+5. Rollback: Vercel Instant Rollback to the prior production deployment — the
+   old app's deployments survive the repo swap in the project history.
 
 ## 3. Supabase auth allowlist (user, dashboard)
 
+Likely a NO-OP under the amended §2: `pressure-pro-quoter.vercel.app` was the
+old live pressure app's domain and should already be allowlisted. VERIFY:
 supabase.com → project `dkksryutecjbyuscpxdb` ("Pressure") → Authentication →
-URL Configuration → Additional Redirect URLs → add:
-
-- `https://<pressure-production-url>/**`
-
-Site URL stays turf's. If Google OAuth is enabled, also add the new origin to
-the Google Cloud OAuth client's authorized JavaScript origins.
+URL Configuration → confirm the domain appears (as Site URL or in Additional
+Redirect URLs); add `https://pressure-pro-quoter.vercel.app/**` only if absent.
+If Google OAuth is enabled, its authorized origins likewise should already
+carry the domain.
 
 ## 4. Live verification (agent, browser)
 

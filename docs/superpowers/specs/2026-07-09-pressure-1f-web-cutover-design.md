@@ -21,10 +21,14 @@ sequencing, config, and verification.
    launch. Rationale: PressurePro has no paid customers (1 live quote; its
    PRODUCTION_TODO still lists P0 launch blockers), so there is no native user
    base to cut over.
-2. **New Vercel project on the turf repo** (monorepo-style: two projects, one
-   repo) with `VITE_VERTICAL=pressure` in project env. The existing pressure
-   Vercel deploy stays untouched as instant rollback; delete it only after
-   verification, in a later cleanup.
+2. **Repoint the existing `pressure-pro-quoter` Vercel project at the turf
+   repo** with `VITE_VERTICAL=pressure` in project env. (AMENDED 2026-07-10:
+   the original new-project approach hit the Vercel plan cap on projects per
+   Git repo — the turf repo is already connected to the turf project.) The
+   domain stays `pressure-pro-quoter.vercel.app` (already in the Supabase auth
+   allowlist from the old app, making Task D likely a no-op); rollback is
+   Vercel Instant Rollback to the prior production deployment, which survives
+   the repo swap in the project's deployment history.
 3. **Migration 0032 applied during 1f by the agent** via
    `supabase db query -f` (untracked-migration convention; never `db push`).
 4. **`pressure-pro-quoter` repo retirement is OUT of 1f** (user choice).
