@@ -8,10 +8,10 @@ where the pressure vertical goes live on the web.
 ## Purpose
 
 Put the unified codebase's pressure build (`VITE_VERTICAL=pressure`, proven
-bootable in 1e, merged `e1a916a`) in front of live traffic: a second Vercel
-project on the `Brewerjg/turf` repo, the `quote_status` enum fix applied to the
-live shared DB, Supabase auth allowlisted for the new domain, and a scripted
-live verification pass. **Zero app-code changes** — 1e finished the code; 1f is
+bootable in 1e, merged `e1a916a`) in front of live traffic: the pressure Vercel
+project repointed at the `Brewerjg/turf` repo, the `quote_status` enum fix
+applied to the live shared DB, the auth allowlist verified for the domain, and
+a scripted live verification pass. **Zero app-code changes** — 1e finished the code; 1f is
 sequencing, config, and verification.
 
 ## Decisions (user-approved 2026-07-09)
