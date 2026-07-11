@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { seedDefaultCatalog } from "@/components/onboarding/seedCatalog";
+import { markOnboarded } from "@/components/onboarding/onboarded-cache";
 import {
   refreshConnectStatus,
   startConnectOnboarding,
@@ -368,13 +369,18 @@ export default function Onboarding() {
   const completeMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
+      const onboardedAt = new Date().toISOString();
       await upsertProfile({
-        onboarded_at: new Date().toISOString(),
+        onboarded_at: onboardedAt,
         is_demo: false,
       });
+      return onboardedAt;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile-onboarded", user?.id] });
+    onSuccess: (onboardedAt) => {
+      // Prime the gate's cache BEFORE navigating — invalidate alone marks the
+      // observer-less query stale, and RequireOnboarded would bounce us back
+      // here off the stale { onboarded_at: null } on its first render.
+      markOnboarded(queryClient, user?.id, onboardedAt);
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       setError(null);
       navigate("/", { replace: true });
@@ -389,15 +395,18 @@ export default function Onboarding() {
     mutationFn: async () => {
       console.log("🔵 Skip button clicked - marking onboarding as complete");
       // CRITICAL: Ensure is_demo is false when skipping onboarding
+      const onboardedAt = new Date().toISOString();
       await upsertProfile({
-        onboarded_at: new Date().toISOString(),
+        onboarded_at: onboardedAt,
         is_demo: false
       });
       console.log("🔵 Profile updated with onboarded_at timestamp");
+      return onboardedAt;
     },
-    onSuccess: () => {
-      console.log("🔵 Skip successful - clearing cache and navigating to home");
-      queryClient.invalidateQueries({ queryKey: ["profile-onboarded", user?.id] });
+    onSuccess: (onboardedAt) => {
+      console.log("🔵 Skip successful - priming gate cache and navigating to home");
+      // Prime (not just invalidate) — see completeMutation.
+      markOnboarded(queryClient, user?.id, onboardedAt);
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       navigate("/", { replace: true });
     },
