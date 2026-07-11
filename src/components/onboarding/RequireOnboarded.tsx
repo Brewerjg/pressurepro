@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { profileOnboardedKey } from "@/components/onboarding/onboarded-cache";
 
 // First-run gate. Reads profiles.onboarded_at for the current user; if it's
 // null — OR if the profile row doesn't exist yet (brand-new account before the
@@ -19,7 +20,7 @@ export default function RequireOnboarded({ children }: { children: ReactNode }) 
   const { user, loading: authLoading } = useAuth();
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["profile-onboarded", user?.id],
+    queryKey: profileOnboardedKey(user?.id),
     enabled: !!user,
     queryFn: async () => {
       console.log("🔍 RequireOnboarded: Checking onboarding status for user:", user!.id);
