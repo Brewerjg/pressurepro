@@ -80,7 +80,47 @@ DB change stays (additive, harmless).
 
 ## Results
 
-(appended by the verification pass)
+### Verification pass 2026-07-10 — CUTOVER LIVE, 9/10 PASS
+
+Deploy: repointed `pressure-pro-quoter` project built main (`ed86c33`);
+served CSS `index-D_JDg-7Z.css` with `--brand-800: 220 65% 18%` (navy),
+byte-identical to a local `VITE_VERTICAL=pressure` build. Lawn deploy serves a
+different bundle (`148 65% 20%` green) — verticals correctly differentiated.
+
+Checklist (browser, throwaway demo account `demo-scyadi@pressurepro.demo`;
+full evidence in the SDD task-5 report):
+1. Boot + brand — PASS (navy token exact; PressurePro auth branding; tab title
+   "TurfPro" = the known index.html gap)
+2. Auth demo login + session persistence — PASS
+3. Onboarding — PASS on 2nd attempt (see anomaly A1)
+4. Home shell — PASS (exactly 5 tabs; Mix Calc tile)
+5. /mix — PASS (50 gal / 12.5% / house 1% → 4.00 SH, 46.00 water, 50.0 oz)
+6. Quotes — PASS (Driveway 600 sqft × $0.18 = $108.00; soft/power toggle;
+   public accept link renders w/ signature flow)
+7. Surface-pricing matrix — PASS (edit persisted, then reverted; no net change)
+8. Plans — PASS (flat "Plan amount" + billing cadence; NO lawn frequency/
+   route-day/season sections)
+9. Campaigns — PASS (6 pressure templates; {first_name}/{business_name}
+   merge tags substitute)
+10. Console health — FAIL: 7× HTTP 502 from the `forecast` Supabase Edge
+    Function (`?zip=30301`), invoked by Home weather/GDD widgets. No uncaught
+    JS exceptions.
+Regression: turf-jade.vercel.app still lawn-branded — PASS.
+
+Anomalies for follow-up (evidence-only, nothing fixed):
+- A1 Onboarding: skipping the final Stripe step on the first pass silently
+  reset the wizard to step 1; second pass completed. Likely also caused the
+  duplicate "Solo" crew entry (onboarding seeded twice).
+- A2/A3 Cross-vertical leaks (the KNOWN deferred 0c-5 season/weather seam):
+  lawn "Pre-emergent watch"/GDD widget on pressure Home (links
+  /calc?type=herbicide); "Season" selector with mow/snow copy in pressure
+  Settings.
+- A4 `forecast` edge fn 502s (see item 10) — infra, affects lawn too if down.
+- A5 index.html "TurfPro" tab title on the pressure deploy (pre-known).
+- Minor: NewPlan helper copy "service still runs on the frequency above" is
+  stale for pressure (no frequency control) — 1d-3's known cosmetic tail.
+
+Stripe pp_* price IDs + paid checkout remain UNVERIFIED (flagged known gap).
 
 ### Status 2026-07-09 — partially executed, paused at the Vercel gate
 
