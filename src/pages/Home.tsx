@@ -599,15 +599,21 @@ export default function Home() {
                         {high}°
                       </div>
                       {/* Per-day work verdict dots — mow / spray / fert.
-                          Renders nothing until workConditions lands. */}
-                      <WorkConditionDots day={day as any} />
+                          Lawn-only (vertical.season.workConditions);
+                          renders nothing until workConditions lands. */}
+                      {vertical.season.workConditions && (
+                        <WorkConditionDots day={day as any} />
+                      )}
                     </button>
                   );
                 })
               )}
             </div>
 
-            {/* Decision chips — derived from the forecast, not hardcoded copy */}
+            {/* Decision chips — derived from the forecast, not hardcoded
+                copy. Lawn-only (vertical.season.workConditions): skip-mow /
+                stretch-to-biweekly / no-spray framing. */}
+            {vertical.season.workConditions && (
             <div className="flex gap-2 mt-2.5 px-1 flex-wrap">
               {rainDays.length > 0 && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full bg-[hsl(var(--rain-bg))] text-[11.5px] font-semibold text-[hsl(var(--rain))]">
@@ -636,6 +642,7 @@ export default function Home() {
                 </span>
               )}
             </div>
+            )}
           </>
         )}
       </section>

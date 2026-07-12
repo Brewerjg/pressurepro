@@ -56,8 +56,10 @@ export interface Vertical {
   /**
    * Seasonal-agronomy UI flags — the minimal stand-in for the deferred 0c-5
    * season/weather seam. `gddWatch` shows the Pre-emergent/GDD card on Home;
-   * `seasonMode` shows the Season (winter-mode) toggle in Settings. A future
+   * `seasonMode` shows the Season (winter-mode) toggle in Settings;
+   * `workConditions` shows the mow/spray/fert verdicts woven into the shared
+   * weather UI (strip dots, decision chips, day-detail section). A future
    * SeasonModule can widen this shape; flags-off must render nothing.
    */
-  season: { gddWatch: boolean; seasonMode: boolean };
+  season: { gddWatch: boolean; seasonMode: boolean; workConditions: boolean };
 }
