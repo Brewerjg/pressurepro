@@ -103,5 +103,7 @@ export const pressureCampaigns: CampaignsModule = {
     pageSubtitle: "Seasonal blasts to fill your route.",
     emptyStateBlurb: "No campaigns yet. Pick a seasonal template to reach past customers.",
     previewFallbackBusinessName: "your wash crew",
+    settingsBlurb:
+      "Blast house-wash, roof soft-wash, and driveway refresh pitches to your filtered customer list.",
   },
 };
