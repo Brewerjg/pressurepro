@@ -81,10 +81,13 @@ export default function Settings() {
       </Section>
 
       {/* Season — winter mode pauses recurring mow plans and pivots the
-          Home + Routes screens to a storm-driven snow workflow. */}
-      <Section icon={<Snowflake className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Season">
-        <SeasonToggle />
-      </Section>
+          Home + Routes screens to a storm-driven snow workflow. Lawn-only
+          (vertical.season flag). */}
+      {vertical.season.seasonMode && (
+        <Section icon={<Snowflake className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Season">
+          <SeasonToggle />
+        </Section>
+      )}
 
       {/* Service catalog */}
       <Section icon={<Wrench className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Service catalog">

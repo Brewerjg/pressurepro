@@ -53,4 +53,11 @@ export interface Vertical {
   propertyFields: PropertyFieldsModule;
   /** Lawn-flavored domain copy rendered by shared screens. */
   copy: CopyModule;
+  /**
+   * Seasonal-agronomy UI flags — the minimal stand-in for the deferred 0c-5
+   * season/weather seam. `gddWatch` shows the Pre-emergent/GDD card on Home;
+   * `seasonMode` shows the Season (winter-mode) toggle in Settings. A future
+   * SeasonModule can widen this shape; flags-off must render nothing.
+   */
+  season: { gddWatch: boolean; seasonMode: boolean };
 }
