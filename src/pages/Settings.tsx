@@ -122,7 +122,7 @@ export default function Settings() {
               Seasonal campaigns
             </div>
             <div className="text-[11.5px] text-neutral-500 leading-snug mt-0.5">
-              Blast aeration, leaf cleanup, spring restart, and snow signup pitches to your filtered customer list.
+              {vertical.campaigns.copy.settingsBlurb}
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" strokeWidth={2.2} />

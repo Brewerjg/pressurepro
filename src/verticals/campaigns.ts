@@ -21,5 +21,7 @@ export interface CampaignsModule {
     pageSubtitle: string;
     emptyStateBlurb: string;
     previewFallbackBusinessName: string;
+    /** Blurb on the Settings → Campaigns card. */
+    settingsBlurb: string;
   };
 }

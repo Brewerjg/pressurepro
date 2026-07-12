@@ -111,5 +111,7 @@ export const lawnCampaigns: CampaignsModule = {
     emptyStateBlurb:
       "Aeration in August, leaf cleanup in October, spring restart in March. Pick a template and blast your customer list in two minutes.",
     previewFallbackBusinessName: "your lawn crew",
+    settingsBlurb:
+      "Blast aeration, leaf cleanup, spring restart, and snow signup pitches to your filtered customer list.",
   },
 };
