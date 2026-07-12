@@ -322,9 +322,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pre-emergent GDD watch — renders nothing unless the crabgrass
-          window is open/closing/imminent for the operator's ZIP. */}
-      <PreEmergentAlert />
+      {/* Pre-emergent GDD watch — lawn-only agronomy (vertical.season flag);
+          renders nothing unless the crabgrass window is open/closing/imminent
+          for the operator's ZIP. */}
+      {vertical.season.gddWatch && <PreEmergentAlert />}
 
       {/* Today's route or empty state */}
       {isWinter ? (
