@@ -33,5 +33,5 @@ export const pressureVertical: Vertical = {
   copy: pressureCopy,
   // No GDD/pre-emergent agronomy and no mow-season winter mode for pressure;
   // the washing-window weather feature is a separate deferred effort.
-  season: { gddWatch: false, seasonMode: false },
+  season: { gddWatch: false, seasonMode: false, workConditions: false },
 };

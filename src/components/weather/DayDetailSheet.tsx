@@ -9,6 +9,7 @@
 // would be misleading.
 
 import { useState } from "react";
+import { vertical } from "@/vertical";
 import {
   X,
   Sun,
@@ -165,8 +166,9 @@ export default function DayDetailSheet({ day, hourly, onClose }: Props) {
         )}
 
         {/* Work conditions — three rows, each tap-to-expand to show the
-            warnings affecting that discipline. */}
-        {wc && (
+            warnings affecting that discipline. Lawn-only
+            (vertical.season.workConditions). */}
+        {vertical.season.workConditions && wc && (
           <SheetSection title="Work conditions">
             <div className="flex flex-col gap-1.5">
               {(["mowing", "spraying", "fertilizing"] as Discipline[]).map((d) => {

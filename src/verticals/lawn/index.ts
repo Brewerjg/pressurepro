@@ -32,5 +32,5 @@ export const lawnVertical: Vertical = {
   campaigns: lawnCampaigns,
   propertyFields: lawnPropertyFields,
   copy: lawnCopy,
-  season: { gddWatch: true, seasonMode: true },
+  season: { gddWatch: true, seasonMode: true, workConditions: true },
 };

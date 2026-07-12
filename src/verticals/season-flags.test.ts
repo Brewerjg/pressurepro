@@ -8,18 +8,27 @@ import { VERTICALS } from "@/verticals/registry";
 // deploy during 1f verification (runbook anomalies A2/A3).
 
 describe("vertical.season flags", () => {
-  it("lawn keeps GDD watch and season mode", () => {
-    expect(VERTICALS.lawn.season).toEqual({ gddWatch: true, seasonMode: true });
+  it("lawn keeps GDD watch, season mode, and work-condition verdicts", () => {
+    expect(VERTICALS.lawn.season).toEqual({
+      gddWatch: true,
+      seasonMode: true,
+      workConditions: true,
+    });
   });
 
-  it("pressure hides GDD watch and season mode", () => {
-    expect(VERTICALS.pressure.season).toEqual({ gddWatch: false, seasonMode: false });
+  it("pressure hides GDD watch, season mode, and work-condition verdicts", () => {
+    expect(VERTICALS.pressure.season).toEqual({
+      gddWatch: false,
+      seasonMode: false,
+      workConditions: false,
+    });
   });
 
   it("every registered vertical declares the flags", () => {
     for (const v of Object.values(VERTICALS)) {
       expect(typeof v.season.gddWatch).toBe("boolean");
       expect(typeof v.season.seasonMode).toBe("boolean");
+      expect(typeof v.season.workConditions).toBe("boolean");
     }
   });
 });
