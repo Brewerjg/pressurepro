@@ -1,0 +1,25 @@
+-- 0034: SECURITY HOTFIX (step 1 of 2) — stop authenticated operators from
+-- reading other operators' quotes.
+--
+-- BUG (found 2026-07-14 by operator report): the operator dashboard showed
+-- quotes belonging to OTHER operators (and other verticals). Root cause: the
+-- "Public can read quotes by id" SELECT policy has qual = true and is granted
+-- to role `public` (which includes `authenticated`). Postgres OR's permissive
+-- policies, so `true` overrode the correct "Users view own quotes"
+-- (auth.uid() = user_id) policy for every logged-in user.
+--
+-- The policy exists so the UNAUTHENTICATED customer accept page
+-- (/accept/:id, src/pages/Accept.tsx) can read a quote by its UUID. That only
+-- needs the `anon` role. Scoping the policy to `anon` removes it from the
+-- `authenticated` role, so operators fall back to their own-rows policy —
+-- closing the cross-tenant leak with no impact on the accept flow.
+--
+-- NOTE: this does NOT yet close anonymous enumeration via the public anon key
+-- (the policy is still `true` for anon). Migration 0035 replaces the anon read
+-- with a by-id SECURITY DEFINER function and drops this policy entirely.
+--
+-- Idempotent: ALTER POLICY is safe to re-run. Apply with
+--   supabase db query -f supabase/migrations/0034_quotes_rls_scope_anon.sql --linked
+-- Mirror this FILE to Brewerjg/pressurepro (shared DB — applies once).
+
+ALTER POLICY "Public can read quotes by id" ON public.quotes TO anon;
