@@ -1,6 +1,6 @@
 import { useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Check, ChevronRight, CreditCard, Loader2, Lock, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Snowflake, Users, Wrench } from "lucide-react";
+import { Banknote, Check, ChevronRight, CreditCard, Loader2, Lock, LogOut, Mail, Megaphone, Plug, Settings as SettingsIcon, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,6 @@ import MessagingPreferences from "@/components/settings/MessagingPreferences";
 import SubscriptionCard from "@/components/settings/SubscriptionCard";
 import ChangePasswordCard from "@/components/settings/ChangePasswordCard";
 import QuickBooksCard from "@/components/settings/QuickBooksCard";
-import SeasonToggle from "@/components/season/SeasonToggle";
 import {
   isConnectComplete,
   startConnectOnboarding,
@@ -79,15 +78,6 @@ export default function Settings() {
       <Section icon={<Banknote className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Stripe payouts">
         <StripePayoutsCard profile={connectProfile ?? null} />
       </Section>
-
-      {/* Season — winter mode pauses recurring mow plans and pivots the
-          Home + Routes screens to a storm-driven snow workflow. Lawn-only
-          (vertical.season flag). */}
-      {vertical.season.seasonMode && (
-        <Section icon={<Snowflake className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Season">
-          <SeasonToggle />
-        </Section>
-      )}
 
       {/* Service catalog */}
       <Section icon={<Wrench className="h-3.5 w-3.5" strokeWidth={2.2} />} label="Service catalog">

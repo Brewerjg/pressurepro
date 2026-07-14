@@ -4,14 +4,13 @@ import path from "path";
 import { HTML_META } from "./src/verticals/html-meta";
 
 export default defineConfig(({ mode }) => {
-  // Match src/vertical.ts: default "lawn". loadEnv reads the same VITE_VERTICAL
-  // that import.meta.env exposes, so the theme CSS and the JS vertical agree.
-  const vertical = loadEnv(mode, process.cwd(), "").VITE_VERTICAL || "lawn";
+  // Match src/vertical.ts: default "pressure" (this repo IS PressurePro).
+  // loadEnv reads the same VITE_VERTICAL that import.meta.env exposes, so the
+  // theme CSS and the JS vertical agree.
+  const vertical = loadEnv(mode, process.cwd(), "").VITE_VERTICAL || "pressure";
   // index.html is static — the JS/CSS vertical seams can't reach the <title>
-  // or meta tags, so the pressure deploy shipped a "TurfPro" tab title until
-  // this hook. Lawn's HTML_META values equal the literals index.html carries,
-  // keeping the lawn build byte-identical.
-  const htmlMeta = HTML_META[vertical] ?? HTML_META.lawn;
+  // or meta tags; this hook stamps the vertical's HTML metadata.
+  const htmlMeta = HTML_META[vertical] ?? HTML_META.pressure;
   return {
     server: {
       host: "::",

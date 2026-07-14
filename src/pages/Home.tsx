@@ -25,8 +25,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useForecast, useUserZip, type ForecastDay, type DerivedTone } from "@/lib/weather";
-import PreEmergentAlert from "@/components/gdd/PreEmergentAlert";
-import WinterHomeCard from "@/components/season/WinterHomeCard";
 import WorkConditionDots from "@/components/weather/WorkConditionDots";
 import DayDetailSheet from "@/components/weather/DayDetailSheet";
 import { useSeason } from "@/lib/season";
@@ -322,15 +320,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pre-emergent GDD watch — lawn-only agronomy (vertical.season flag);
-          renders nothing unless the crabgrass window is open/closing/imminent
-          for the operator's ZIP. */}
-      {vertical.season.gddWatch && <PreEmergentAlert />}
-
       {/* Today's route or empty state */}
-      {isWinter ? (
-        <WinterHomeCard />
-      ) : isDemo ? (
+      {isDemo ? (
         // Demo route for demo users
         <section className="mx-4 mb-3">
           <div className="flex items-center justify-between px-1 pb-2">

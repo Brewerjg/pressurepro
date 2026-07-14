@@ -14,12 +14,6 @@ describe("campaigns settingsBlurb", () => {
     }
   });
 
-  it("lawn keeps the current Settings literal", () => {
-    expect(VERTICALS.lawn.campaigns.copy.settingsBlurb).toBe(
-      "Blast aeration, leaf cleanup, spring restart, and snow signup pitches to your filtered customer list.",
-    );
-  });
-
   it("pressure blurb has no lawn/snow terms", () => {
     const blurb = VERTICALS.pressure.campaigns.copy.settingsBlurb.toLowerCase();
     for (const term of ["aeration", "leaf", "mow", "snow", "lawn"]) {

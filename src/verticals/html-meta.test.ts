@@ -17,15 +17,6 @@ describe("HTML_META", () => {
     }
   });
 
-  it("lawn keeps the current index.html values (byte-identical build)", () => {
-    expect(HTML_META.lawn).toEqual({
-      title: "TurfPro",
-      description:
-        "TurfPro — routes, plans, and recurring lawn-care ops for mowing crews.",
-      themeColor: "#1a4a2e",
-    });
-  });
-
   it("pressure is PressurePro-branded", () => {
     expect(HTML_META.pressure.title).toBe("PressurePro");
     expect(HTML_META.pressure.themeColor).toBe("#11203F");

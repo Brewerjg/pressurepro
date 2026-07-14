@@ -8,12 +8,6 @@ export const HTML_META: Record<
   string,
   { title: string; description: string; themeColor: string }
 > = {
-  lawn: {
-    title: "TurfPro",
-    description:
-      "TurfPro — routes, plans, and recurring lawn-care ops for mowing crews.",
-    themeColor: "#1a4a2e",
-  },
   pressure: {
     title: "PressurePro",
     description:
