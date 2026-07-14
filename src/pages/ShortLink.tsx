@@ -19,17 +19,18 @@ const ShortLink = () => {
     }
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("short_links")
-        .select("target_url")
-        .eq("code", code)
-        .maybeSingle();
+      // Resolve via SECURITY DEFINER RPC (0035) — short_links has no blanket
+      // public-read policy; the RPC returns only this code's target_url.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("resolve_short_link", {
+        p_code: code,
+      });
       if (cancelled) return;
-      if (error || !data) {
+      const target = typeof data === "string" ? data : null;
+      if (error || !target) {
         setError("This link is invalid or expired.");
         return;
       }
-      const target = data.target_url;
       try {
         const url = new URL(target, window.location.origin);
         if (url.origin === window.location.origin) {

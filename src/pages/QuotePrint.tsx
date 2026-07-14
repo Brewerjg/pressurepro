@@ -43,19 +43,16 @@ const QuotePrint = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
-      // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
-      const { data } = await supabase
-        .from("quotes")
-        .select(
-          "id,customer_name,customer_email,phone,address,lines,notes,total,deposit_amount,created_at,expires_at,recurring_months,user_id",
-        )
-        .eq("id", id)
-        .maybeSingle();
-      if (!data) {
+      // Public lookup by UUID via SECURITY DEFINER RPC (0035) — no blanket
+      // public-read policy on quotes; the RPC hard-limits to this id.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).rpc("public_quote_by_id", { p_id: id });
+      const quoteRow = Array.isArray(data) ? data[0] : null;
+      if (!quoteRow) {
         setLoading(false);
         return;
       }
-      const quote = data as unknown as PrintQuote;
+      const quote = quoteRow as unknown as PrintQuote;
       setQ(quote);
       const { data: prof } = await supabase.rpc("public_business_info", {
         p_user_id: quote.user_id,

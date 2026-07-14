@@ -64,16 +64,14 @@ const Accept = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
-      // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
-      const { data } = await supabase
-        .from("quotes")
-        .select(
-          "id,customer_name,address,lines,status,recurring_months,total,deposit_amount,deposit_paid_at,expires_at,user_id,view_count,created_at",
-        )
-        .eq("id", id)
-        .maybeSingle();
-      if (!data) { setLoading(false); return; }
-      const quote = data as unknown as PublicQuote;
+      // Public lookup by UUID via SECURITY DEFINER RPC — the quotes table has
+      // no blanket public-read policy (0035); the RPC hard-limits to this id.
+      // RPC isn't in generated types — cast at the boundary (codebase pattern).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).rpc("public_quote_by_id", { p_id: id });
+      const quoteRow = Array.isArray(data) ? data[0] : null;
+      if (!quoteRow) { setLoading(false); return; }
+      const quote = quoteRow as unknown as PublicQuote;
       setQ(quote);
 
       const { data: prof } = await supabase.rpc("public_business_info", {
@@ -194,13 +192,11 @@ const Accept = () => {
       // double-clicks don't accumulate.
       const baseNotes = (
         await (async () => {
-          // Public lookup by UUID — app discriminator intentionally not filtered (see app-context.ts)
-          const { data } = await supabase
-            .from("quotes")
-            .select("notes")
-            .eq("id", q.id)
-            .maybeSingle();
-          const current = (data?.notes as string | null) ?? "";
+          // Public lookup by UUID via SECURITY DEFINER RPC (0035).
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data } = await (supabase as any).rpc("public_quote_by_id", { p_id: q.id });
+          const notesRow = Array.isArray(data) ? (data[0] as { notes?: string | null }) : null;
+          const current = (notesRow?.notes as string | null) ?? "";
           return current.replace(/\[recurring_requested\]\s*/g, "").trim();
         })()
       );
