@@ -178,15 +178,23 @@ Deno.serve(async (req) => {
 
         // Persist via the user-scoped client so RLS validates the write.
         // Update by both candidate match columns to cover both legacy
-        // profile-row shapes (id vs user_id), same as the wizard does.
+        // profile-row shapes (id vs user_id).
+        //
+        // Fall back on ROWS-AFFECTED, not on error: a Supabase update whose
+        // filter matches zero rows returns { data: null, error: null } (no
+        // error), so checking `error` never triggers the fallback. For the
+        // PressurePro-descended row shape (id is a separate PK, user_id =
+        // auth.uid()), the `.eq("id", userId)` update matches nothing and the
+        // account id was silently dropped — leaving the operator permanently
+        // not connect_ready. Mirror the correct refresh_status pattern below.
         const patch = { stripe_account_id: accountId } as const;
-        const { error: byId } = await userClient
+        const { data: savedById } = await userClient
           .from("profiles")
           .update(patch)
           .eq("id", userId)
           .select()
           .maybeSingle();
-        if (byId) {
+        if (!savedById) {
           await userClient
             .from("profiles")
             .update(patch)
