@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { friendlyFunctionError } from "@/lib/functions-error";
 import {
   Loader2,
   Printer,
@@ -135,7 +136,11 @@ const InvoiceView = () => {
           },
         },
       );
-      if (error) throw error;
+      if (error) {
+        throw new Error(
+          await friendlyFunctionError(error, "Couldn't start payment. Please try again."),
+        );
+      }
       const url = (data as { url?: string })?.url;
       if (!url) throw new Error("Couldn't start payment. Please try again.");
       window.location.href = url;

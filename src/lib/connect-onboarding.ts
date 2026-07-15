@@ -20,6 +20,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { openInAppBrowser } from "@/lib/native-browser";
+import { getStripeEnvironment } from "@/lib/stripe";
 
 /** Minimal shape of profiles needed to evaluate Connect readiness. */
 export type ConnectableProfile = {
@@ -49,7 +50,7 @@ export interface RefreshConnectStatusResult {
 export async function startConnectOnboarding(): Promise<void> {
   const { data, error } = await supabase.functions.invoke(
     "connect-onboarding",
-    { body: { action: "create_account_link" } },
+    { body: { action: "create_account_link", environment: getStripeEnvironment() } },
   );
   if (error) throw new Error(error.message);
   const payload = data as {
@@ -79,7 +80,7 @@ export async function startConnectOnboarding(): Promise<void> {
 export async function refreshConnectStatus(): Promise<RefreshConnectStatusResult> {
   const { data, error } = await supabase.functions.invoke(
     "connect-onboarding",
-    { body: { action: "refresh_status" } },
+    { body: { action: "refresh_status", environment: getStripeEnvironment() } },
   );
   if (error) throw new Error(error.message);
   const payload = data as {

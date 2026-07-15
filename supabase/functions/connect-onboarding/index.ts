@@ -92,7 +92,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const env: StripeEnv = getStripeEnvFromUrl(req);
+    // Parse the body up front so we can read `environment` from it (the
+    // client sends the same body-based env that create-checkout-session uses,
+    // derived from the publishable-key mode). Fall back to the URL `?env=`
+    // param, then sandbox. Before this, env came ONLY from the query — which
+    // the client never set — so the deployed app always onboarded operators
+    // in TEST mode and they could never connect for LIVE payments.
+    const body = await req.json().catch(() => ({}));
+    const bodyEnv = (body as { environment?: unknown }).environment;
+    const env: StripeEnv =
+      bodyEnv === "live" || bodyEnv === "sandbox"
+        ? bodyEnv
+        : getStripeEnvFromUrl(req);
     const stripe = createStripeClient(env, APP_ID);
 
     // ----- Auth: resolve user from JWT (RLS-scoped client) -----
@@ -119,7 +130,6 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
     const userEmail = userData.user.email ?? undefined;
 
-    const body = await req.json().catch(() => ({}));
     const op = getOp(req, body as Record<string, unknown>);
     if (!op) {
       return jsonResponse(

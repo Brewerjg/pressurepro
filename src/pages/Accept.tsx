@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { friendlyFunctionError } from "@/lib/functions-error";
 import { Check, Phone, Loader2, Printer, ShieldCheck, Repeat, CreditCard } from "lucide-react";
 import { BrandHeader } from "@/components/public/BrandHeader";
 import { parseLines, describe, quoteTotal } from "@/components/quotes/types";
@@ -231,7 +232,11 @@ const Accept = () => {
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: { quote_id: q.id, kind: "deposit", environment: getStripeEnvironment() },
       });
-      if (error) throw error;
+      if (error) {
+        throw new Error(
+          await friendlyFunctionError(error, "Couldn't start payment. Please try again."),
+        );
+      }
       const url = (data as { url?: string })?.url;
       if (!url) throw new Error("Couldn't start payment. Please try again.");
       window.location.href = url;
