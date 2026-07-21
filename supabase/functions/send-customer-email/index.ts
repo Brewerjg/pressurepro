@@ -28,6 +28,7 @@ const APP_ID = "turfpro";
 import {
   isValidEmail,
   renderCompleted,
+  renderInvoiceSend,
   renderOnTheWay,
   renderPaymentRetry,
   renderPlanConfirmation,
@@ -102,6 +103,13 @@ interface QuoteSendPayload extends BasePayload {
   };
 }
 
+interface InvoiceSendPayload extends BasePayload {
+  kind: "invoice_send";
+  context: {
+    invoice_id: string;
+  };
+}
+
 // payment_retry hydrates {email, name, amount, card_last4, portal_token} from
 // the plan row. The caller (PlanDetail UI, or the payments-webhook on
 // invoice.payment_failed) only has to thread the plan_id.
@@ -118,7 +126,53 @@ type IncomingPayload =
   | ReviewRequestPayload
   | PlanConfirmationPayload
   | QuoteSendPayload
+  | InvoiceSendPayload
   | PaymentRetryPayload;
+
+// Coerce the JSON `lines` column (shared shape between quotes and the invoices
+// cloned from them) into QuoteSendLine[]. Handles legacy PressurePro rows
+// ({ sqft, rate, surface }) and native rows ({ name, qty, rate, total }).
+function normalizeLines(raw: unknown): QuoteSendLine[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .map((r: unknown): QuoteSendLine | null => {
+      if (!r || typeof r !== "object") return null;
+      const obj = r as Record<string, unknown>;
+      if (
+        typeof obj.sqft === "number" &&
+        typeof obj.rate === "number" &&
+        !("qty" in obj)
+      ) {
+        const qty = Number(obj.sqft) || 0;
+        const rate = Number(obj.rate) || 0;
+        const name =
+          (typeof obj.label === "string" && obj.label) ||
+          (typeof obj.surface === "string" && obj.surface) ||
+          "Service";
+        return {
+          name: String(name),
+          qty,
+          rate,
+          total:
+            typeof obj.total === "number"
+              ? Number(obj.total)
+              : Math.round(qty * rate * 100) / 100,
+        };
+      }
+      const qty = Number(obj.qty) || 0;
+      const rate = Number(obj.rate) || 0;
+      const total =
+        typeof obj.total === "number"
+          ? Number(obj.total)
+          : Math.round(qty * rate * 100) / 100;
+      const name =
+        (typeof obj.name === "string" && obj.name) ||
+        (typeof obj.label === "string" && obj.label) ||
+        "Line";
+      return { name: String(name), qty, rate, total };
+    })
+    .filter((l): l is QuoteSendLine => l !== null);
+}
 
 // ---------------------------------------------------------------------
 // Handler
@@ -132,11 +186,19 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Unauthorized" }, 401);
 
-    // Identify the caller against the publishable key — same pattern as
-    // PressurePro's send-quote-email.
+    // Identify the caller against an anon-level key. Supabase auto-injects
+    // SUPABASE_ANON_KEY into every function; SUPABASE_PUBLISHABLE_KEY is a
+    // custom secret that isn't guaranteed to be set — fall back to the anon
+    // key (both are anon-tier, fine for getUser). Without this fallback
+    // createClient throws "supabaseKey is required" before the auth check.
+    // Mirrors compose-customer-message's key resolution.
+    const anonKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      "";
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!,
+      anonKey,
       { global: { headers: { Authorization: authHeader } } },
     );
     const { data: userData, error: userErr } = await userClient.auth.getUser();
@@ -155,7 +217,11 @@ Deno.serve(async (req) => {
     // hydrate it from the quote / plan row below. Every other kind must
     // supply a valid recipient.email up-front because there's no DB row
     // we can resolve it from.
-    if (payload.kind !== "quote_send" && payload.kind !== "payment_retry") {
+    if (
+      payload.kind !== "quote_send" &&
+      payload.kind !== "invoice_send" &&
+      payload.kind !== "payment_retry"
+    ) {
       if (
         !payload?.recipient?.email ||
         !isValidEmail(payload.recipient.email)
@@ -292,49 +358,8 @@ Deno.serve(async (req) => {
           customerIdForLog ?? (quote.customer_id as string | null);
 
         // Defensively coerce the JSON lines column into the
-        // QuoteSendLine[] shape. PressurePro-era rows store { sqft, rate,
-        // surface } which we translate; native TurfPro rows have
-        // { name, qty, rate, total }.
-        const rawLines = Array.isArray(quote.lines) ? quote.lines : [];
-        const lines: QuoteSendLine[] = rawLines
-          .map((r: unknown) => {
-            if (!r || typeof r !== "object") return null;
-            const obj = r as Record<string, unknown>;
-            // Legacy PressurePro: synthesize qty/rate from sqft × rate.
-            if (
-              typeof obj.sqft === "number" &&
-              typeof obj.rate === "number" &&
-              !("qty" in obj)
-            ) {
-              const qty = Number(obj.sqft) || 0;
-              const rate = Number(obj.rate) || 0;
-              const name =
-                (typeof obj.label === "string" && obj.label) ||
-                (typeof obj.surface === "string" && obj.surface) ||
-                "Service";
-              return {
-                name: String(name),
-                qty,
-                rate,
-                total:
-                  typeof obj.total === "number"
-                    ? Number(obj.total)
-                    : Math.round(qty * rate * 100) / 100,
-              };
-            }
-            const qty = Number(obj.qty) || 0;
-            const rate = Number(obj.rate) || 0;
-            const total =
-              typeof obj.total === "number"
-                ? Number(obj.total)
-                : Math.round(qty * rate * 100) / 100;
-            const name =
-              (typeof obj.name === "string" && obj.name) ||
-              (typeof obj.label === "string" && obj.label) ||
-              "Line";
-            return { name: String(name), qty, rate, total };
-          })
-          .filter((l): l is QuoteSendLine => l !== null);
+        // QuoteSendLine[] shape (shared with invoice_send below).
+        const lines = normalizeLines(quote.lines);
 
         rendered = renderQuoteSend(business, {
           firstName: recipientFirstName,
@@ -345,6 +370,55 @@ Deno.serve(async (req) => {
           notes: (quote.notes as string | null) ?? null,
           acceptUrl: `${origin}/accept/${quote.id}`,
           expiresAt: (quote.expires_at as string | null) ?? null,
+        });
+        break;
+      }
+      case "invoice_send": {
+        // Hydrate the invoice row — caller passes only invoice_id. Mirrors
+        // quote_send: recipient/name/lines/total all come off the row. The
+        // customer CTA points at the public invoice page (/invoice/{token}).
+        const { data: invoice, error: invErr } = await supabase
+          .from("invoices")
+          .select(
+            "id, customer_id, customer_name, customer_email, address, lines, total, deposit_amount, deposit_paid_at, invoice_number, public_token, status",
+          )
+          .eq("id", payload.context.invoice_id)
+          .eq("user_id", userData.user.id)
+          .eq("app", APP_ID)
+          .maybeSingle();
+        if (invErr || !invoice) {
+          return json({ error: "Invoice not found" }, 404);
+        }
+
+        const targetEmail =
+          (recipientEmail && isValidEmail(recipientEmail)
+            ? recipientEmail
+            : (invoice.customer_email as string | null) ?? "") || "";
+        if (!targetEmail || !isValidEmail(targetEmail)) {
+          return json({ error: "No customer_email on the invoice" }, 400);
+        }
+        recipientEmail = targetEmail;
+        recipientName = recipientName || (invoice.customer_name as string);
+        recipientFirstName =
+          recipientFirstName ||
+          (recipientName?.trim().split(/\s+/)[0] || undefined);
+        customerIdForLog =
+          customerIdForLog ?? (invoice.customer_id as string | null);
+
+        const depositPaid =
+          invoice.deposit_paid_at && invoice.deposit_amount
+            ? Number(invoice.deposit_amount)
+            : 0;
+
+        rendered = renderInvoiceSend(business, {
+          firstName: recipientFirstName,
+          invoiceNumber: `INV-${invoice.invoice_number}`,
+          address: (invoice.address as string | null) ?? null,
+          lines: normalizeLines(invoice.lines),
+          totalAmount: Number(invoice.total ?? 0),
+          depositPaid,
+          invoiceUrl: `${origin}/invoice/${invoice.public_token}`,
+          paid: invoice.status === "paid",
         });
         break;
       }

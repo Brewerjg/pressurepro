@@ -27,6 +27,9 @@ export type SmsKind =
   // quote_send = operator hit "Send" on a draft quote and the customer
   // has a phone on file. Body is a short link to /accept/{quote_id}.
   | "quote_send"
+  // invoice_send = operator wants the customer to (re)view/pay an invoice.
+  // Body is a short link to /invoice/{public_token}.
+  | "invoice_send"
   // freeform = operator typed a custom reply from the Inbox. We render
   // it as-is, only appending the mandatory STOP suffix if missing.
   | "freeform"
@@ -76,6 +79,14 @@ export interface SmsQuoteSendContext {
   firstName?: string;
   /** Public accept link: `${origin}/accept/{quote_id}`. */
   acceptUrl: string;
+}
+
+export interface SmsInvoiceSendContext {
+  firstName?: string;
+  /** Public invoice link: `${origin}/invoice/{public_token}`. */
+  invoiceUrl: string;
+  /** When true the invoice is settled — frame as a receipt, not a bill. */
+  paid?: boolean;
 }
 
 export interface SmsPaymentRetryContext {
@@ -190,6 +201,22 @@ export function renderQuoteSendSms(
   // ~140-150 chars with a short business name; one segment in most cases.
   return {
     body: `Hi ${name}, here's your quote from ${biz}: ${ctx.acceptUrl} — ${STOP_SUFFIX}`,
+  };
+}
+
+export function renderInvoiceSendSms(
+  business: SmsBusinessInfo,
+  ctx: SmsInvoiceSendContext,
+): RenderedSms {
+  const biz = business.name || "your lawn crew";
+  const name = firstNameOrFallback(ctx.firstName);
+  if (ctx.paid) {
+    return {
+      body: `Hi ${name}, thanks! Your ${biz} invoice is paid. Receipt: ${ctx.invoiceUrl} — ${STOP_SUFFIX}`,
+    };
+  }
+  return {
+    body: `Hi ${name}, here's your invoice from ${biz}: ${ctx.invoiceUrl} — ${STOP_SUFFIX}`,
   };
 }
 

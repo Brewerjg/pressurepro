@@ -18,6 +18,7 @@ export type EmailKind =
   | "review_request"
   | "plan_confirmation"
   | "quote_send"
+  | "invoice_send"
   | "payment_retry";
 
 export interface RenderedEmail {
@@ -79,6 +80,24 @@ export interface QuoteSendContext {
   acceptUrl: string;
   /** Optional ISO expiry date — rendered as a footer hint. */
   expiresAt?: string | null;
+}
+
+export interface InvoiceSendContext {
+  firstName?: string;
+  /** Human-facing invoice number, e.g. "INV-1001". */
+  invoiceNumber: string;
+  /** Optional service address, rendered above the line items table. */
+  address?: string | null;
+  /** Reuses the quote line shape — invoices clone quote lines verbatim. */
+  lines: QuoteSendLine[];
+  /** Invoice total in dollars. */
+  totalAmount: number;
+  /** Deposit already collected, in dollars (0/null when none). */
+  depositPaid?: number | null;
+  /** Public invoice link: `${origin}/invoice/{public_token}`. */
+  invoiceUrl: string;
+  /** True once the invoice is fully settled — changes the copy + hides CTA. */
+  paid?: boolean;
 }
 
 export interface PaymentRetryContext {
@@ -426,6 +445,106 @@ export function renderQuoteSend(
     (ctx.notes && ctx.notes.trim() ? `Notes: ${ctx.notes.trim()}\n\n` : "") +
     `View & accept: ${ctx.acceptUrl}\n\n` +
     (ctx.expiresAt ? `Expires ${fmtDate(ctx.expiresAt)}.\n\n` : "") +
+    `— ${bizName}` +
+    (business.phone ? `\n${business.phone}` : "");
+
+  return { subject, html, text };
+}
+
+export function renderInvoiceSend(
+  business: BusinessInfo,
+  ctx: InvoiceSendContext,
+): RenderedEmail {
+  const bizName = business.name || "your lawn crew";
+  const subject = ctx.paid
+    ? `Receipt — ${ctx.invoiceNumber} from ${bizName}`
+    : `${ctx.invoiceNumber} from ${bizName}`;
+  const total = fmtUsdExact(ctx.totalAmount);
+  const deposit = ctx.depositPaid && ctx.depositPaid > 0 ? ctx.depositPaid : 0;
+  const balance = Math.max(0, ctx.totalAmount - deposit);
+
+  // Line items table — identical email-safe layout to renderQuoteSend.
+  const lineRows = ctx.lines.length
+    ? ctx.lines
+        .map((l, i) => {
+          const subtitle =
+            l.qty && l.qty !== 1
+              ? `<div style="font-size:11px;color:#9aa39a;margin-top:2px">Qty ${l.qty} × ${escapeHtml(fmtUsdExact(l.rate))}</div>`
+              : "";
+          const sep = i === 0 ? "" : "border-top:1px solid #eef0ee;";
+          return `<tr><td style="padding:10px 0;${sep}">
+            <div style="font-size:14px;font-weight:600;color:#1f2421">${escapeHtml(l.name)}</div>
+            ${subtitle}
+          </td><td style="padding:10px 0;${sep}text-align:right;font-weight:700;font-size:14px;color:#1f2421;white-space:nowrap">${escapeHtml(fmtUsdExact(l.total))}</td></tr>`;
+        })
+        .join("")
+    : `<tr><td style="padding:10px 0;font-size:13px;color:#9aa39a" colspan="2">No line items.</td></tr>`;
+
+  // When a deposit was already collected, show Total, Deposit paid, then the
+  // remaining Balance due as the emphasized figure. Otherwise Total is it.
+  const depositRows =
+    deposit > 0
+      ? `<tr><td style="padding:8px 0 0;font-size:13px;color:#5b6b62">Total</td>
+             <td style="padding:8px 0 0;text-align:right;font-size:13px;color:#5b6b62">${escapeHtml(total)}</td></tr>
+         <tr><td style="padding:4px 0 0;font-size:13px;color:#5b6b62">Deposit paid</td>
+             <td style="padding:4px 0 0;text-align:right;font-size:13px;color:#5b6b62">−${escapeHtml(fmtUsdExact(deposit))}</td></tr>`
+      : "";
+  const finalLabel = deposit > 0 ? "Balance due" : "Total";
+  const finalAmount = fmtUsdExact(deposit > 0 ? balance : ctx.totalAmount);
+
+  const linesTable = `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:6px 0 14px;border-collapse:collapse">
+      ${lineRows}
+      ${depositRows}
+      <tr><td style="padding:12px 0 0;border-top:2px solid #1f3a2a;font-size:12px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#1f3a2a">${finalLabel}</td>
+          <td style="padding:12px 0 0;border-top:2px solid #1f3a2a;text-align:right;font-size:18px;font-weight:800;color:#1f3a2a">${escapeHtml(finalAmount)}</td></tr>
+    </table>`;
+
+  const introBlock = ctx.paid
+    ? paragraph(
+        ctx.address
+          ? `Thanks — your invoice for <b>${escapeHtml(ctx.address)}</b> is paid in full. Here's your receipt.`
+          : `Thanks — your invoice is paid in full. Here's your receipt.`,
+      )
+    : ctx.address
+      ? paragraph(`Here's your invoice for <b>${escapeHtml(ctx.address)}</b>.`)
+      : paragraph(`Here's your invoice.`);
+
+  const cta = ctx.paid ? "" : ctaButton(ctx.invoiceUrl, "View & pay invoice");
+  const viewLine = ctx.paid
+    ? paragraph(
+        `<span style="font-size:12px;color:#9aa39a">You can view it any time at <a href="${escapeHtml(ctx.invoiceUrl)}" style="color:#5b6b62">this link</a>.</span>`,
+      )
+    : "";
+
+  const html = wrapHtml(
+    business,
+    paragraph(`Hi ${greetingName(ctx.firstName)},`) +
+      introBlock +
+      linesTable +
+      cta +
+      viewLine,
+  );
+
+  const textLines = ctx.lines
+    .map((l) => `  • ${l.name} — ${fmtUsdExact(l.total)}`)
+    .join("\n");
+  const totalsText =
+    deposit > 0
+      ? `Total: ${total}\nDeposit paid: -${fmtUsdExact(deposit)}\nBalance due: ${fmtUsdExact(balance)}\n\n`
+      : `Total: ${total}\n\n`;
+  const text =
+    `Hi ${ctx.firstName || "there"},\n\n` +
+    (ctx.paid
+      ? `Thanks — invoice ${ctx.invoiceNumber} is paid in full. Here's your receipt.\n\n`
+      : ctx.address
+        ? `Here's your invoice (${ctx.invoiceNumber}) for ${ctx.address}.\n\n`
+        : `Here's your invoice (${ctx.invoiceNumber}).\n\n`) +
+    (textLines ? `${textLines}\n\n` : "") +
+    totalsText +
+    (ctx.paid
+      ? `View it: ${ctx.invoiceUrl}\n\n`
+      : `View & pay: ${ctx.invoiceUrl}\n\n`) +
     `— ${bizName}` +
     (business.phone ? `\n${business.phone}` : "");
 

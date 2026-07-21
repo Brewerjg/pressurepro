@@ -51,6 +51,7 @@ const APP_ID = "turfpro";
 
 import {
   renderCompletedSms,
+  renderInvoiceSendSms,
   renderOnTheWaySms,
   renderPaymentRetrySms,
   renderPlanConfirmationSms,
@@ -67,6 +68,7 @@ import {
 // six kinds are all static (don't reference ctx fields).
 import {
   renderCompleted as renderCompletedEmail,
+  renderInvoiceSend as renderInvoiceSendEmail,
   renderOnTheWay as renderOnTheWayEmail,
   renderPaymentRetry as renderPaymentRetryEmail,
   renderPlanConfirmation as renderPlanConfirmationEmail,
@@ -83,6 +85,7 @@ type ComposeKind =
   | "review_request"
   | "plan_confirmation"
   | "quote_send"
+  | "invoice_send"
   | "payment_retry";
 
 interface ComposeRequest {
@@ -90,6 +93,7 @@ interface ComposeRequest {
   route_stop_id?: string;
   quote_id?: string;
   plan_id?: string;
+  invoice_id?: string;
   origin?: string;
 }
 
@@ -241,6 +245,7 @@ Deno.serve(async (req) => {
       has_route_stop_id: Boolean(raw.route_stop_id),
       has_quote_id: Boolean(raw.quote_id),
       has_plan_id: Boolean(raw.plan_id),
+      has_invoice_id: Boolean(raw.invoice_id),
     });
 
     // ----- Resolve operator business name (used by every renderer) -----
@@ -271,6 +276,9 @@ Deno.serve(async (req) => {
     // subjects don't actually template it today, but we thread it so future
     // subject revisions can use it without another schema lookup).
     let subjectAddress = "";
+    // Set by branches whose subject is dynamic (e.g. invoice_send embeds the
+    // invoice number). When non-null it wins over resolveSubject() below.
+    let subjectOverride: string | null = null;
     let rendered: RenderedSms | null = null;
 
     switch (kind) {
@@ -449,6 +457,86 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "invoice_send": {
+        if (!raw.invoice_id) {
+          return errorResponse("invoice_id is required for kind=invoice_send", 400);
+        }
+        const { data: invoice, error: invErr } = await admin
+          .from("invoices")
+          .select(
+            "id, user_id, customer_id, customer_name, customer_email, phone, address, public_token, invoice_number, status",
+          )
+          .eq("id", raw.invoice_id)
+          .eq("app", APP_ID)
+          .maybeSingle();
+        if (invErr || !invoice) {
+          log("invoice.lookup_failed", {
+            message: invErr?.message ?? "not found",
+          });
+          return errorResponse("Invoice not found", 404);
+        }
+        if ((invoice as Record<string, unknown>).user_id !== userId) {
+          return errorResponse("Invoice not found", 404);
+        }
+
+        phone =
+          ((invoice as Record<string, unknown>).phone as string | null) ?? null;
+        email =
+          ((invoice as Record<string, unknown>).customer_email as
+            | string
+            | null) ?? null;
+        // Fall back to the linked customers row when the denormalized
+        // contact columns are blank (mirrors the quote branch).
+        const invCustomerId =
+          (invoice as Record<string, unknown>).customer_id as string | null;
+        if ((!email || !phone) && invCustomerId) {
+          const { data: cust } = await admin
+            .from("customers")
+            .select("email, phone")
+            .eq("id", invCustomerId)
+            .maybeSingle();
+          if (cust) {
+            email = email || ((cust.email as string | null) ?? null);
+            phone = phone || ((cust.phone as string | null) ?? null);
+          }
+        }
+        subjectAddress =
+          ((invoice as Record<string, unknown>).address as string | null) ?? "";
+        const firstName =
+          (((invoice as Record<string, unknown>).customer_name as
+            | string
+            | null) ?? "")
+            .trim()
+            .split(/\s+/)[0] || undefined;
+        const invoiceUrl = `${origin}/invoice/${invoice.public_token}`;
+        const paid = (invoice as Record<string, unknown>).status === "paid";
+
+        rendered = renderInvoiceSendSms(business, {
+          firstName,
+          invoiceUrl,
+          paid,
+        });
+        // Dynamic subject — embeds the invoice number. Reuse the email
+        // renderer's subject so it matches the Resend path exactly.
+        subjectOverride = renderInvoiceSendEmail(
+          { name: business.name },
+          {
+            invoiceNumber: `INV-${invoice.invoice_number}`,
+            lines: [],
+            totalAmount: 0,
+            invoiceUrl,
+            paid,
+          },
+        ).subject;
+
+        log("invoice.resolved", {
+          kind,
+          has_phone: Boolean(phone),
+          has_email: Boolean(email),
+        });
+        break;
+      }
+
       case "plan_confirmation":
       case "payment_retry": {
         if (!raw.plan_id) {
@@ -571,11 +659,9 @@ Deno.serve(async (req) => {
     // existing email-template renderers so they match what Resend would
     // send if RESEND_ENABLED were flipped on. The HTML/text outputs are
     // discarded — the SMS body is the shared source of truth.
-    const subject = resolveSubject(
-      kind,
-      { name: business.name },
-      subjectAddress,
-    );
+    const subject =
+      subjectOverride ??
+      resolveSubject(kind, { name: business.name }, subjectAddress);
     const mailto_url = buildMailtoUrl(email, subject, body);
 
     log("return.success", {
