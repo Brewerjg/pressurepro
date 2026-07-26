@@ -243,6 +243,20 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+# Recovery (password-reset) template — version-controlled source of truth so
+# the dashboard template can't silently drift to a tokenless link again (the
+# 2026-07-21 bug). The link uses {{ .ConfirmationURL }}; see the file header.
+# NOTE: this is applied to the hosted project ONLY via `supabase config push`,
+# which pushes the WHOLE [auth] block — and site_url/additional_redirect_urls
+# above are LOCAL-DEV values. Do NOT blanket-push against the prod project; set
+# the template in the dashboard (or push selectively). This entry is the
+# canonical reference for what that dashboard template should contain.
+# (Shared Supabase project with turf — one dashboard template serves both apps;
+# {{ .ConfirmationURL }} respects each app's per-request redirect_to.)
+[auth.email.template.recovery]
+subject = "Reset your password"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true

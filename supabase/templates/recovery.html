@@ -1,0 +1,27 @@
+<!--
+  Password-reset (recovery) email template — TurfPro / shared Supabase project
+  (dkksryutecjbyuscpxdb, also serves PressurePro).
+
+  CRITICAL: the link MUST use {{ .ConfirmationURL }}. That expands to the
+  token-carrying verify URL:
+    https://<project>.supabase.co/auth/v1/verify?token=…&type=recovery&redirect_to=<app>/reset-password
+  which verifies the single-use token and then redirects to the app's
+  /reset-password page with the recovery session in the URL hash, where
+  src/pages/ResetPassword.tsx consumes it.
+
+  Do NOT hardcode the app URL or use {{ .SiteURL }}/reset-password — a bare
+  link carries no token, so the reset page has nothing to consume and shows
+  "This reset link is invalid or has expired." (This is exactly the bug we
+  hit 2026-07-21: the dashboard template had been changed to a bare URL.)
+
+  {{ .ConfirmationURL }} already respects the per-request redirect_to sent by
+  supabase.auth.resetPasswordForEmail, so this ONE template works for both
+  turfpro.falcontech.io and pressurepro.falcontech.io.
+-->
+<h2>Reset your password</h2>
+<p>We received a request to reset the password for your account.</p>
+<p>
+  <a href="{{ .ConfirmationURL }}">Reset password</a>
+</p>
+<p>If you didn't request this, you can safely ignore this email — your
+  password won't change.</p>
