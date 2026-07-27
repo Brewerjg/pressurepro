@@ -13,6 +13,11 @@ type Mode = "sign-in" | "sign-up" | "forgot";
 // Flip to true to re-enable the "Continue with Google" button.
 const GOOGLE_SIGNIN_ENABLED = false;
 
+// Falcon Tech hosts the platform legal documents (shared across all apps) on
+// the company site. Signup links out to these.
+const TERMS_URL = "https://falcontech.io/legal/terms";
+const PRIVACY_URL = "https://falcontech.io/legal/privacy";
+
 // Inline Google "G" mark so we don't add an icon dependency.
 function GoogleIcon() {
   return (
@@ -47,6 +52,9 @@ export default function Auth() {
   const [info, setInfo] = useState<string | null>(null);
   const [creatingDemo, setCreatingDemo] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  // Legal acceptance is required to create an account. Recorded with a
+  // timestamp on the user so we have proof of consent.
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   if (loading) {
     return (
@@ -183,6 +191,13 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
+        // Require acceptance of the Terms + Privacy Policy before creating an
+        // account. The checkbox also gates the button, but guard here too.
+        if (!agreedToTerms) {
+          setError("Please accept the Terms of Service and Privacy Policy to continue.");
+          setSubmitting(false);
+          return;
+        }
         // On native, redirect through our custom URL scheme so the
         // confirm-email link reopens the app instead of landing on
         // `capacitor://localhost` (which is meaningless outside the
@@ -194,6 +209,7 @@ export default function Auth() {
           options: {
             data: {
               is_demo: false, // Explicitly mark as NOT demo for regular signups
+              terms_accepted_at: new Date().toISOString(), // proof of consent
             },
             emailRedirectTo: Capacitor.isNativePlatform()
               ? `${vertical.brand.deepLinkScheme}://auth-callback`
@@ -282,12 +298,44 @@ export default function Auth() {
             </div>
           )}
 
+          {mode === "sign-up" && (
+            <label className="flex items-start gap-2.5 text-xs text-neutral-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 text-accent-500 focus:ring-accent-500"
+              />
+              <span>
+                I agree to the{" "}
+                <a
+                  href={TERMS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-brand-700 underline hover:text-brand-800"
+                >
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a
+                  href={PRIVACY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-brand-700 underline hover:text-brand-800"
+                >
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </label>
+          )}
+
           {error && <p className="text-sm text-destructive">{error}</p>}
           {info && <p className="text-sm text-brand-700">{info}</p>}
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || (mode === "sign-up" && !agreedToTerms)}
             className="w-full h-12 rounded-2xl bg-accent-500 hover:bg-accent-600 text-white font-bold text-sm shadow-accent disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
