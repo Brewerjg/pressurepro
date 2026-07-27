@@ -209,6 +209,8 @@ Deno.serve(async (req) => {
     // so the operator at least gets an active row.
     const priceId = event.product_id ?? null;
     const KNOWN_PRODUCTS = new Set([
+      "turfpro_payg_monthly",
+      "turfpro_payg_yearly",
       "turfpro_solo_monthly",
       "turfpro_solo_yearly",
       "turfpro_crew_monthly",
