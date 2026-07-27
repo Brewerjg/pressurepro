@@ -58,11 +58,44 @@ interface RevenueCatEvent {
   app_user_id?: string;
   product_id?: string;
   environment?: string; // "SANDBOX" | "PRODUCTION"
+  store?: string; // "APP_STORE" | "MAC_APP_STORE" | "PLAY_STORE" | "STRIPE" | ...
   expiration_at_ms?: number | null;
   purchased_at_ms?: number | null;
   original_transaction_id?: string | null;
   entitlement_id?: string | null;
 }
+
+// `subscriptions.source` is NOT NULL with a CHECK constraint allowing only
+// 'stripe' | 'apple' | 'google', and a UNIQUE (user_id, source) index. Map the
+// RC `store` onto that domain so RC rows live in their own per-store slot and
+// never collide with an operator's existing 'stripe' (Base/payg/web) row.
+function sourceFromStore(store: string | undefined): "apple" | "google" | "stripe" {
+  switch (store) {
+    case "APP_STORE":
+    case "MAC_APP_STORE":
+      return "apple";
+    case "PLAY_STORE":
+      return "google";
+    case "STRIPE":
+      return "stripe";
+    default:
+      // TurfPro launches on Google Play; default unknown/missing store there
+      // (still a valid, distinct slot) rather than let it fall back to the
+      // 'stripe' column default and collide.
+      console.warn("RC event: unknown/missing store, defaulting source=google:", store);
+      return "google";
+  }
+}
+
+// subscriptions.revenuecat_entitlement CHECK allows 'solo' | 'pro' | 'crew'
+// (or null). Derive it from the product id for traceability + the schema's
+// intended entitlement column. IAP products are solo/crew.
+const ENTITLEMENT_BY_PRODUCT: Record<string, "solo" | "crew"> = {
+  turfpro_solo_monthly: "solo",
+  turfpro_solo_yearly: "solo",
+  turfpro_crew_monthly: "crew",
+  turfpro_crew_yearly: "crew",
+};
 
 const msToIso = (ms: number | null | undefined): string | null =>
   ms ? new Date(ms).toISOString() : null;
@@ -192,6 +225,18 @@ Deno.serve(async (req) => {
     const row = {
       user_id: userId,
       environment: env,
+      // MUST set source: the table has a UNIQUE (user_id, source) index and
+      // `source` defaults to 'stripe'. If we let it default, an operator who
+      // already has ANY source='stripe' row (a Base/payg row, a trial, or a
+      // web Stripe sub) collides on (user_id,'stripe') when we INSERT — and our
+      // onConflict target is stripe_subscription_id, so that collision raises a
+      // 500 and the purchase never syncs. The store gives each RC row its own
+      // (user_id,'google'|'apple') slot. (CHECK allows stripe|apple|google.)
+      source: sourceFromStore(event.store),
+      // Schema's dedicated RC tier column (CHECK: solo|pro|crew|null).
+      revenuecat_entitlement: priceId
+        ? ENTITLEMENT_BY_PRODUCT[priceId] ?? null
+        : null,
       stripe_customer_id: null,
       // Stable per-operator conflict key. One active SaaS sub per operator.
       stripe_subscription_id: `rc_${userId}`,
