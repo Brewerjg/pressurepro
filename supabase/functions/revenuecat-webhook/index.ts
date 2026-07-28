@@ -203,11 +203,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // price_id is written RAW from the RC product identifier. The app's
-    // tierFromPriceId() expects it to equal a Stripe lookup_key
-    // (turfpro_solo_monthly, etc.). Warn — but still upsert — on a mismatch
-    // so the operator at least gets an active row.
-    const priceId = event.product_id ?? null;
+    // price_id must equal a flat lookup_key (turfpro_solo_monthly, etc.) so the
+    // app's tierFromPriceId() resolves the tier. Google Play product ids arrive
+    // as "subscriptionId:basePlanId" (e.g. "turfpro_solo_monthly:base"), so
+    // strip any base-plan suffix before storing / matching. (No colon → the id
+    // is returned unchanged, so this is safe for every store.)
+    const priceId = event.product_id
+      ? event.product_id.split(":")[0]
+      : null;
     const KNOWN_PRODUCTS = new Set([
       "turfpro_payg_monthly",
       "turfpro_payg_yearly",
