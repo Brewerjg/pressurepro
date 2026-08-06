@@ -204,13 +204,16 @@ Deno.serve(async (req) => {
     }
 
     // price_id must equal a flat lookup_key (turfpro-solo-monthly, etc.) so the
-    // app's tierFromPriceId() resolves the tier. Google Play product ids arrive
-    // as "subscriptionId:basePlanId" (e.g. "turfpro-solo-monthly:base"), so
-    // strip any base-plan suffix before storing / matching. (No colon → the id
-    // is returned unchanged, so this is safe for every store.)
-    const priceId = event.product_id
-      ? event.product_id.split(":")[0]
-      : null;
+    // app's tierFromPriceId() resolves the tier. Resolving it across stores:
+    //   * Apple / Stripe send the id FLAT ("turfpro-solo-monthly").
+    //   * Google Play sends "subscriptionId:basePlanId". Our canonical
+    //     hyphenated ids can ONLY live at the *base plan* level, because Play
+    //     forbids hyphens in a subscription Product ID and forbids underscores
+    //     in a base plan ID. So the meaningful id is the base-plan segment
+    //     (AFTER the colon), NOT the subscription id before it.
+    // Match whichever colon segment is a known product; otherwise fall back to
+    // the base-plan segment (last), then the raw value, so an unknown id is
+    // still stored for debugging rather than dropped.
     const KNOWN_PRODUCTS = new Set([
       "turfpro-payg-monthly",
       "turfpro-payg-yearly",
@@ -219,9 +222,16 @@ Deno.serve(async (req) => {
       "turfpro-crew-monthly",
       "turfpro-crew-yearly",
     ]);
+    const rawProduct = event.product_id ?? null;
+    const segments = rawProduct ? rawProduct.split(":") : [];
+    const priceId =
+      segments.find((s) => KNOWN_PRODUCTS.has(s)) ??
+      (segments.length > 1 ? segments[segments.length - 1] : rawProduct);
     if (priceId && !KNOWN_PRODUCTS.has(priceId)) {
       console.warn(
         "RC product_id does not match a known lookup_key:",
+        rawProduct,
+        "→ using",
         priceId,
         "— tier resolution may fail in the app.",
       );
