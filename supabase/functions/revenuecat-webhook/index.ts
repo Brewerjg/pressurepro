@@ -12,8 +12,8 @@
 //     user.id`, so `event.app_user_id` IS the TurfPro `user_id`.
 //   * IMPORTANT: the RevenueCat PRODUCT IDENTIFIERS must be created to EXACTLY
 //     MATCH the Stripe `lookup_key`s used elsewhere in the app:
-//       turfpro_solo_monthly, turfpro_solo_yearly,
-//       turfpro_crew_monthly, turfpro_crew_yearly
+//       turfpro-solo-monthly, turfpro-solo-yearly,
+//       turfpro-crew-monthly, turfpro-crew-yearly
 //     We write `subscriptions.price_id = event.product_id` directly so the
 //     app's existing tierFromPriceId() resolves the tier with NO extra
 //     mapping here. If those identifiers ever drift from the lookup_keys, the
@@ -91,10 +91,10 @@ function sourceFromStore(store: string | undefined): "apple" | "google" | "strip
 // (or null). Derive it from the product id for traceability + the schema's
 // intended entitlement column. IAP products are solo/crew.
 const ENTITLEMENT_BY_PRODUCT: Record<string, "solo" | "crew"> = {
-  turfpro_solo_monthly: "solo",
-  turfpro_solo_yearly: "solo",
-  turfpro_crew_monthly: "crew",
-  turfpro_crew_yearly: "crew",
+  "turfpro-solo-monthly": "solo",
+  "turfpro-solo-yearly": "solo",
+  "turfpro-crew-monthly": "crew",
+  "turfpro-crew-yearly": "crew",
 };
 
 const msToIso = (ms: number | null | undefined): string | null =>
@@ -203,21 +203,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // price_id must equal a flat lookup_key (turfpro_solo_monthly, etc.) so the
+    // price_id must equal a flat lookup_key (turfpro-solo-monthly, etc.) so the
     // app's tierFromPriceId() resolves the tier. Google Play product ids arrive
-    // as "subscriptionId:basePlanId" (e.g. "turfpro_solo_monthly:base"), so
+    // as "subscriptionId:basePlanId" (e.g. "turfpro-solo-monthly:base"), so
     // strip any base-plan suffix before storing / matching. (No colon → the id
     // is returned unchanged, so this is safe for every store.)
     const priceId = event.product_id
       ? event.product_id.split(":")[0]
       : null;
     const KNOWN_PRODUCTS = new Set([
-      "turfpro_payg_monthly",
-      "turfpro_payg_yearly",
-      "turfpro_solo_monthly",
-      "turfpro_solo_yearly",
-      "turfpro_crew_monthly",
-      "turfpro_crew_yearly",
+      "turfpro-payg-monthly",
+      "turfpro-payg-yearly",
+      "turfpro-solo-monthly",
+      "turfpro-solo-yearly",
+      "turfpro-crew-monthly",
+      "turfpro-crew-yearly",
     ]);
     if (priceId && !KNOWN_PRODUCTS.has(priceId)) {
       console.warn(

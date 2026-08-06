@@ -26,7 +26,7 @@
 //
 // For app subscriptions: priceId is treated as a Stripe lookup_key — we
 // resolve it to a real `price_xxx` ID via stripe.prices.list({ lookup_keys
-// }) so the client can ship human-readable identifiers (turfpro_solo_monthly
+// }) so the client can ship human-readable identifiers (turfpro-solo-monthly
 // etc.) without leaking real Stripe IDs into the bundle.
 //
 // For Connect-routed checkouts (plan one-time / visit charges) the caller

@@ -58,12 +58,12 @@ export async function resolveTier(
   // client/server import cycles. Keep in sync with PRICE_TO_TIER in
   // src/lib/stripe.ts.
   const map: Record<string, TierId> = {
-    turfpro_payg_monthly: "payg",
-    turfpro_payg_yearly: "payg",
-    turfpro_solo_monthly: "solo",
-    turfpro_solo_yearly: "solo",
-    turfpro_crew_monthly: "crew",
-    turfpro_crew_yearly: "crew",
+    "turfpro-payg-monthly": "payg",
+    "turfpro-payg-yearly": "payg",
+    "turfpro-solo-monthly": "solo",
+    "turfpro-solo-yearly": "solo",
+    "turfpro-crew-monthly": "crew",
+    "turfpro-crew-yearly": "crew",
   };
   return map[data.price_id ?? ""] ?? "payg";
 }
