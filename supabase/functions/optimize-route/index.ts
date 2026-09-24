@@ -45,6 +45,12 @@ Deno.serve(async (req) => {
       intermediates: waypoints.map((address) => ({ address })),
       travelMode: "DRIVE",
       optimizeWaypointOrder: true,
+      // Bias geocoding of incomplete addresses toward the US. Without it, a
+      // bare street like "7501 Guenther rd" resolved to San Antonio TX and
+      // produced a 687-mile leg on an Arkansas route (2026-09-23). The
+      // client additionally flags any leg > 120 mi so a bad geocode is
+      // visible instead of silently inflating totals.
+      regionCode: "US",
     };
     const r = await fetch(
       "https://routes.googleapis.com/directions/v2:computeRoutes",
@@ -73,8 +79,19 @@ Deno.serve(async (req) => {
     if (!route) return json({ error: "Google returned no route" }, 502);
 
     // Optimized order of the intermediate waypoints (maps optimized position
-    // -> original waypoints[] index). Fall back to identity if absent.
-    const order = route.optimizedIntermediateWaypointIndex ?? waypoints.map((_, i) => i);
+    // -> original waypoints[] index). Google returns the sentinel [-1] when
+    // there's nothing to optimize (single waypoint) — and the client treats
+    // any out-of-range index as corrupt and DROPS the legs with it, so
+    // single-stop routes silently lost their drive metrics. Normalize: any
+    // response that isn't a valid permutation of [0..n-1] becomes identity,
+    // keeping the legs (which are correct regardless).
+    const raw = route.optimizedIntermediateWaypointIndex;
+    const identity = waypoints.map((_, i) => i);
+    const isValidPermutation =
+      Array.isArray(raw) &&
+      raw.length === waypoints.length &&
+      [...raw].sort((a, b) => a - b).every((v, i) => v === i);
+    const order = isValidPermutation ? (raw as number[]) : identity;
 
     // legs[k] is the drive arriving at the k-th point AFTER origin:
     //   legs[0] = origin -> first optimized waypoint
